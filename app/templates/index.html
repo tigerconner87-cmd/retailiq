@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RetailIQ — Sales Intelligence for Retail Shop Owners</title>
+  <meta name="description" content="The sales intelligence dashboard built for retail shop owners. See exactly where you're losing money and how to get more repeat customers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="container navbar-inner">
+      <a href="/" class="logo">
+        <svg class="logo-icon" width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="url(#logo-grad)"/>
+          <path d="M9 22V12l4 4 4-6 4 8v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+        </svg>
+        <span>RetailIQ</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+          <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+        </button>
+        <a href="/login" class="btn btn-ghost btn-sm">Log In</a>
+        <a href="/register" class="btn btn-primary btn-sm">Start Free Trial</a>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="hero-bg">
+      <div class="hero-glow hero-glow-1"></div>
+      <div class="hero-glow hero-glow-2"></div>
+      <div class="hero-grid"></div>
+    </div>
+    <div class="container hero-inner">
+      <div class="hero-badge animate-on-scroll"><span class="badge-dot"></span>Now tracking 1M+ transactions</div>
+      <h1 class="hero-title animate-on-scroll">Stop Guessing.<br><span class="gradient-text">Start Growing.</span></h1>
+      <p class="hero-sub animate-on-scroll">The sales intelligence dashboard built for retail shop owners.<br>See exactly where you're losing money and how to get more repeat customers.</p>
+      <div class="hero-cta animate-on-scroll">
+        <a href="/register" class="btn btn-primary btn-lg">Start Free Trial <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+        <a href="#how-it-works" class="btn btn-ghost btn-lg">See How It Works</a>
+      </div>
+      <div class="hero-dashboard animate-on-scroll">
+        <div class="dashboard-mock dashboard-mock-large">
+          <div class="mock-toolbar"><div class="mock-dots"><span></span><span></span><span></span></div><span class="mock-url">app.retailiq.com/dashboard</span></div>
+          <div class="mock-body">
+            <div class="mock-sidebar">
+              <div class="mock-nav-item active"></div><div class="mock-nav-item"></div><div class="mock-nav-item"></div><div class="mock-nav-item"></div><div class="mock-nav-item"></div>
+            </div>
+            <div class="mock-content">
+              <!-- AI Actions banner at top -->
+              <div class="mock-ai-banner">
+                <div class="mock-ai-dot"></div>
+                <span class="mock-ai-text">3 AI action items for today</span>
+              </div>
+              <div class="mock-stats">
+                <div class="mock-stat-card"><div class="mock-stat-label">Today's Revenue</div><div class="mock-stat-value">$2,847</div><div class="mock-stat-change positive">+12.5%</div></div>
+                <div class="mock-stat-card"><div class="mock-stat-label">Transactions</div><div class="mock-stat-value">143</div><div class="mock-stat-change positive">+8.2%</div></div>
+                <div class="mock-stat-card"><div class="mock-stat-label">Repeat Rate</div><div class="mock-stat-value">34.2%</div><div class="mock-stat-change negative">-2.1%</div></div>
+                <div class="mock-stat-card"><div class="mock-stat-label">Avg. Basket</div><div class="mock-stat-value">$19.91</div><div class="mock-stat-change positive">+5.7%</div></div>
+              </div>
+              <div class="mock-charts">
+                <div class="mock-chart-main">
+                  <div class="mock-chart-title">Revenue — Last 7 Days</div>
+                  <svg class="mock-line-chart" viewBox="0 0 400 120" preserveAspectRatio="none">
+                    <defs><linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6366f1" stop-opacity="0.3"/><stop offset="100%" stop-color="#6366f1" stop-opacity="0"/></linearGradient></defs>
+                    <path d="M0,80 C30,70 60,90 100,60 C140,30 170,50 200,35 C230,20 260,45 300,25 C340,5 370,15 400,10 L400,120 L0,120Z" fill="url(#chartGrad)"/>
+                    <path d="M0,80 C30,70 60,90 100,60 C140,30 170,50 200,35 C230,20 260,45 300,25 C340,5 370,15 400,10" fill="none" stroke="#6366f1" stroke-width="2.5"/>
+                  </svg>
+                </div>
+                <div class="mock-chart-side">
+                  <div class="mock-chart-title">Peak Hours</div>
+                  <div class="mock-bars">
+                    <div class="mock-bar" style="--h:30%"><span>9a</span></div><div class="mock-bar" style="--h:55%"><span>10a</span></div><div class="mock-bar" style="--h:80%"><span>11a</span></div><div class="mock-bar highlight" style="--h:100%"><span>12p</span></div><div class="mock-bar" style="--h:90%"><span>1p</span></div><div class="mock-bar" style="--h:60%"><span>2p</span></div><div class="mock-bar" style="--h:45%"><span>3p</span></div><div class="mock-bar" style="--h:70%"><span>4p</span></div><div class="mock-bar" style="--h:85%"><span>5p</span></div><div class="mock-bar" style="--h:50%"><span>6p</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST BAR -->
+  <section class="trust-bar">
+    <div class="container">
+      <p class="trust-text animate-on-scroll">Trusted by <strong>500+ retail shops</strong> across the country</p>
+      <div class="trust-logos animate-on-scroll">
+        <div class="trust-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Square POS
+        </div>
+        <div class="trust-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+          Shopify
+        </div>
+        <div class="trust-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Clover
+        </div>
+        <div class="trust-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          Yelp
+        </div>
+        <div class="trust-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Google Reviews
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHO IS THIS FOR -->
+  <section class="section who-for" id="who-for">
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">Who Is This For?</span>
+        <h2 class="section-title">Built for shop owners who want to <span class="gradient-text">grow smarter.</span></h2>
+        <p class="section-sub">Whether you run a boutique, a coffee shop, or a grocery store — if you have a POS, RetailIQ works for you.</p>
+      </div>
+      <div class="who-grid">
+        <div class="who-card animate-on-scroll">
+          <div class="who-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          </div>
+          <h3>Boutique & Retail Stores</h3>
+          <p>Track product performance, spot trends, and optimize your merchandising strategy with real sales data instead of gut feelings.</p>
+          <ul class="who-benefits">
+            <li>See which products drive the most revenue</li>
+            <li>Know your peak traffic hours</li>
+            <li>Track customer return rates</li>
+          </ul>
+        </div>
+        <div class="who-card animate-on-scroll">
+          <div class="who-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+          </div>
+          <h3>Cafes & Restaurants</h3>
+          <p>Optimize staffing around real traffic patterns and discover which menu items are actually making you money.</p>
+          <ul class="who-benefits">
+            <li>Staff for actual peak hours</li>
+            <li>See which items have the best margins</li>
+            <li>Monitor online reviews in real time</li>
+          </ul>
+        </div>
+        <div class="who-card animate-on-scroll">
+          <div class="who-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <h3>Multi-Location Operators</h3>
+          <p>Compare performance across all your locations from a single dashboard. Spot underperformers and replicate what works.</p>
+          <ul class="who-benefits">
+            <li>Cross-location benchmarking</li>
+            <li>Unified revenue reporting</li>
+            <li>Competitor intel per location</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section class="section problem" id="problem">
+    <div class="container">
+      <div class="section-header animate-on-scroll"><span class="section-tag">The Problem</span><h2 class="section-title">You're flying blind.</h2><p class="section-sub">Most retail owners rely on gut feelings instead of data. That's costing you thousands every month.</p></div>
+      <div class="problem-grid">
+        <div class="problem-card animate-on-scroll"><div class="problem-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h3>You don't know your peak hours</h3><p>You're staffing based on instinct while your busiest hours are understaffed and your quiet hours are overstaffed. That's wasted payroll.</p></div>
+        <div class="problem-card animate-on-scroll"><div class="problem-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3>You don't know why customers don't come back</h3><p>67% of first-time customers never return. Without tracking return rates, you can't fix the leak in your customer funnel.</p></div>
+        <div class="problem-card animate-on-scroll"><div class="problem-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><h3>Your competitors are outpacing you</h3><p>The shop down the street is growing and you can't see why. Without competitive intelligence, you're always reacting, never leading.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section features" id="features">
+    <div class="container">
+      <div class="section-header animate-on-scroll"><span class="section-tag">Features</span><h2 class="section-title">Everything you need to<br><span class="gradient-text">outsmart the competition.</span></h2><p class="section-sub">Powerful analytics, zero complexity. Plug in your POS and start getting insights in minutes.</p></div>
+      <div class="features-grid">
+        <div class="feature-card animate-on-scroll"><div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div><h3>Real-Time Sales Dashboard</h3><p>See live revenue, transaction count, and average basket size. Know exactly how your day is going at any moment.</p></div>
+        <div class="feature-card animate-on-scroll"><div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></div><h3>Peak Hours & Trends</h3><p>Discover when customers actually show up. Optimize staffing, inventory, and promotions around real traffic patterns.</p></div>
+        <div class="feature-card animate-on-scroll"><div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><h3>Customer Return Rate</h3><p>Track how many customers come back and how often. Identify what drives loyalty and what causes churn.</p></div>
+        <div class="feature-card animate-on-scroll"><div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div><h3>Product Performance</h3><p>Rank every product by revenue, margin, and velocity. Know which items to promote and which to phase out.</p></div>
+        <div class="feature-card animate-on-scroll"><div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>Google Review Monitoring</h3><p>Get alerted to new reviews instantly. Track your rating over time and respond before negative reviews spread.</p></div>
+        <div class="feature-card animate-on-scroll"><div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h3>Competitor Intelligence</h3><p>Monitor nearby competitors' reviews, pricing changes, and foot traffic estimates. Stay one step ahead, always.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SEE IT IN ACTION -->
+  <section class="section demo-section" id="demo">
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">See It In Action</span>
+        <h2 class="section-title">Your daily briefing, <span class="gradient-text">powered by AI.</span></h2>
+        <p class="section-sub">Every morning, RetailIQ analyzes your data and delivers specific actions to grow your revenue.</p>
+      </div>
+      <div class="demo-window animate-on-scroll">
+        <div class="demo-toolbar"><div class="mock-dots"><span></span><span></span><span></span></div><span class="mock-url">app.retailiq.com/dashboard</span></div>
+        <div class="demo-content">
+          <div class="demo-ai-card">
+            <div class="demo-ai-header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>AI Action Items</span>
+              <span class="demo-ai-tag">Updated daily</span>
+            </div>
+            <div class="demo-ai-body" id="demoAiBody">
+              <div class="demo-ai-item" data-delay="0">
+                <div class="demo-ai-emoji">&#x1F4C8;</div>
+                <div>
+                  <div class="demo-ai-title"><span class="demo-dot high"></span>Vintage Denim Jacket sales are up 42% this week</div>
+                  <div class="demo-ai-desc">Feature this product in your window display and social media to ride the momentum.</div>
+                </div>
+              </div>
+              <div class="demo-ai-item" data-delay="200">
+                <div class="demo-ai-emoji">&#x1F4E9;</div>
+                <div>
+                  <div class="demo-ai-title"><span class="demo-dot high"></span>23 repeat customers haven't returned in 30+ days</div>
+                  <div class="demo-ai-desc">Send a personalized win-back email with a 15% discount code to re-engage them.</div>
+                </div>
+              </div>
+              <div class="demo-ai-item" data-delay="400">
+                <div class="demo-ai-emoji">&#x1F4B0;</div>
+                <div>
+                  <div class="demo-ai-title"><span class="demo-dot medium"></span>Tuesday is your weakest day ($312 avg)</div>
+                  <div class="demo-ai-desc">That's 28% below your daily average. Try a Tuesday-only promotion to boost traffic.</div>
+                </div>
+              </div>
+              <div class="demo-ai-item" data-delay="600">
+                <div class="demo-ai-emoji">&#x23F0;</div>
+                <div>
+                  <div class="demo-ai-title"><span class="demo-dot medium"></span>Your peak hour is 12pm — make sure you're fully staffed</div>
+                  <div class="demo-ai-desc">Average revenue at 12pm is $487. Ensure your best salespeople are on the floor.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="demo-kpi-row">
+            <div class="demo-kpi"><span class="demo-kpi-label">Revenue Today</span><span class="demo-kpi-value">$2,847</span></div>
+            <div class="demo-kpi"><span class="demo-kpi-label">Transactions</span><span class="demo-kpi-value">143</span></div>
+            <div class="demo-kpi"><span class="demo-kpi-label">Repeat Rate</span><span class="demo-kpi-value">34.2%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="section-header animate-on-scroll"><span class="section-tag">How It Works</span><h2 class="section-title">Up and running in <span class="gradient-text">5 minutes.</span></h2><p class="section-sub">No engineers needed. No complicated setup. Just connect and go.</p></div>
+      <div class="steps">
+        <div class="step animate-on-scroll"><div class="step-number">1</div><div class="step-content"><h3>Connect Your POS</h3><p>One-click integrations with Square, Shopify, and Clover. We securely sync your sales data in real time.</p><div class="step-logos"><span class="pos-badge">Square</span><span class="pos-badge">Shopify</span><span class="pos-badge">Clover</span></div></div></div>
+        <div class="step-connector animate-on-scroll"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+        <div class="step animate-on-scroll"><div class="step-number">2</div><div class="step-content"><h3>We Analyze Your Data</h3><p>Our engine crunches your transaction history, identifies patterns, and benchmarks you against similar retailers.</p></div></div>
+        <div class="step-connector animate-on-scroll"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+        <div class="step animate-on-scroll"><div class="step-number">3</div><div class="step-content"><h3>Get Actionable Insights Daily</h3><p>Every morning, get a digest of what happened yesterday, what to watch today, and specific actions to grow revenue.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="section pricing" id="pricing">
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">Pricing</span>
+        <h2 class="section-title">Simple, transparent pricing.</h2>
+        <p class="section-sub">No hidden fees. No long-term contracts. Cancel anytime.</p>
+      </div>
+      <div class="pricing-toggle-wrap animate-on-scroll">
+        <span class="pricing-toggle-label" data-period="monthly">Monthly</span>
+        <button class="pricing-toggle-btn" id="pricingToggle" aria-label="Toggle annual pricing">
+          <span class="pricing-toggle-knob"></span>
+        </button>
+        <span class="pricing-toggle-label" data-period="annual">Annual <span class="pricing-save-badge">Save 2 months</span></span>
+      </div>
+      <div class="pricing-grid">
+        <div class="pricing-card animate-on-scroll">
+          <div class="pricing-header">
+            <h3>Starter</h3>
+            <div class="pricing-amount">
+              <span class="currency">$</span><span class="price-value" data-monthly="49" data-annual="408">49</span><span class="period" data-monthly="/mo" data-annual="/yr">/mo</span>
+            </div>
+            <p class="pricing-annual-note" hidden>$34/mo billed annually</p>
+            <p class="pricing-desc">Perfect for single-location shops getting started with data.</p>
+          </div>
+          <ul class="pricing-features">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 1 location</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Basic sales analytics</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Peak hours tracking</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Weekly email digest</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Email support</li>
+          </ul>
+          <a href="/register" class="btn btn-outline btn-block">Get Started</a>
+        </div>
+        <div class="pricing-card popular animate-on-scroll">
+          <div class="popular-badge">Most Popular</div>
+          <div class="pricing-header">
+            <h3>Growth</h3>
+            <div class="pricing-amount">
+              <span class="currency">$</span><span class="price-value" data-monthly="99" data-annual="828">99</span><span class="period" data-monthly="/mo" data-annual="/yr">/mo</span>
+            </div>
+            <p class="pricing-annual-note" hidden>$69/mo billed annually</p>
+            <p class="pricing-desc">For growing retailers who want the full picture.</p>
+          </div>
+          <ul class="pricing-features">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Up to 3 locations</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Full analytics suite</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Customer return tracking</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Competitor intelligence</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Google review monitoring</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Daily email reports</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Priority support</li>
+          </ul>
+          <a href="/register" class="btn btn-primary btn-block">Start Free Trial</a>
+        </div>
+        <div class="pricing-card animate-on-scroll">
+          <div class="pricing-header">
+            <h3>Enterprise</h3>
+            <div class="pricing-amount">
+              <span class="currency">$</span><span class="price-value" data-monthly="249" data-annual="2,076">249</span><span class="period" data-monthly="/mo" data-annual="/yr">/mo</span>
+            </div>
+            <p class="pricing-annual-note" hidden>$173/mo billed annually</p>
+            <p class="pricing-desc">For multi-location retailers with advanced needs.</p>
+          </div>
+          <ul class="pricing-features">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Unlimited locations</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Everything in Growth</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> REST API access</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Custom dashboards</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Dedicated account manager</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> SSO & team access</li>
+          </ul>
+          <a href="/register" class="btn btn-outline btn-block">Contact Sales</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIRST WEEK TIMELINE -->
+  <section class="section timeline-section" id="first-week">
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">Your First Week</span>
+        <h2 class="section-title">What you'll get in <span class="gradient-text">your first 7 days.</span></h2>
+        <p class="section-sub">From signup to actionable insights — here's exactly what happens.</p>
+      </div>
+      <div class="timeline">
+        <div class="timeline-line"></div>
+        <div class="timeline-item animate-on-scroll">
+          <div class="timeline-marker">
+            <div class="timeline-day">Day 1</div>
+          </div>
+          <div class="timeline-content">
+            <h3>Connect & Import</h3>
+            <p>Connect your POS in one click. We import your last 90 days of transaction history and start crunching the numbers.</p>
+          </div>
+        </div>
+        <div class="timeline-item animate-on-scroll">
+          <div class="timeline-marker">
+            <div class="timeline-day">Day 2</div>
+          </div>
+          <div class="timeline-content">
+            <h3>Your First Insights</h3>
+            <p>See your peak hours heatmap, product rankings, and customer return rates for the first time. Most owners are shocked by what they find.</p>
+          </div>
+        </div>
+        <div class="timeline-item animate-on-scroll">
+          <div class="timeline-marker">
+            <div class="timeline-day">Day 3-4</div>
+          </div>
+          <div class="timeline-content">
+            <h3>Competitor Scan Complete</h3>
+            <p>We find and start monitoring your nearby competitors. See their ratings, review trends, and how you stack up.</p>
+          </div>
+        </div>
+        <div class="timeline-item animate-on-scroll">
+          <div class="timeline-marker">
+            <div class="timeline-day">Day 5-6</div>
+          </div>
+          <div class="timeline-content">
+            <h3>AI Recommendations Kick In</h3>
+            <p>With enough data, our AI engine starts generating daily action items — specific, data-driven recommendations to grow revenue.</p>
+          </div>
+        </div>
+        <div class="timeline-item animate-on-scroll">
+          <div class="timeline-marker">
+            <div class="timeline-day">Day 7</div>
+          </div>
+          <div class="timeline-content">
+            <h3>Your First Weekly Report</h3>
+            <p>Get a comprehensive email summary: revenue trends, top products, customer insights, competitor changes, and your action plan for next week.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="section testimonials" id="testimonials">
+    <div class="container">
+      <div class="section-header animate-on-scroll"><span class="section-tag">Testimonials</span><h2 class="section-title">Loved by shop owners.</h2></div>
+      <div class="testimonials-grid">
+        <div class="testimonial-card animate-on-scroll"><div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><p class="testimonial-text">"We discovered that 40% of our revenue comes from just 2 hours on Saturday. We shifted staff and stocking accordingly — revenue jumped 18% in a month."</p><div class="testimonial-author"><div class="author-avatar">MR</div><div><div class="author-name">Maria Rodriguez</div><div class="author-role">Owner, Urban Threads Boutique</div></div></div></div>
+        <div class="testimonial-card animate-on-scroll"><div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><p class="testimonial-text">"The competitor tracking alone is worth 10x the price. I saw a competitor's reviews drop and ran a targeted promo that brought in 30 new regulars."</p><div class="testimonial-author"><div class="author-avatar">JK</div><div><div class="author-name">James Kim</div><div class="author-role">Owner, Bean & Brew Coffee</div></div></div></div>
+        <div class="testimonial-card animate-on-scroll"><div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><p class="testimonial-text">"I was shocked to see only 22% of my customers ever came back. RetailIQ helped me build a loyalty program that pushed that to 41% in three months."</p><div class="testimonial-author"><div class="author-avatar">SP</div><div><div class="author-name">Sarah Patel</div><div class="author-role">Owner, FreshMart Grocery</div></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section faq" id="faq">
+    <div class="container">
+      <div class="section-header animate-on-scroll"><span class="section-tag">FAQ</span><h2 class="section-title">Frequently asked questions.</h2></div>
+      <div class="faq-list">
+        <div class="faq-item animate-on-scroll"><button class="faq-question" aria-expanded="false"><span>How long does setup take?</span><svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-answer"><p>Most shop owners are up and running in under 5 minutes. Just authorize your POS connection and we handle the rest. Historical data import typically completes within an hour.</p></div></div>
+        <div class="faq-item animate-on-scroll"><button class="faq-question" aria-expanded="false"><span>Which POS systems do you support?</span><svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-answer"><p>We currently integrate with Square, Shopify POS, and Clover. We're adding new integrations every quarter — if your POS isn't listed, let us know and we'll prioritize it.</p></div></div>
+        <div class="faq-item animate-on-scroll"><button class="faq-question" aria-expanded="false"><span>How is my data secured?</span><svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-answer"><p>All data is encrypted in transit (TLS 1.3) and at rest (AES-256). We're SOC 2 Type II compliant. We never sell your data and you retain full ownership. You can export or delete your data at any time.</p></div></div>
+        <div class="faq-item animate-on-scroll"><button class="faq-question" aria-expanded="false"><span>Can I cancel anytime?</span><svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-answer"><p>Absolutely. There are no long-term contracts or cancellation fees. You can cancel from your account settings at any time and you'll retain access until the end of your billing period.</p></div></div>
+        <div class="faq-item animate-on-scroll"><button class="faq-question" aria-expanded="false"><span>What data do you actually track?</span><svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-answer"><p>We sync transaction data (amounts, timestamps, items sold), customer visit frequency (anonymized), and publicly available competitor information (reviews, ratings). We never access personal customer data like names or payment details.</p></div></div>
+        <div class="faq-item animate-on-scroll"><button class="faq-question" aria-expanded="false"><span>How is RetailIQ different from Square's built-in analytics?</span><svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-answer"><p>Square's analytics show you what happened. RetailIQ tells you what to do about it. We add competitor intelligence, customer return prediction, cross-location benchmarking, and daily actionable recommendations that POS dashboards simply don't provide.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SIGNUP BANNER -->
+  <section class="section signup" id="signup">
+    <div class="container">
+      <div class="signup-inner">
+        <div class="signup-bg"><div class="signup-glow"></div></div>
+        <div class="signup-content animate-on-scroll">
+          <h2 class="section-title">Start your free 14-day trial.</h2>
+          <p class="section-sub">No credit card required. Connect your POS and see insights in minutes.</p>
+          <div class="signup-cta-row">
+            <a href="/register" class="btn btn-primary btn-lg">Start Free Trial <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+          </div>
+          <p class="form-disclaimer">Free 14-day trial &middot; No credit card required &middot; Cancel anytime</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand"><a href="/" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="url(#logo-grad2)"/><path d="M9 22V12l4 4 4-6 4 8v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="logo-grad2" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs></svg><span>RetailIQ</span></a><p class="footer-tagline">Sales intelligence for retail shop owners.</p></div>
+        <div class="footer-links"><h4>Product</h4><ul><li><a href="#features">Features</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#how-it-works">How It Works</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+        <div class="footer-links"><h4>Company</h4><ul><li><a href="#">About</a></li><li><a href="#">Blog</a></li><li><a href="#">Careers</a></li><li><a href="#">Contact</a></li></ul></div>
+        <div class="footer-links"><h4>Legal</h4><ul><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Service</a></li><li><a href="#">Cookie Policy</a></li><li><a href="#">GDPR</a></li></ul></div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 RetailIQ, Inc. All rights reserved.</p>
+        <p class="footer-disclaimer">RetailIQ provides business analytics and intelligence tools. This product does not provide financial, tax, or legal advice.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
