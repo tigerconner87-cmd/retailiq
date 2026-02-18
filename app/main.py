@@ -1,10 +1,15 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.database import Base, engine
 from app.routers import auth, dashboard_api, pages
+
+log = logging.getLogger(__name__)
 
 app = FastAPI(
     title="RetailIQ",
@@ -21,10 +26,75 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create tables on startup (use Alembic in production)
+
+def _ensure_schema():
+    """Ensure all tables and columns exist.
+
+    First tries Alembic upgrade; if that fails (e.g. alembic not installed
+    or network issue), falls back to create_all + manual ALTER TABLE
+    statements to add any missing columns.
+    """
+    # Try Alembic first
+    try:
+        from alembic.config import Config
+        from alembic import command
+        cfg = Config("alembic.ini")
+        command.upgrade(cfg, "head")
+        log.info("Alembic migration completed successfully")
+        return
+    except Exception as exc:
+        log.warning("Alembic migration failed (%s), falling back to manual schema sync", exc)
+
+    # Fallback: create any brand-new tables
+    Base.metadata.create_all(bind=engine)
+
+    # Fallback: add missing columns via raw SQL (idempotent)
+    alter_statements = [
+        # users
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_step INTEGER DEFAULT 0",
+        # shops
+        "ALTER TABLE shops ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'retail'",
+        "ALTER TABLE shops ADD COLUMN IF NOT EXISTS store_size_sqft INTEGER",
+        "ALTER TABLE shops ADD COLUMN IF NOT EXISTS staff_count INTEGER DEFAULT 1",
+        # products
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS sku VARCHAR(100)",
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INTEGER",
+        # customers
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS email VARCHAR(255)",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS segment VARCHAR(20) DEFAULT 'regular'",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS avg_order_value NUMERIC(12,2) DEFAULT 0",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS avg_days_between_visits FLOAT",
+        # transactions
+        "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS discount NUMERIC(12,2) DEFAULT 0",
+        "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'card'",
+        # daily_snapshots
+        "ALTER TABLE daily_snapshots ADD COLUMN IF NOT EXISTS total_cost NUMERIC(12,2) DEFAULT 0",
+        "ALTER TABLE daily_snapshots ADD COLUMN IF NOT EXISTS items_sold INTEGER DEFAULT 0",
+        # reviews
+        "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS response_text TEXT",
+        "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS responded_at TIMESTAMP",
+        # competitors
+        "ALTER TABLE competitors ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
+        # alerts
+        "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'general'",
+        "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS is_snoozed BOOLEAN DEFAULT false",
+        "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS snoozed_until TIMESTAMP",
+    ]
+
+    with engine.begin() as conn:
+        for stmt in alter_statements:
+            try:
+                conn.execute(text(stmt))
+            except Exception as e:
+                log.debug("Column may already exist: %s", e)
+
+    log.info("Manual schema sync completed")
+
+
 @app.on_event("startup")
 def on_startup():
-    Base.metadata.create_all(bind=engine)
+    _ensure_schema()
 
 # Static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
