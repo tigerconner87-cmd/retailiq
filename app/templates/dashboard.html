@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="stylesheet" href="/static/dashboard.css?v=3">
 </head>
 <body>
   <!-- Sidebar -->
@@ -24,31 +24,32 @@
       </a>
     </div>
     <nav class="sidebar-nav">
-      <a href="#" class="nav-item active" data-section="overview">
+      {% set sec = active_section|default('overview') %}
+      <a href="#" class="nav-item {{ 'active' if sec == 'overview' }}" data-section="overview">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Overview
       </a>
-      <a href="#" class="nav-item" data-section="sales">
+      <a href="#" class="nav-item {{ 'active' if sec == 'sales' }}" data-section="sales">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         Sales
       </a>
-      <a href="#" class="nav-item" data-section="products">
+      <a href="#" class="nav-item {{ 'active' if sec == 'products' }}" data-section="products">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         Products
       </a>
-      <a href="#" class="nav-item" data-section="customers">
+      <a href="#" class="nav-item {{ 'active' if sec == 'customers' }}" data-section="customers">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Customers
       </a>
-      <a href="#" class="nav-item" data-section="competitors">
+      <a href="#" class="nav-item {{ 'active' if sec == 'competitors' }}" data-section="competitors">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Competitors
       </a>
-      <a href="#" class="nav-item" data-section="reviews">
+      <a href="#" class="nav-item {{ 'active' if sec == 'reviews' }}" data-section="reviews">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Reviews
       </a>
-      <a href="#" class="nav-item" data-section="alerts">
+      <a href="#" class="nav-item {{ 'active' if sec == 'alerts' }}" data-section="alerts">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Alerts
         <span class="badge" id="alertBadge" hidden>0</span>
@@ -91,7 +92,7 @@
 
     <div class="content" id="content">
       <!-- Overview Section -->
-      <section class="section active" id="sec-overview">
+      <section class="section {{ 'active' if sec == 'overview' }}" id="sec-overview">
         <!-- AI Action Items -->
         <div class="ai-actions-card" id="aiActionsCard">
           <div class="ai-actions-header">
@@ -168,7 +169,7 @@
       </section>
 
       <!-- Sales Section -->
-      <section class="section" id="sec-sales">
+      <section class="section {{ 'active' if sec == 'sales' }}" id="sec-sales">
         <div class="card">
           <div class="card-header"><h3>Sales Trend</h3></div>
           <div class="card-body"><canvas id="salesChartFull"></canvas></div>
@@ -186,7 +187,7 @@
       </section>
 
       <!-- Products Section -->
-      <section class="section" id="sec-products">
+      <section class="section {{ 'active' if sec == 'products' }}" id="sec-products">
         <div class="card">
           <div class="card-header"><h3>Product Performance Rankings</h3></div>
           <div class="card-body">
@@ -199,7 +200,7 @@
       </section>
 
       <!-- Customers Section -->
-      <section class="section" id="sec-customers">
+      <section class="section {{ 'active' if sec == 'customers' }}" id="sec-customers">
         <div class="kpi-grid small">
           <div class="kpi-card"><div class="kpi-label">Total Customers</div><div class="kpi-value" id="custTotal">--</div></div>
           <div class="kpi-card"><div class="kpi-label">Repeat Rate</div><div class="kpi-value" id="custRepeat">--</div></div>
@@ -218,7 +219,7 @@
       </section>
 
       <!-- Competitors Section (Full Intelligence Dashboard) -->
-      <section class="section" id="sec-competitors">
+      <section class="section {{ 'active' if sec == 'competitors' }}" id="sec-competitors">
         <!-- Sub-navigation tabs -->
         <div class="comp-tabs" id="compTabs">
           <button class="comp-tab active" data-tab="overview">Overview</button>
@@ -233,7 +234,9 @@
 
         <!-- Tab: Overview -->
         <div class="comp-panel active" id="compPanel-overview">
-          <div class="comp-cards-grid" id="compCardsGrid"></div>
+          <div class="comp-cards-grid" id="compCardsGrid">
+            <div class="ai-loading">Loading competitor data...</div>
+          </div>
         </div>
 
         <!-- Tab: Comparison -->
@@ -251,7 +254,9 @@
 
         <!-- Tab: Opportunities -->
         <div class="comp-panel" id="compPanel-opportunities">
-          <div class="opp-list" id="oppList"></div>
+          <div class="opp-list" id="oppList">
+            <div class="ai-loading">Detecting opportunities...</div>
+          </div>
         </div>
 
         <!-- Tab: Review Feed -->
@@ -299,7 +304,7 @@
       </section>
 
       <!-- Reviews Section -->
-      <section class="section" id="sec-reviews">
+      <section class="section {{ 'active' if sec == 'reviews' }}" id="sec-reviews">
         <div class="kpi-grid small">
           <div class="kpi-card"><div class="kpi-label">Avg Rating</div><div class="kpi-value" id="revAvg">--</div></div>
           <div class="kpi-card"><div class="kpi-label">Total Reviews</div><div class="kpi-value" id="revTotal">--</div></div>
@@ -315,7 +320,7 @@
       </section>
 
       <!-- Alerts Section -->
-      <section class="section" id="sec-alerts">
+      <section class="section {{ 'active' if sec == 'alerts' }}" id="sec-alerts">
         <div class="card">
           <div class="card-header"><h3>All Alerts</h3></div>
           <div class="card-body">
@@ -330,6 +335,6 @@
     window.__ACTIVE_SECTION = "{{ active_section|default('overview') }}";
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
   </script>
-  <script src="/static/dashboard.js"></script>
+  <script src="/static/dashboard.js?v=3"></script>
 </body>
 </html>

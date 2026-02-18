@@ -58,13 +58,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('retailiq_token');
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(path, {headers, credentials: 'same-origin'});
-    if (res.status === 401) {
-      window.location.href = '/login';
+    try {
+      const res = await fetch(path, {headers, credentials: 'same-origin'});
+      if (res.status === 401) {
+        console.warn('[RetailIQ] 401 on', path, '— redirecting to login');
+        window.location.href = '/login';
+        return null;
+      }
+      if (!res.ok) {
+        console.warn('[RetailIQ] API error', res.status, 'on', path);
+        return null;
+      }
+      return res.json();
+    } catch (err) {
+      console.error('[RetailIQ] Network error on', path, err);
       return null;
     }
-    if (!res.ok) return null;
-    return res.json();
   }
 
   async function apiPost(path) {
@@ -114,13 +123,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const loaded = {};
 
   async function loadSection(section) {
-    if (section === 'overview') await loadOverview();
-    else if (section === 'sales') await loadSales();
-    else if (section === 'products') await loadProducts();
-    else if (section === 'customers') await loadCustomers();
-    else if (section === 'competitors') await loadCompetitors();
-    else if (section === 'reviews') await loadReviews();
-    else if (section === 'alerts') await loadAlerts();
+    try {
+      if (section === 'overview') await loadOverview();
+      else if (section === 'sales') await loadSales();
+      else if (section === 'products') await loadProducts();
+      else if (section === 'customers') await loadCustomers();
+      else if (section === 'competitors') await loadCompetitors();
+      else if (section === 'reviews') await loadReviews();
+      else if (section === 'alerts') await loadAlerts();
+    } catch (err) {
+      console.error('[RetailIQ] Error loading section:', section, err);
+      hideRefresh();
+    }
   }
 
   async function loadOverview() {
@@ -249,16 +263,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (compDataLoaded[tab]) return;
     showRefresh();
 
-    if (tab === 'overview') await loadCompOverview();
-    else if (tab === 'comparison') await loadCompComparison();
-    else if (tab === 'opportunities') await loadCompOpportunities();
-    else if (tab === 'review-feed') await loadCompReviewFeed();
-    else if (tab === 'sentiment') await loadCompSentiment();
-    else if (tab === 'market-map') await loadCompMarketMap();
-    else if (tab === 'weekly-report') await loadCompWeeklyReport();
-    else if (tab === 'marketing') await loadCompMarketing();
+    try {
+      if (tab === 'overview') await loadCompOverview();
+      else if (tab === 'comparison') await loadCompComparison();
+      else if (tab === 'opportunities') await loadCompOpportunities();
+      else if (tab === 'review-feed') await loadCompReviewFeed();
+      else if (tab === 'sentiment') await loadCompSentiment();
+      else if (tab === 'market-map') await loadCompMarketMap();
+      else if (tab === 'weekly-report') await loadCompWeeklyReport();
+      else if (tab === 'marketing') await loadCompMarketing();
+      compDataLoaded[tab] = true;
+    } catch (err) {
+      console.error('[RetailIQ] Error loading competitor tab:', tab, err);
+    }
 
-    compDataLoaded[tab] = true;
     hideRefresh();
   }
 
@@ -938,6 +956,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Init ──
   const initSection = window.__ACTIVE_SECTION || 'overview';
+  console.log('[RetailIQ] Init section:', initSection, '| Sub:', window.__SUB_SECTION || 'none');
   if (initSection !== 'overview') {
     // Activate the correct section from URL
     $$('.nav-item').forEach(n => n.classList.remove('active'));
