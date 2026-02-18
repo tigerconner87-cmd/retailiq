@@ -228,25 +228,11 @@ def is_anomaly_day(d: date) -> tuple[bool, float]:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def _ensure_schema():
-    """Run Alembic migrations, falling back to drop+recreate for dev."""
-    try:
-        from alembic.config import Config
-        from alembic import command
-        cfg = Config("alembic.ini")
-        command.upgrade(cfg, "head")
-        print("Alembic migration completed.")
-        return
-    except Exception as e:
-        print(f"Alembic migration failed ({e}), dropping and recreating all tables...")
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
-        print("Tables recreated from scratch.")
-
-
 def main():
-    print("Syncing database schema...")
-    _ensure_schema()
+    print("Dropping and recreating all tables...")
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    print("Tables ready.")
 
     db = SessionLocal()
 
