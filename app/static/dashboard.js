@@ -129,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (section === 'products') await loadProducts();
       else if (section === 'customers') await loadCustomers();
       else if (section === 'competitors') await loadCompetitors();
+      else if (section === 'goals') await loadGoals();
       else if (section === 'reviews') await loadReviews();
       else if (section === 'alerts') await loadAlerts();
     } catch (err) {
@@ -373,21 +374,24 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="opp-desc">${esc(o.description)}</div>
         <div class="opp-why"><strong>Why it matters:</strong> ${esc(o.why_it_matters)}</div>
-        <div class="opp-actions">
-          <div class="opp-action">
-            <div class="opp-action-label">Instagram / Facebook Post</div>
-            <div class="opp-action-text">${esc(o.action.instagram_post)}</div>
-            <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';">Copy</button>
-          </div>
-          <div class="opp-action">
-            <div class="opp-action-label">Email to Customers</div>
-            <div class="opp-action-text">${esc(o.action.email_body || o.action.email_subject || '')}</div>
-            <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';">Copy</button>
-          </div>
-          <div class="opp-action">
-            <div class="opp-action-label">Promotion Idea</div>
-            <div class="opp-action-text">${esc(o.action.promotion_idea)}</div>
-            <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';">Copy</button>
+        <button class="opp-expand-btn" onclick="const w=this.nextElementSibling;w.classList.toggle('expanded');this.classList.toggle('expanded');const s=this.querySelector('span');s.textContent=w.classList.contains('expanded')?'Hide Action Plan':'View Action Plan'"><span>View Action Plan</span> <span class="expand-arrow">&#9660;</span></button>
+        <div class="opp-actions-wrap">
+          <div class="opp-actions">
+            <div class="opp-action">
+              <div class="opp-action-label">Instagram / Facebook Post</div>
+              <div class="opp-action-text">${esc(o.action.instagram_post)}</div>
+              <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+            </div>
+            <div class="opp-action">
+              <div class="opp-action-label">Email to Customers</div>
+              <div class="opp-action-text">${esc(o.action.email_body || o.action.email_subject || '')}</div>
+              <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+            </div>
+            <div class="opp-action">
+              <div class="opp-action-label">Promotion Idea</div>
+              <div class="opp-action-text">${esc(o.action.promotion_idea)}</div>
+              <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+            </div>
           </div>
         </div>
       </div>
@@ -469,41 +473,81 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function showCapitalizeModal(data) {
-    // Create modal if it doesn't exist
     let overlay = $('#capModalOverlay');
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.id = 'capModalOverlay';
       overlay.className = 'cap-modal-overlay';
       overlay.innerHTML = `<div class="cap-modal">
-        <button class="close-modal">&times;</button>
-        <h3>Marketing Response Generated</h3>
+        <div class="cap-modal-header">
+          <h3>Marketing Response Generated</h3>
+          <button class="cap-close">&times;</button>
+        </div>
         <div id="capModalContent"></div>
       </div>`;
       document.body.appendChild(overlay);
-      overlay.querySelector('.close-modal').addEventListener('click', () => overlay.classList.remove('show'));
+      overlay.querySelector('.cap-close').addEventListener('click', () => overlay.classList.remove('show'));
       overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('show'); });
     }
 
     const content = $('#capModalContent');
     content.innerHTML = `
-      <p style="margin-bottom:12px;color:var(--text2);font-size:13px;"><strong>Competitor:</strong> ${esc(data.competitor_name)} | <strong>Weakness:</strong> ${esc(data.weakness)}</p>
-      <div class="mkt-responses">
-        <div class="mkt-response">
-          <div class="mkt-response-label">Instagram Post</div>
-          <div class="mkt-response-text">${esc(data.instagram_post)}</div>
+      <div class="cap-meta">
+        <span class="cap-comp-name">vs ${esc(data.competitor_name)}</span>
+        <span class="cap-weakness">${esc(data.weakness)}</span>
+      </div>
+      <div class="cap-responses">
+        <div class="cap-response-item">
+          <div class="cap-response-header">
+            <span class="cap-response-label">Instagram / Facebook Post</span>
+            <button class="cap-copy-btn" data-target="cap-ig">Copy</button>
+          </div>
+          <div class="cap-response-text" id="cap-ig">${esc(data.instagram_post)}</div>
         </div>
-        <div class="mkt-response">
-          <div class="mkt-response-label">Email Content</div>
-          <div class="mkt-response-text">${esc(data.email_content)}</div>
+        <div class="cap-response-item">
+          <div class="cap-response-header">
+            <span class="cap-response-label">Email Content</span>
+            <button class="cap-copy-btn" data-target="cap-email">Copy</button>
+          </div>
+          <div class="cap-response-text" id="cap-email">${esc(data.email_content)}</div>
         </div>
-        <div class="mkt-response">
-          <div class="mkt-response-label">Promotion Idea</div>
-          <div class="mkt-response-text">${esc(data.promotion_idea)}</div>
+        <div class="cap-response-item">
+          <div class="cap-response-header">
+            <span class="cap-response-label">Promotion Idea</span>
+            <button class="cap-copy-btn" data-target="cap-promo">Copy</button>
+          </div>
+          <div class="cap-response-text" id="cap-promo">${esc(data.promotion_idea)}</div>
         </div>
       </div>
-      <p style="margin-top:12px;color:var(--text3);font-size:12px;">Saved to your Marketing Responses library.</p>
+      <div class="cap-actions">
+        <button class="cap-btn save" data-id="${data.id}">Save for Later</button>
+        <button class="cap-btn used" data-id="${data.id}">Mark as Used</button>
+      </div>
     `;
+
+    // Copy buttons
+    $$('.cap-copy-btn', content).forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = $(`#${btn.dataset.target}`);
+        navigator.clipboard.writeText(target.textContent);
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    });
+
+    // Save/Used buttons
+    $$('.cap-btn', content).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const status = btn.classList.contains('save') ? 'saved' : 'used';
+        btn.textContent = 'Updating...';
+        btn.disabled = true;
+        await apiPatch(`/api/dashboard/competitors/marketing-responses/${id}?status=${status}`);
+        btn.textContent = status === 'saved' ? 'Saved!' : 'Done!';
+        setTimeout(() => overlay.classList.remove('show'), 1000);
+      });
+    });
+
     overlay.classList.add('show');
   }
 
@@ -729,15 +773,24 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="mkt-weakness">${esc(r.weakness)}</div>
           <div class="mkt-responses">
             <div class="mkt-response">
-              <div class="mkt-response-label">Instagram / Facebook</div>
+              <div class="mkt-response-header">
+                <div class="mkt-response-label">Instagram / Facebook</div>
+                <button class="mkt-copy-btn" onclick="navigator.clipboard.writeText(this.closest('.mkt-response').querySelector('.mkt-response-text').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+              </div>
               <div class="mkt-response-text">${esc(r.instagram_post)}</div>
             </div>
             <div class="mkt-response">
-              <div class="mkt-response-label">Email Content</div>
+              <div class="mkt-response-header">
+                <div class="mkt-response-label">Email Content</div>
+                <button class="mkt-copy-btn" onclick="navigator.clipboard.writeText(this.closest('.mkt-response').querySelector('.mkt-response-text').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+              </div>
               <div class="mkt-response-text">${esc(r.email_content)}</div>
             </div>
             <div class="mkt-response">
-              <div class="mkt-response-label">Promotion Idea</div>
+              <div class="mkt-response-header">
+                <div class="mkt-response-label">Promotion Idea</div>
+                <button class="mkt-copy-btn" onclick="navigator.clipboard.writeText(this.closest('.mkt-response').querySelector('.mkt-response-text').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+              </div>
               <div class="mkt-response-text">${esc(r.promotion_idea)}</div>
             </div>
           </div>
@@ -772,6 +825,147 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ══════════════════════════════════════════════════════════════════════════
   // END COMPETITOR INTELLIGENCE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // GOALS & STRATEGY
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async function loadGoals() {
+    showRefresh();
+    const [goals, productGoals, history, strategy, recs] = await Promise.all([
+      api('/api/dashboard/goals'),
+      api('/api/dashboard/goals/product-goals'),
+      api('/api/dashboard/goals/history'),
+      api('/api/dashboard/goals/strategy'),
+      api('/api/dashboard/goals/recommendations'),
+    ]);
+    hideRefresh();
+
+    // Strategy Recommendations
+    if (recs) {
+      const recsBody = $('#goalRecsBody');
+      if (!recs.recommendations || recs.recommendations.length === 0) {
+        recsBody.innerHTML = '<div class="ai-loading">No strategy recommendations right now.</div>';
+      } else {
+        recsBody.innerHTML = recs.recommendations.map(r => {
+          const emoji = String.fromCodePoint(parseInt(r.emoji, 16));
+          const dotClass = r.priority || 'medium';
+          return `<div class="ai-action">
+            <div class="ai-action-emoji">${emoji}</div>
+            <div class="ai-action-content">
+              <div class="ai-action-title"><span class="priority-dot ${dotClass}"></span>${esc(r.title)}</div>
+              <div class="ai-action-desc">${esc(r.description)}</div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // Goal Cards
+    if (goals && goals.goals) {
+      const grid = $('#goalsGrid');
+      if (goals.goals.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><p>No active goals. Set goals to track your progress!</p></div>';
+      } else {
+        grid.innerHTML = goals.goals.map(g => {
+          const valueStr = g.unit === '$' ? fmt(g.current_value) : fmtInt(g.current_value);
+          const targetStr = g.unit === '$' ? fmt(g.target_value) : fmtInt(g.target_value);
+          return `
+            <div class="goal-card">
+              <div class="goal-card-header">
+                <div class="goal-card-title">${esc(g.title)}</div>
+                <span class="goal-pacing ${g.pacing}">${g.pacing === 'on_track' ? 'On Track' : g.pacing === 'behind' ? 'Behind' : 'At Risk'}</span>
+              </div>
+              <div class="goal-value">${valueStr} <span class="goal-target">/ ${targetStr}</span></div>
+              <div class="goal-progress">
+                <div class="goal-progress-bar">
+                  <div class="goal-progress-fill ${g.pacing}" style="width:${g.progress_pct}%"></div>
+                </div>
+              </div>
+              <div class="goal-stats">
+                <div class="goal-stat"><strong>${g.progress_pct}%</strong> complete</div>
+                <div class="goal-stat"><strong>${g.days_remaining}</strong> days left</div>
+                ${g.daily_needed > 0 ? `<div class="goal-stat"><strong>${g.unit === '$' ? fmt(g.daily_needed) : fmtInt(g.daily_needed)}</strong>/day needed</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Product Goals
+    if (productGoals && productGoals.product_goals) {
+      const tbody = $('#productGoalsTable tbody');
+      if (productGoals.product_goals.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">No product goals set</td></tr>';
+      } else {
+        tbody.innerHTML = productGoals.product_goals.map(pg => `
+          <tr>
+            <td>${esc(pg.product_name)}</td>
+            <td>${esc(pg.product_category || '-')}</td>
+            <td>${fmtInt(pg.target_units)}</td>
+            <td>${fmtInt(pg.units_sold)}</td>
+            <td>
+              <div class="progress-mini">
+                <div class="progress-mini-bar"><div class="progress-mini-fill" style="width:${pg.progress_pct}%"></div></div>
+                <span class="progress-mini-pct">${pg.progress_pct}%</span>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Goal History
+    if (history && history.history) {
+      const tbody = $('#goalHistoryTable tbody');
+      if (history.history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">No past goals</td></tr>';
+      } else {
+        tbody.innerHTML = history.history.map(h => `
+          <tr>
+            <td>${esc(h.period_key)}</td>
+            <td>${esc(h.title)}</td>
+            <td>${h.unit === '$' ? fmt(h.target_value) : fmtInt(h.target_value)}</td>
+            <td>${h.unit === '$' ? fmt(h.achieved_value) : fmtInt(h.achieved_value)}</td>
+            <td><span class="goal-status ${h.status}">${h.status === 'met' ? 'Met' : 'Missed'}</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Strategy Notes
+    if (strategy && strategy.strategies) {
+      const container = $('#strategyNotes');
+      if (strategy.strategies.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No quarterly strategies set yet.</p></div>';
+      } else {
+        container.innerHTML = strategy.strategies.map(s => `
+          <div class="strategy-card">
+            <div class="strategy-quarter">${esc(s.quarter)} <span class="strategy-status ${s.status}">${s.status}</span></div>
+            <div class="strategy-title">${esc(s.title)}</div>
+            ${s.objectives && s.objectives.length > 0 ? `
+              <div class="strategy-section">
+                <div class="strategy-section-label">Objectives</div>
+                <ul class="strategy-list">${s.objectives.map(o => `<li>${esc(o)}</li>`).join('')}</ul>
+              </div>
+            ` : ''}
+            ${s.key_results && s.key_results.length > 0 ? `
+              <div class="strategy-section">
+                <div class="strategy-section-label">Key Results</div>
+                <ul class="strategy-list">${s.key_results.map(kr => `<li>${esc(kr)}</li>`).join('')}</ul>
+              </div>
+            ` : ''}
+            ${s.notes ? `<div class="strategy-section"><div class="strategy-section-label">Notes</div><p style="font-size:13px;color:var(--text2);line-height:1.6;">${esc(s.notes)}</p></div>` : ''}
+          </div>
+        `).join('');
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // END GOALS & STRATEGY
   // ══════════════════════════════════════════════════════════════════════════
 
   async function loadReviews() {

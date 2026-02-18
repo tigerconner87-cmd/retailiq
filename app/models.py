@@ -66,6 +66,9 @@ class Shop(Base):
     recommendations = relationship("Recommendation", back_populates="shop", cascade="all, delete-orphan")
     marketing_campaigns = relationship("MarketingCampaign", back_populates="shop", cascade="all, delete-orphan")
     marketing_responses = relationship("MarketingResponse", back_populates="shop", cascade="all, delete-orphan")
+    goals = relationship("Goal", back_populates="shop", cascade="all, delete-orphan")
+    product_goals = relationship("ProductGoal", back_populates="shop", cascade="all, delete-orphan")
+    strategy_notes = relationship("StrategyNote", back_populates="shop", cascade="all, delete-orphan")
 
 
 # ── Shop Settings ─────────────────────────────────────────────────────────────
@@ -392,3 +395,52 @@ class MarketingResponse(Base):
 
     shop = relationship("Shop", back_populates="marketing_responses")
     competitor = relationship("Competitor", back_populates="marketing_responses")
+
+
+# ── Goal Tracking ────────────────────────────────────────────────────────────
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False)
+    goal_type = Column(String(50), nullable=False)  # revenue, transactions, customers, aov, custom
+    title = Column(String(255), nullable=False)
+    target_value = Column(Numeric(12, 2), nullable=False)
+    unit = Column(String(20), default="$")  # $, #, %
+    period = Column(String(20), nullable=False)  # monthly, quarterly
+    period_key = Column(String(10), nullable=False)  # 2024-02 or 2024-Q1
+    status = Column(String(20), default="active")  # active, met, missed
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop", back_populates="goals")
+
+
+class ProductGoal(Base):
+    __tablename__ = "product_goals"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=False)
+    target_units = Column(Integer, nullable=False)
+    period = Column(String(7), nullable=False)  # YYYY-MM
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop", back_populates="product_goals")
+    product = relationship("Product")
+
+
+class StrategyNote(Base):
+    __tablename__ = "strategy_notes"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False)
+    quarter = Column(String(7), nullable=False)  # 2024-Q1
+    title = Column(String(255), nullable=False)
+    objectives = Column(JSON)
+    key_results = Column(JSON)
+    notes = Column(Text)
+    status = Column(String(20), default="active")  # active, completed
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop", back_populates="strategy_notes")

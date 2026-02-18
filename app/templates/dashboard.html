@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=3">
+  <link rel="stylesheet" href="/static/dashboard.css?v=4">
 </head>
 <body>
   <!-- Sidebar -->
@@ -44,6 +44,10 @@
       <a href="#" class="nav-item {{ 'active' if sec == 'competitors' }}" data-section="competitors">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Competitors
+      </a>
+      <a href="#" class="nav-item {{ 'active' if sec == 'goals' }}" data-section="goals">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Goals
       </a>
       <a href="#" class="nav-item {{ 'active' if sec == 'reviews' }}" data-section="reviews">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -303,6 +307,60 @@
         </div>
       </section>
 
+      <!-- Goals & Strategy Section -->
+      <section class="section {{ 'active' if sec == 'goals' }}" id="sec-goals">
+        <!-- AI Strategy Recommendations -->
+        <div class="ai-actions-card" id="goalRecsCard">
+          <div class="ai-actions-header">
+            <div class="ai-actions-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+              Strategy Recommendations
+              <span class="ai-tag">AI-powered</span>
+            </div>
+          </div>
+          <div class="ai-actions-body" id="goalRecsBody">
+            <div class="ai-loading">Analyzing your goals...</div>
+          </div>
+        </div>
+
+        <!-- Goal Progress Cards -->
+        <div class="goals-grid" id="goalsGrid">
+          <div class="ai-loading">Loading goals...</div>
+        </div>
+
+        <div class="grid-2 mt">
+          <!-- Product Goals -->
+          <div class="card">
+            <div class="card-header"><h3>Product Sales Targets</h3></div>
+            <div class="card-body">
+              <table class="data-table" id="productGoalsTable">
+                <thead><tr><th>Product</th><th>Category</th><th>Target</th><th>Sold</th><th>Progress</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Goal History -->
+          <div class="card">
+            <div class="card-header"><h3>Goal History</h3></div>
+            <div class="card-body">
+              <table class="data-table" id="goalHistoryTable">
+                <thead><tr><th>Period</th><th>Goal</th><th>Target</th><th>Achieved</th><th>Status</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quarterly Strategy -->
+        <div class="card mt">
+          <div class="card-header"><h3>Quarterly Strategy</h3></div>
+          <div class="card-body" id="strategyNotes">
+            <div class="ai-loading">Loading strategy...</div>
+          </div>
+        </div>
+      </section>
+
       <!-- Reviews Section -->
       <section class="section {{ 'active' if sec == 'reviews' }}" id="sec-reviews">
         <div class="kpi-grid small">
@@ -335,6 +393,6 @@
     window.__ACTIVE_SECTION = "{{ active_section|default('overview') }}";
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=3"></script>
+  <script src="/static/dashboard.js?v=4"></script>
 </body>
 </html>

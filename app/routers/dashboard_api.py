@@ -57,6 +57,13 @@ from app.services.analytics import (
 )
 from app.services.reviews import get_competitors_summary, get_reviews_summary
 from app.services.ai_recommendations import generate_recommendations
+from app.services.goals import (
+    get_goals_overview,
+    get_product_goals,
+    get_strategy_notes,
+    get_goal_history,
+    get_strategy_recommendations,
+)
 from app.services.competitor_intelligence import (
     get_competitor_overview,
     get_competitor_comparison,
@@ -273,6 +280,38 @@ def capitalize_on_review(
     if not result:
         raise HTTPException(status_code=404, detail="Review not found")
     return result
+
+
+# ── Goals & Strategy ──────────────────────────────────────────────────────
+
+@router.get("/goals")
+def dashboard_goals(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_goals_overview(db, shop.id)
+
+
+@router.get("/goals/product-goals")
+def dashboard_product_goals(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_product_goals(db, shop.id)
+
+
+@router.get("/goals/strategy")
+def dashboard_strategy(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_strategy_notes(db, shop.id)
+
+
+@router.get("/goals/history")
+def dashboard_goal_history(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_goal_history(db, shop.id)
+
+
+@router.get("/goals/recommendations")
+def dashboard_goal_recommendations(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_strategy_recommendations(db, shop.id)
 
 
 @router.get("/reviews", response_model=ReviewsResponse)

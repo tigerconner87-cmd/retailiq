@@ -27,8 +27,9 @@ from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.models import (
     Alert, Competitor, CompetitorReview, CompetitorSnapshot, Customer,
-    DailySnapshot, Expense, HourlySnapshot, MarketingCampaign, MarketingResponse,
-    Product, Recommendation, Review, RevenueGoal, Shop, ShopSettings,
+    DailySnapshot, Expense, Goal, HourlySnapshot, MarketingCampaign,
+    MarketingResponse, Product, ProductGoal, Recommendation, Review,
+    RevenueGoal, Shop, ShopSettings, StrategyNote,
     Transaction, TransactionItem, User,
 )
 from app.services.auth import hash_password
@@ -311,6 +312,9 @@ def main():
         shops = db.query(Shop).filter(Shop.user_id == existing.id).all()
         for shop in shops:
             db.query(Recommendation).filter(Recommendation.shop_id == shop.id).delete()
+            db.query(StrategyNote).filter(StrategyNote.shop_id == shop.id).delete()
+            db.query(ProductGoal).filter(ProductGoal.shop_id == shop.id).delete()
+            db.query(Goal).filter(Goal.shop_id == shop.id).delete()
             db.query(MarketingResponse).filter(MarketingResponse.shop_id == shop.id).delete()
             db.query(MarketingCampaign).filter(MarketingCampaign.shop_id == shop.id).delete()
             db.query(RevenueGoal).filter(RevenueGoal.shop_id == shop.id).delete()
@@ -891,6 +895,109 @@ def main():
             status="new",
         )
         db.add(mr)
+
+    # Create goals
+    print("Creating goals & strategy data...")
+    current_month = today.strftime("%Y-%m")
+    current_q_num = (today.month - 1) // 3 + 1
+    current_quarter = f"{today.year}-Q{current_q_num}"
+
+    # Active goals for current month
+    goals_data = [
+        ("revenue", "Monthly Revenue Target", 38000, "$", "monthly", current_month),
+        ("transactions", "Monthly Transactions", 1500, "#", "monthly", current_month),
+        ("customers", "New Customer Acquisition", 45, "#", "monthly", current_month),
+        ("aov", "Average Order Value", 55, "$", "monthly", current_month),
+    ]
+    for gtype, title, target, unit, period, pkey in goals_data:
+        g = Goal(
+            id=nid(), shop_id=shop.id,
+            goal_type=gtype, title=title,
+            target_value=Decimal(str(target)), unit=unit,
+            period=period, period_key=pkey,
+            status="active",
+        )
+        db.add(g)
+
+    # Past goals (for history)
+    for m in range(1, 4):
+        past_month = (today.replace(day=1) - timedelta(days=30 * m)).strftime("%Y-%m")
+        target = 36000 + m * 1000
+        g = Goal(
+            id=nid(), shop_id=shop.id,
+            goal_type="revenue", title="Monthly Revenue Target",
+            target_value=Decimal(str(target)), unit="$",
+            period="monthly", period_key=past_month,
+            status="met" if m % 2 == 0 else "missed",
+        )
+        db.add(g)
+
+        g2 = Goal(
+            id=nid(), shop_id=shop.id,
+            goal_type="transactions", title="Monthly Transactions",
+            target_value=Decimal("1400"), unit="#",
+            period="monthly", period_key=past_month,
+            status="met" if m % 3 != 0 else "missed",
+        )
+        db.add(g2)
+
+    # Product goals for top products
+    for p in product_objs[:8]:
+        pg = ProductGoal(
+            id=nid(), shop_id=shop.id,
+            product_id=p.id,
+            target_units=random.randint(30, 80),
+            period=current_month,
+        )
+        db.add(pg)
+
+    # Strategy notes
+    sn = StrategyNote(
+        id=nid(), shop_id=shop.id,
+        quarter=current_quarter,
+        title="Growth & Community Building",
+        objectives=[
+            "Increase monthly revenue to $40K by end of quarter",
+            "Grow repeat customer base by 20%",
+            "Launch Instagram presence with 500+ followers",
+            "Expand product line with 10 new curated items",
+        ],
+        key_results=[
+            "Revenue: $38K -> $40K monthly",
+            "Repeat rate: 28% -> 35%",
+            "Instagram followers: 0 -> 500",
+            "New products: launch 10 items with 60%+ margin",
+        ],
+        notes="Focus on building local community engagement through events and social media. Partner with 2-3 local artisans for exclusive collections.",
+        status="active",
+    )
+    db.add(sn)
+
+    # Previous quarter strategy
+    if current_q_num > 1:
+        prev_quarter = f"{today.year}-Q{current_q_num - 1}"
+    else:
+        prev_quarter = f"{today.year - 1}-Q4"
+    sn2 = StrategyNote(
+        id=nid(), shop_id=shop.id,
+        quarter=prev_quarter,
+        title="Foundation & Operations",
+        objectives=[
+            "Stabilize monthly revenue at $35K+",
+            "Implement inventory management system",
+            "Hire and train 2 part-time staff",
+            "Set up loyalty program",
+        ],
+        key_results=[
+            "Revenue consistently above $35K/mo",
+            "Inventory accuracy at 95%+",
+            "Staff trained with 4.5+ customer satisfaction",
+            "Loyalty program: 100+ members",
+        ],
+        notes="Successfully established operational foundation. Inventory system in place, staff performing well. Loyalty program soft-launched with 85 members.",
+        status="completed",
+    )
+    db.add(sn2)
 
     db.commit()
     db.close()
