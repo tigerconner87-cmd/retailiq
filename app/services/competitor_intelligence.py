@@ -280,8 +280,15 @@ def get_opportunities(db: Session, shop_id: str) -> dict:
 
     opportunities = []
     today = date.today()
+    ninety_ago = today - timedelta(days=90)
     thirty_ago = today - timedelta(days=30)
     seven_ago = today - timedelta(days=7)
+
+    # Get own shop rating for comparison
+    own_avg = db.query(func.avg(Review.rating)).filter(
+        Review.shop_id == shop_id, Review.is_own_shop.is_(True)
+    ).scalar()
+    own_rating = round(float(own_avg), 1) if own_avg else None
 
     for c in competitors:
         comp_reviews = (
@@ -291,28 +298,28 @@ def get_opportunities(db: Session, shop_id: str) -> dict:
             .all()
         )
 
-        # 1. Rating drop detection
+        # 1. Rating drop detection — compare against 90 days ago for reliable detection
         old_snap = (
             db.query(CompetitorSnapshot)
-            .filter(CompetitorSnapshot.competitor_id == c.id, CompetitorSnapshot.date <= thirty_ago)
+            .filter(CompetitorSnapshot.competitor_id == c.id, CompetitorSnapshot.date <= ninety_ago)
             .order_by(CompetitorSnapshot.date.desc())
             .first()
         )
         if old_snap and old_snap.rating and c.rating:
             drop = float(old_snap.rating) - float(c.rating)
-            if drop >= 0.3:
+            if drop >= 0.15:
                 opportunities.append({
                     "id": f"drop-{c.id}",
                     "competitor": c.name,
                     "type": "rating_drop",
-                    "priority": "hot" if drop >= 0.5 else "good",
-                    "title": f"{c.name} dropped from {float(old_snap.rating)} to {float(c.rating)} stars this month",
-                    "description": f"Their customers are looking for alternatives. This is your chance to attract them with targeted marketing.",
-                    "why_it_matters": f"A {drop:.1f}-star drop means unhappy customers actively seeking new options in your area.",
+                    "priority": "hot" if drop >= 0.3 else "good",
+                    "title": f"{c.name} dropped from {float(old_snap.rating):.1f} to {float(c.rating)} stars",
+                    "description": f"Their rating has been declining and customers are looking for alternatives. This is your chance to attract them with targeted marketing.",
+                    "why_it_matters": f"A {drop:.1f}-star decline means growing dissatisfaction — their customers are actively seeking new options in your area.",
                     "action": _generate_opportunity_action(c.name, "rating_drop", shop_name, drop),
                 })
 
-        # 2. Negative review spikes (3+ negative in last 7 days)
+        # 2. Negative review spikes (2+ negative in last 7 days)
         recent_negative = [
             r for r in comp_reviews
             if r.review_date and r.review_date.date() >= seven_ago
@@ -362,6 +369,21 @@ def get_opportunities(db: Session, shop_id: str) -> dict:
                     "action": _generate_opportunity_action(c.name, "service_gap", shop_name, topic),
                 })
 
+        # 5. Rating advantage — your shop is notably better rated
+        if own_rating and c.rating and own_rating > float(c.rating) + 0.2:
+            advantage = round(own_rating - float(c.rating), 1)
+            if len(neg_reviews) >= 2:
+                opportunities.append({
+                    "id": f"adv-{c.id}",
+                    "competitor": c.name,
+                    "type": "rating_advantage",
+                    "priority": "good" if advantage >= 0.5 else "fyi",
+                    "title": f"You're rated {advantage} stars higher than {c.name} — promote it",
+                    "description": f"Your {own_rating}-star rating vs their {float(c.rating)}-star rating is a clear competitive advantage. Use it in your marketing.",
+                    "why_it_matters": f"Customers compare ratings before visiting. Your {advantage}-star advantage is a powerful selling point.",
+                    "action": _generate_opportunity_action(c.name, "service_gap", shop_name, "higher quality and better service"),
+                })
+
     # Sort: hot first, then good, then fyi
     priority_order = {"hot": 0, "good": 1, "fyi": 2}
     opportunities.sort(key=lambda x: priority_order.get(x["priority"], 3))
@@ -397,8 +419,8 @@ def _generate_opportunity_action(comp_name: str, opp_type: str, shop_name: str, 
     if opp_type == "rating_drop":
         return {
             "instagram_post": (
-                f"Looking for a new favorite local shop? We've been rated {detail:.1f}+ stars by our "
-                f"amazing community! Stop by {shop_name} this weekend and see why customers keep coming "
+                f"Looking for a new favorite local shop? Our community loves us — and we think you will too! "
+                f"Stop by {shop_name} this weekend and see why customers keep coming "
                 f"back. First-time visitors get 10% off! #ShopLocal #NewFavorite"
             ),
             "email_subject": f"Discover Why Locals Are Choosing {shop_name}",

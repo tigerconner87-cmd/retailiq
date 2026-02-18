@@ -3,6 +3,7 @@
    ============================================= */
 
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+button,select,input,textarea{font-family:inherit;font-size:inherit;color:inherit;line-height:inherit}
 
 :root {
   --bg-0:#09090b;--bg-1:#111114;--bg-2:#1a1a1f;--bg-3:#232329;
@@ -153,7 +154,7 @@ a{color:inherit;text-decoration:none}
 .comp-tabs{display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
 .comp-tab{padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
 .comp-tab:hover{border-color:var(--primary);color:var(--primary-light)}
-.comp-tab.active{background:rgba(99,102,241,.15);border-color:var(--primary);color:var(--primary-light)}
+.comp-tab.active{background:rgba(99,102,241,.15);border-color:var(--primary);color:var(--primary-light);box-shadow:0 0 8px rgba(99,102,241,.15)}
 .comp-panel{display:none}
 .comp-panel.active{display:block}
 
@@ -193,7 +194,8 @@ a{color:inherit;text-decoration:none}
 
 /* Opportunity Alerts */
 .opp-list{display:flex;flex-direction:column;gap:16px}
-.opp-card{padding:20px;background:var(--surface);border-radius:var(--radius);border-left:4px solid var(--border);transition:.2s}
+.opp-card{padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);border-left:4px solid var(--border);transition:.2s}
+.opp-card:hover{transform:translateY(-2px)}
 .opp-card.hot{border-left-color:var(--danger)}
 .opp-card.good{border-left-color:var(--warning)}
 .opp-card.fyi{border-left-color:var(--accent)}
