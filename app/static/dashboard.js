@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let revenueChart = null;
   let salesChartFull = null;
+  let marketMapChart = null;
   let refreshTimer = null;
 
   // ── Theme ──
@@ -62,6 +63,24 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = '/login';
       return null;
     }
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  async function apiPost(path) {
+    const token = localStorage.getItem('retailiq_token');
+    const headers = {'Content-Type': 'application/json'};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(path, {method: 'POST', headers, credentials: 'same-origin'});
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  async function apiPatch(path) {
+    const token = localStorage.getItem('retailiq_token');
+    const headers = {'Content-Type': 'application/json'};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(path, {method: 'PATCH', headers, credentials: 'same-origin'});
     if (!res.ok) return null;
     return res.json();
   }
@@ -200,22 +219,542 @@ document.addEventListener('DOMContentLoaded', () => {
     ).join('');
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // COMPETITOR INTELLIGENCE SYSTEM
+  // ══════════════════════════════════════════════════════════════════════════
+
+  let compDataLoaded = {};
+
+  // Tab navigation
+  $$('.comp-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.dataset.tab;
+      $$('.comp-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      $$('.comp-panel').forEach(p => p.classList.remove('active'));
+      $(`#compPanel-${tabName}`).classList.add('active');
+      loadCompetitorTab(tabName);
+    });
+  });
+
   async function loadCompetitors() {
+    // Load the currently active tab
+    const activeTab = $('.comp-tab.active');
+    const tabName = activeTab ? activeTab.dataset.tab : 'overview';
+    compDataLoaded = {};
+    await loadCompetitorTab(tabName);
+  }
+
+  async function loadCompetitorTab(tab) {
+    if (compDataLoaded[tab]) return;
     showRefresh();
-    const data = await api('/api/dashboard/competitors');
+
+    if (tab === 'overview') await loadCompOverview();
+    else if (tab === 'comparison') await loadCompComparison();
+    else if (tab === 'opportunities') await loadCompOpportunities();
+    else if (tab === 'review-feed') await loadCompReviewFeed();
+    else if (tab === 'sentiment') await loadCompSentiment();
+    else if (tab === 'market-map') await loadCompMarketMap();
+    else if (tab === 'weekly-report') await loadCompWeeklyReport();
+    else if (tab === 'marketing') await loadCompMarketing();
+
+    compDataLoaded[tab] = true;
     hideRefresh();
+  }
+
+  // ── Overview Tab ──
+  async function loadCompOverview() {
+    const data = await api('/api/dashboard/competitors/overview');
     if (!data) return;
 
-    $('#ownRating').textContent = data.own_rating ? data.own_rating + ' / 5' : '--';
-    $('#ownReviewCount').textContent = fmtInt(data.own_review_count);
+    const grid = $('#compCardsGrid');
+    grid.innerHTML = data.cards.map(c => {
+      const starsHtml = c.rating ? '&#9733;'.repeat(Math.round(c.rating)) + '&#9734;'.repeat(5 - Math.round(c.rating)) : '';
+      const trendIcon = c.rating_trend === 'improving' ? '<span class="trend-arrow up">&#9650;</span>'
+        : c.rating_trend === 'declining' ? '<span class="trend-arrow down">&#9660;</span>' : '';
 
-    const tbody = $('#competitorTable tbody');
-    tbody.innerHTML = data.competitors.map(c => {
-      const change = c.rating_change;
-      const changeStr = change != null ? `<span class="${change >= 0 ? 'kpi-change up' : 'kpi-change down'}">${change >= 0 ? '+' : ''}${change}</span>` : '-';
-      return `<tr><td>${esc(c.name)}</td><td>${esc(c.address || '-')}</td><td>${c.rating || '-'}</td><td>${fmtInt(c.review_count)}</td><td>${changeStr}</td></tr>`;
+      return `
+        <div class="comp-card ${c.is_own ? 'own-shop' : ''}">
+          <div class="comp-card-header">
+            <div class="comp-card-name">
+              ${esc(c.name)}
+              ${c.is_own ? '<span class="own-tag">YOUR SHOP</span>' : ''}
+            </div>
+            ${!c.is_own ? `<span class="threat-badge ${(c.threat_level || '').toLowerCase()}">${esc(c.threat_level)}</span>` : ''}
+          </div>
+          <div class="comp-card-rating">
+            <span class="rating-num">${c.rating || '--'}</span>
+            <span class="stars">${starsHtml}</span>
+            ${trendIcon}
+          </div>
+          <div class="comp-card-stats">
+            <div class="comp-stat">
+              <div class="comp-stat-label">Reviews</div>
+              <div class="comp-stat-value">${fmtInt(c.review_count)}</div>
+            </div>
+            <div class="comp-stat">
+              <div class="comp-stat-label">Sentiment</div>
+              <div class="comp-stat-value">${c.sentiment_score}% pos</div>
+            </div>
+            <div class="comp-stat">
+              <div class="comp-stat-label">Response Rate</div>
+              <div class="comp-stat-value">${c.response_rate}%</div>
+            </div>
+            <div class="comp-stat">
+              <div class="comp-stat-label">Est. Traffic</div>
+              <div class="comp-stat-value">${fmtInt(c.estimated_traffic)}/mo</div>
+            </div>
+          </div>
+        </div>
+      `;
     }).join('');
   }
+
+  // ── Comparison Tab ──
+  async function loadCompComparison() {
+    const data = await api('/api/dashboard/competitors/comparison');
+    if (!data) return;
+
+    const ownRating = data.own_rating || 0;
+    const tbody = $('#compComparisonTable tbody');
+    tbody.innerHTML = data.rows.map(r => {
+      const ratingClass = r.is_own ? '' : (r.rating > ownRating ? 'losing' : r.rating < ownRating ? 'winning' : '');
+      const sentClass = r.is_own ? '' : (r.sentiment_score > data.rows[0].sentiment_score ? 'losing' : 'winning');
+
+      return `
+        <tr class="${r.is_own ? 'own-row' : ''}">
+          <td><strong>${esc(r.name)}</strong>${r.is_own ? ' <span class="sentiment-tag positive">YOU</span>' : ''}</td>
+          <td class="${ratingClass}">${r.rating}/5</td>
+          <td>${fmtInt(r.review_count)}</td>
+          <td>${r.response_rate}%</td>
+          <td class="${sentClass}">${r.sentiment_score}%</td>
+          <td>${fmtInt(r.estimated_traffic)}</td>
+          <td><div class="tags">${r.strengths.map(s => `<span class="tag strength">${esc(s)}</span>`).join('')}</div></td>
+          <td><div class="tags">${r.weaknesses.map(w => `<span class="tag weakness">${esc(w)}</span>`).join('')}</div></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ── Opportunities Tab ──
+  async function loadCompOpportunities() {
+    const data = await api('/api/dashboard/competitors/opportunities');
+    if (!data) return;
+
+    const list = $('#oppList');
+    if (!data.opportunities || data.opportunities.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p>No opportunities detected right now. Check back soon!</p></div>';
+      return;
+    }
+
+    list.innerHTML = data.opportunities.map(o => `
+      <div class="opp-card ${o.priority}">
+        <div class="opp-card-header">
+          <div class="opp-card-title">${esc(o.title)}</div>
+          <span class="opp-priority ${o.priority}">${o.priority === 'hot' ? 'Hot Opportunity' : o.priority === 'good' ? 'Good Opportunity' : 'FYI'}</span>
+        </div>
+        <div class="opp-desc">${esc(o.description)}</div>
+        <div class="opp-why"><strong>Why it matters:</strong> ${esc(o.why_it_matters)}</div>
+        <div class="opp-actions">
+          <div class="opp-action">
+            <div class="opp-action-label">Instagram / Facebook Post</div>
+            <div class="opp-action-text">${esc(o.action.instagram_post)}</div>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';">Copy</button>
+          </div>
+          <div class="opp-action">
+            <div class="opp-action-label">Email to Customers</div>
+            <div class="opp-action-text">${esc(o.action.email_body || o.action.email_subject || '')}</div>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';">Copy</button>
+          </div>
+          <div class="opp-action">
+            <div class="opp-action-label">Promotion Idea</div>
+            <div class="opp-action-text">${esc(o.action.promotion_idea)}</div>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.opp-action').querySelector('.opp-action-text').textContent);this.textContent='Copied!';">Copy</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Review Feed Tab ──
+  async function loadCompReviewFeed(competitorId, rating, sentiment) {
+    let url = '/api/dashboard/competitors/review-feed?';
+    if (competitorId) url += `competitor_id=${competitorId}&`;
+    if (rating) url += `rating=${rating}&`;
+    if (sentiment) url += `sentiment=${sentiment}&`;
+
+    const data = await api(url);
+    if (!data) return;
+
+    // Populate filter dropdowns (only first time)
+    const compSelect = $('#filterCompetitor');
+    if (compSelect.options.length <= 1 && data.filter_options) {
+      data.filter_options.competitors.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        compSelect.appendChild(opt);
+      });
+    }
+
+    const feed = $('#compReviewFeed');
+    if (!data.reviews || data.reviews.length === 0) {
+      feed.innerHTML = '<div class="empty-state"><p>No reviews match your filters.</p></div>';
+      return;
+    }
+
+    feed.innerHTML = data.reviews.map(r => `
+      <div class="review-item comp-review-item">
+        <div class="review-comp-name">${esc(r.competitor_name)}</div>
+        <div class="review-header">
+          <span class="review-author">${esc(r.author_name || 'Anonymous')}</span>
+          <span class="review-stars">${'&#9733;'.repeat(r.rating)}${'&#9734;'.repeat(5 - r.rating)}</span>
+        </div>
+        <div class="review-text">"${esc(r.text || '')}"</div>
+        <div class="review-date">
+          ${r.review_date ? r.review_date.split('T')[0] : ''}
+          ${r.sentiment ? `<span class="sentiment-tag ${r.sentiment}">${r.sentiment}</span>` : ''}
+        </div>
+        ${r.capitalize_message ? `<button class="capitalize-btn" data-review-id="${r.id}">Capitalize on This</button>` : ''}
+      </div>
+    `).join('');
+
+    // Attach capitalize button handlers
+    $$('.capitalize-btn', feed).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const reviewId = btn.dataset.reviewId;
+        btn.textContent = 'Generating...';
+        btn.disabled = true;
+        const result = await apiPost(`/api/dashboard/competitors/capitalize/${reviewId}`);
+        if (result) {
+          showCapitalizeModal(result);
+        }
+        btn.textContent = 'Capitalize on This';
+        btn.disabled = false;
+      });
+    });
+  }
+
+  // Filter event listeners
+  ['filterCompetitor', 'filterRating', 'filterSentiment'].forEach(id => {
+    const el = $(`#${id}`);
+    if (el) {
+      el.addEventListener('change', () => {
+        compDataLoaded['review-feed'] = false;
+        loadCompReviewFeed(
+          $('#filterCompetitor').value || null,
+          $('#filterRating').value || null,
+          $('#filterSentiment').value || null
+        );
+      });
+    }
+  });
+
+  function showCapitalizeModal(data) {
+    // Create modal if it doesn't exist
+    let overlay = $('#capModalOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'capModalOverlay';
+      overlay.className = 'cap-modal-overlay';
+      overlay.innerHTML = `<div class="cap-modal">
+        <button class="close-modal">&times;</button>
+        <h3>Marketing Response Generated</h3>
+        <div id="capModalContent"></div>
+      </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('.close-modal').addEventListener('click', () => overlay.classList.remove('show'));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('show'); });
+    }
+
+    const content = $('#capModalContent');
+    content.innerHTML = `
+      <p style="margin-bottom:12px;color:var(--text2);font-size:13px;"><strong>Competitor:</strong> ${esc(data.competitor_name)} | <strong>Weakness:</strong> ${esc(data.weakness)}</p>
+      <div class="mkt-responses">
+        <div class="mkt-response">
+          <div class="mkt-response-label">Instagram Post</div>
+          <div class="mkt-response-text">${esc(data.instagram_post)}</div>
+        </div>
+        <div class="mkt-response">
+          <div class="mkt-response-label">Email Content</div>
+          <div class="mkt-response-text">${esc(data.email_content)}</div>
+        </div>
+        <div class="mkt-response">
+          <div class="mkt-response-label">Promotion Idea</div>
+          <div class="mkt-response-text">${esc(data.promotion_idea)}</div>
+        </div>
+      </div>
+      <p style="margin-top:12px;color:var(--text3);font-size:12px;">Saved to your Marketing Responses library.</p>
+    `;
+    overlay.classList.add('show');
+  }
+
+  // ── Sentiment Tab ──
+  async function loadCompSentiment() {
+    const data = await api('/api/dashboard/competitors/sentiment');
+    if (!data) return;
+
+    const grid = $('#sentimentGrid');
+    grid.innerHTML = data.competitors.map(c => {
+      const total = (c.sentiment_breakdown.positive || 0) + (c.sentiment_breakdown.neutral || 0) + (c.sentiment_breakdown.negative || 0);
+      const posPct = total > 0 ? ((c.sentiment_breakdown.positive || 0) / total * 100) : 0;
+      const neuPct = total > 0 ? ((c.sentiment_breakdown.neutral || 0) / total * 100) : 0;
+      const negPct = total > 0 ? ((c.sentiment_breakdown.negative || 0) / total * 100) : 0;
+
+      return `
+        <div class="sentiment-card">
+          <div class="sentiment-card-header">
+            <h4>${esc(c.name)}</h4>
+            <span class="sentiment-tag ${posPct >= 60 ? 'positive' : posPct >= 40 ? 'neutral' : 'negative'}">${c.overall_sentiment_score}% positive</span>
+          </div>
+          <div class="sentiment-card-body">
+            <div class="sentiment-bar">
+              <div class="bar-pos" style="width:${posPct}%"></div>
+              <div class="bar-neu" style="width:${neuPct}%"></div>
+              <div class="bar-neg" style="width:${negPct}%"></div>
+            </div>
+            <div class="sentiment-labels">
+              <span>Positive: ${c.sentiment_breakdown.positive || 0}</span>
+              <span>Neutral: ${c.sentiment_breakdown.neutral || 0}</span>
+              <span>Negative: ${c.sentiment_breakdown.negative || 0}</span>
+            </div>
+            ${c.positive_terms.length > 0 ? `
+              <div class="sentiment-trend-label">What Customers Love</div>
+              <div class="term-cloud">
+                ${c.positive_terms.slice(0, 6).map(t => `<span class="term positive">${esc(t.term)} (${t.count})</span>`).join('')}
+              </div>
+            ` : ''}
+            ${c.negative_terms.length > 0 ? `
+              <div class="sentiment-trend-label">What Customers Hate</div>
+              <div class="term-cloud">
+                ${c.negative_terms.slice(0, 6).map(t => `<span class="term negative">${esc(t.term)} (${t.count})</span>`).join('')}
+              </div>
+            ` : ''}
+            ${c.sentiment_trend.length > 0 ? `
+              <div class="sentiment-trend-label">Sentiment Trend (6 Months)</div>
+              <div style="display:flex;gap:4px;align-items:flex-end;height:40px;">
+                ${c.sentiment_trend.map(t => {
+                  const h = Math.max(4, t.positive_pct * 0.4);
+                  const color = t.positive_pct >= 60 ? 'var(--success)' : t.positive_pct >= 40 ? 'var(--warning)' : 'var(--danger)';
+                  return `<div style="flex:1;height:${h}px;background:${color};border-radius:2px;" title="${t.month}: ${t.positive_pct}% positive (${t.total} reviews)"></div>`;
+                }).join('')}
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                ${c.sentiment_trend.map(t => `<span style="font-size:9px;color:var(--text3);flex:1;text-align:center;">${t.month.split(' ')[0]}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Market Map Tab ──
+  async function loadCompMarketMap() {
+    const data = await api('/api/dashboard/competitors/market-position');
+    if (!data) return;
+
+    const c = chartColors();
+    const ctx = $('#marketMapChart').getContext('2d');
+    if (marketMapChart) marketMapChart.destroy();
+
+    const colors = data.points.map(p => p.is_own ? '#6366f1' : '#71717a');
+    const sizes = data.points.map(p => p.is_own ? 14 : 8);
+
+    marketMapChart = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          data: data.points.map(p => ({x: p.x, y: p.y, name: p.name, is_own: p.is_own})),
+          backgroundColor: colors,
+          borderColor: colors,
+          pointRadius: sizes,
+          pointHoverRadius: sizes.map(s => s + 3),
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {display: false},
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const d = ctx.raw;
+                return `${d.name}: ${d.y} stars, ${d.x} reviews`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: {display: true, text: 'Review Volume (How Well-Known)', color: c.text, font: {size: 12, weight: 'bold'}},
+            grid: {color: c.grid},
+            ticks: {color: c.text, font: {size: 11}},
+          },
+          y: {
+            title: {display: true, text: 'Rating (How Well-Liked)', color: c.text, font: {size: 12, weight: 'bold'}},
+            min: 1,
+            max: 5,
+            grid: {color: c.grid},
+            ticks: {color: c.text, font: {size: 11}},
+          }
+        }
+      },
+      plugins: [{
+        id: 'quadrantLabels',
+        afterDraw: (chart) => {
+          const {ctx: context, chartArea: {left, right, top, bottom}} = chart;
+          const midX = (left + right) / 2;
+          const midY = (top + bottom) / 2;
+
+          context.save();
+          context.font = '11px Inter, sans-serif';
+          context.globalAlpha = 0.25;
+
+          context.fillStyle = c.text;
+          context.textAlign = 'center';
+          context.fillText('Market Leaders', (midX + right) / 2, top + 20);
+          context.fillText('Hidden Gems', (left + midX) / 2, top + 20);
+          context.fillText('Well-Known but Declining', (midX + right) / 2, bottom - 10);
+          context.fillText('Struggling', (left + midX) / 2, bottom - 10);
+
+          context.restore();
+        }
+      }, {
+        id: 'pointLabels',
+        afterDraw: (chart) => {
+          const {ctx: context} = chart;
+          context.save();
+          context.font = '10px Inter, sans-serif';
+          context.fillStyle = c.text;
+          context.textAlign = 'center';
+
+          chart.data.datasets[0].data.forEach((point, i) => {
+            const meta = chart.getDatasetMeta(0).data[i];
+            if (meta) {
+              context.fillText(point.name.split(' ')[0], meta.x, meta.y - 14);
+            }
+          });
+          context.restore();
+        }
+      }]
+    });
+  }
+
+  // ── Weekly Report Tab ──
+  async function loadCompWeeklyReport() {
+    const data = await api('/api/dashboard/competitors/weekly-report');
+    if (!data) return;
+
+    const report = $('#weeklyReport');
+    report.innerHTML = `
+      <div class="wr-header">
+        <h2>Weekly Competitor Report</h2>
+        <div class="wr-dates">${data.week_start} to ${data.week_end} | Generated ${new Date(data.generated_at).toLocaleDateString()}</div>
+      </div>
+
+      <div class="wr-summary">${esc(data.summary)}</div>
+
+      <div class="wr-section">
+        <h3>Competitor Activity This Week</h3>
+        ${data.competitor_summaries.map(cs => `
+          <div class="wr-comp-row">
+            <div class="wr-comp-name">${esc(cs.name)}</div>
+            <div class="wr-comp-stats">
+              <span>Rating: ${cs.current_rating || '--'}${cs.rating_change != null ? ` <span class="${cs.rating_change >= 0 ? 'kpi-change up' : 'kpi-change down'}">(${cs.rating_change >= 0 ? '+' : ''}${cs.rating_change})</span>` : ''}</span>
+              <span>New Reviews: ${cs.new_reviews}</span>
+              ${cs.new_negative > 0 ? `<span style="color:var(--danger);">${cs.new_negative} negative</span>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      ${data.opportunities.length > 0 ? `
+        <div class="wr-section">
+          <h3>Opportunities Identified</h3>
+          ${data.opportunities.map(o => `<div class="wr-opp-item">${esc(o)}</div>`).join('')}
+        </div>
+      ` : ''}
+
+      <div class="wr-section">
+        <h3>Recommended Actions for This Week</h3>
+        ${data.recommended_actions.map(a => `<div class="wr-action-item">${esc(a)}</div>`).join('')}
+      </div>
+    `;
+  }
+
+  // ── Marketing Responses Tab ──
+  async function loadCompMarketing(statusFilter) {
+    let url = '/api/dashboard/competitors/marketing-responses';
+    if (statusFilter) url += `?status=${statusFilter}`;
+
+    const data = await api(url);
+    if (!data) return;
+
+    const list = $('#marketingList');
+    if (!data.responses || data.responses.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p>No marketing responses yet. Opportunities will generate responses automatically.</p></div>';
+      return;
+    }
+
+    list.innerHTML = data.responses.map(r => `
+      <div class="mkt-card" data-id="${r.id}">
+        <div class="mkt-card-header">
+          <h4>vs ${esc(r.competitor_name)}</h4>
+          <div class="mkt-card-meta">
+            <span class="opp-priority ${r.priority}">${r.priority === 'hot' ? 'Hot' : r.priority === 'good' ? 'Good' : 'FYI'}</span>
+            <span class="mkt-status ${r.status}">${r.status}</span>
+          </div>
+        </div>
+        <div class="mkt-card-body">
+          <div class="mkt-weakness">${esc(r.weakness)}</div>
+          <div class="mkt-responses">
+            <div class="mkt-response">
+              <div class="mkt-response-label">Instagram / Facebook</div>
+              <div class="mkt-response-text">${esc(r.instagram_post)}</div>
+            </div>
+            <div class="mkt-response">
+              <div class="mkt-response-label">Email Content</div>
+              <div class="mkt-response-text">${esc(r.email_content)}</div>
+            </div>
+            <div class="mkt-response">
+              <div class="mkt-response-label">Promotion Idea</div>
+              <div class="mkt-response-text">${esc(r.promotion_idea)}</div>
+            </div>
+          </div>
+        </div>
+        <div class="mkt-card-actions">
+          ${r.status !== 'saved' ? `<button class="mkt-btn save" onclick="window.__updateMktStatus('${r.id}', 'saved', this)">Save for Later</button>` : ''}
+          ${r.status !== 'used' ? `<button class="mkt-btn used" onclick="window.__updateMktStatus('${r.id}', 'used', this)">Mark as Used</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Marketing filter buttons
+  $$('.mkt-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.mkt-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      compDataLoaded['marketing'] = false;
+      loadCompMarketing(btn.dataset.status || null);
+    });
+  });
+
+  // Global handler for marketing status updates
+  window.__updateMktStatus = async function(id, status, btn) {
+    btn.textContent = 'Updating...';
+    btn.disabled = true;
+    await apiPatch(`/api/dashboard/competitors/marketing-responses/${id}?status=${status}`);
+    compDataLoaded['marketing'] = false;
+    const activeFilter = $('.mkt-filter-btn.active');
+    loadCompMarketing(activeFilter ? activeFilter.dataset.status || null : null);
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // END COMPETITOR INTELLIGENCE
+  // ══════════════════════════════════════════════════════════════════════════
 
   async function loadReviews() {
     showRefresh();
@@ -335,22 +874,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (d.value > maxVal) maxVal = d.value;
     });
 
-    let html = '<div class="heatmap-header">';
-    hours.forEach(h => html += `<span>${h > 12 ? (h-12)+'p' : h+'a'}</span>`);
-    html += '</div>';
+    let markup = '<div class="heatmap-header">';
+    hours.forEach(h => markup += `<span>${h > 12 ? (h-12)+'p' : h+'a'}</span>`);
+    markup += '</div>';
 
     days.forEach((day, di) => {
-      html += `<div class="heatmap-row"><span class="heatmap-label">${day}</span>`;
+      markup += `<div class="heatmap-row"><span class="heatmap-label">${day}</span>`;
       hours.forEach(h => {
         const val = grid[`${di}-${h}`] || 0;
         const intensity = maxVal > 0 ? val / maxVal : 0;
         const bg = `rgba(99,102,241,${0.05 + intensity * 0.85})`;
-        html += `<div class="heatmap-cell" style="background:${bg}" data-tip="${day} ${h}:00 — ${fmt(val)}"></div>`;
+        markup += `<div class="heatmap-cell" style="background:${bg}" data-tip="${day} ${h}:00 — ${fmt(val)}"></div>`;
       });
-      html += '</div>';
+      markup += '</div>';
     });
 
-    container.innerHTML = html;
+    container.innerHTML = markup;
   }
 
   function renderAiActions(actions) {
@@ -398,7 +937,33 @@ document.addEventListener('DOMContentLoaded', () => {
   function hideRefresh() { $('#refreshIndicator').classList.remove('spinning'); }
 
   // ── Init ──
-  loadOverview();
+  const initSection = window.__ACTIVE_SECTION || 'overview';
+  if (initSection !== 'overview') {
+    // Activate the correct section from URL
+    $$('.nav-item').forEach(n => n.classList.remove('active'));
+    const target = $(`.nav-item[data-section="${initSection}"]`);
+    if (target) {
+      target.classList.add('active');
+      $('#pageTitle').textContent = target.textContent.trim();
+    }
+    $$('.section').forEach(s => s.classList.remove('active'));
+    const sec = $(`#sec-${initSection}`);
+    if (sec) sec.classList.add('active');
+
+    // If there's a sub-section, activate the right tab
+    if (window.__SUB_SECTION && initSection === 'competitors') {
+      $$('.comp-tab').forEach(t => t.classList.remove('active'));
+      const subTab = $(`.comp-tab[data-tab="${window.__SUB_SECTION}"]`);
+      if (subTab) subTab.classList.add('active');
+      $$('.comp-panel').forEach(p => p.classList.remove('active'));
+      const subPanel = $(`#compPanel-${window.__SUB_SECTION}`);
+      if (subPanel) subPanel.classList.add('active');
+    }
+
+    loadSection(initSection);
+  } else {
+    loadOverview();
+  }
 
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {

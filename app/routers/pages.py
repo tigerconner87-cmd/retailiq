@@ -40,3 +40,38 @@ def dashboard_page(
         "user": user,
         "shop": shop,
     })
+
+
+@router.get("/dashboard/competitors", response_class=HTMLResponse)
+def competitors_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_optional),
+):
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    shop = get_shop_for_user(db, user.id)
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user,
+        "shop": shop,
+        "active_section": "competitors",
+    })
+
+
+@router.get("/dashboard/competitors/weekly-report", response_class=HTMLResponse)
+def weekly_report_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_optional),
+):
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    shop = get_shop_for_user(db, user.id)
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user,
+        "shop": shop,
+        "active_section": "competitors",
+        "sub_section": "weekly-report",
+    })

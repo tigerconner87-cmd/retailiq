@@ -57,6 +57,18 @@ from app.services.analytics import (
 )
 from app.services.reviews import get_competitors_summary, get_reviews_summary
 from app.services.ai_recommendations import generate_recommendations
+from app.services.competitor_intelligence import (
+    get_competitor_overview,
+    get_competitor_comparison,
+    get_opportunities,
+    get_competitor_review_feed,
+    get_competitor_sentiment,
+    get_market_position,
+    get_weekly_report,
+    get_marketing_responses,
+    update_marketing_response_status,
+    generate_capitalize_response,
+)
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -175,6 +187,92 @@ def dashboard_churn(user: User = Depends(get_current_user), db: Session = Depend
 def dashboard_competitors(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     shop = _get_shop(db, user)
     return get_competitors_summary(db, shop.id)
+
+
+# ── Competitor Intelligence ─────────────────────────────────────────────────
+
+@router.get("/competitors/overview")
+def competitor_overview(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_competitor_overview(db, shop.id)
+
+
+@router.get("/competitors/comparison")
+def competitor_comparison(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_competitor_comparison(db, shop.id)
+
+
+@router.get("/competitors/opportunities")
+def competitor_opportunities(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_opportunities(db, shop.id)
+
+
+@router.get("/competitors/review-feed")
+def competitor_review_feed(
+    competitor_id: str = Query(None),
+    rating: int = Query(None),
+    sentiment: str = Query(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    return get_competitor_review_feed(db, shop.id, competitor_id, rating, sentiment)
+
+
+@router.get("/competitors/sentiment")
+def competitor_sentiment(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_competitor_sentiment(db, shop.id)
+
+
+@router.get("/competitors/market-position")
+def competitor_market_position(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_market_position(db, shop.id)
+
+
+@router.get("/competitors/weekly-report")
+def competitor_weekly_report(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_weekly_report(db, shop.id)
+
+
+@router.get("/competitors/marketing-responses")
+def competitor_marketing_responses(
+    status: str = Query(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    return get_marketing_responses(db, shop.id, status)
+
+
+@router.patch("/competitors/marketing-responses/{response_id}")
+def update_marketing_response(
+    response_id: str,
+    status: str = Query(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    if not update_marketing_response_status(db, shop.id, response_id, status):
+        raise HTTPException(status_code=404, detail="Marketing response not found")
+    return {"detail": "Status updated"}
+
+
+@router.post("/competitors/capitalize/{review_id}")
+def capitalize_on_review(
+    review_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    result = generate_capitalize_response(db, shop.id, review_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return result
 
 
 @router.get("/reviews", response_model=ReviewsResponse)

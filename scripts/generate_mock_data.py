@@ -27,8 +27,8 @@ from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.models import (
     Alert, Competitor, CompetitorReview, CompetitorSnapshot, Customer,
-    DailySnapshot, Expense, HourlySnapshot, MarketingCampaign, Product,
-    Recommendation, Review, RevenueGoal, Shop, ShopSettings,
+    DailySnapshot, Expense, HourlySnapshot, MarketingCampaign, MarketingResponse,
+    Product, Recommendation, Review, RevenueGoal, Shop, ShopSettings,
     Transaction, TransactionItem, User,
 )
 from app.services.auth import hash_password
@@ -94,14 +94,16 @@ PRODUCT_WEIGHTS = [
 ]
 
 COMPETITORS = [
-    ("The Corner Store", "123 Main St", "retail", 4.2, 187),
-    ("City Goods Co", "456 Oak Ave", "retail", 3.9, 94),
-    ("Market Square Boutique", "789 Elm Blvd", "boutique", 4.5, 256),
-    ("Urban Supply Co", "321 Pine St", "retail", 4.0, 132),
-    ("Neighborhood Finds", "654 Cedar Ln", "thrift", 3.7, 68),
-    ("Style Hub", "222 Birch Rd", "boutique", 4.3, 201),
-    ("The Crafted Home", "888 Willow Way", "home goods", 4.1, 148),
-    ("Vintage Collective", "555 Maple Dr", "vintage", 4.4, 175),
+    # (name, address, category, current_rating, review_count, old_rating_offset)
+    # old_rating_offset: how much their rating was HIGHER 30 days ago (positive = they dropped)
+    ("The Corner Store", "123 Main St", "retail", 4.2, 187, 0.1),
+    ("City Goods Co", "456 Oak Ave", "retail", 3.9, 94, 0.0),
+    ("Market Square Boutique", "789 Elm Blvd", "boutique", 4.5, 256, -0.1),
+    ("Urban Supply Co", "321 Pine St", "retail", 4.0, 132, 0.2),
+    ("Neighborhood Finds", "654 Cedar Ln", "thrift", 3.2, 68, 0.1),
+    ("Style Hub", "222 Birch Rd", "boutique", 3.8, 201, 0.5),
+    ("The Crafted Home", "888 Willow Way", "home goods", 4.1, 148, 0.0),
+    ("Fresh Kicks", "555 Maple Dr", "sneakers", 4.1, 175, 0.4),
 ]
 
 REVIEWER_NAMES = [
@@ -151,17 +153,83 @@ COMPETITOR_POSITIVE_REVIEWS = [
     "Love the selection. Prices are very reasonable for the quality you get.",
     "My go-to shop for gifts. Never fails to have something perfect.",
     "Clean, organized, and the staff always remembers my name. Five stars!",
+    "Really impressed with the quality. Everything feels premium and well-curated.",
+    "Best shopping experience in the area. The staff went above and beyond to help me find what I needed.",
+    "Beautiful store with unique items you can't find anywhere else. Highly recommend!",
+    "Friendly atmosphere and great prices. I always leave with something I love.",
+    "The owner is incredibly knowledgeable and passionate. You can tell they care about their customers.",
+    "Discovered this gem recently and I'm hooked. Great selection and wonderful staff.",
 ]
 
 COMPETITOR_NEUTRAL_REVIEWS = [
     "It's okay. Nothing special but decent enough for the area.",
     "Average shop. Some good items, some meh. Prices are fair.",
+    "Nice enough store but nothing that really stands out. Might come back.",
+    "Decent selection but the layout is confusing. Hard to find what you need.",
+    "Some good products but the prices are a bit high for what you get.",
+    "Staff was friendly but they didn't have what I was looking for. Average experience.",
 ]
 
-COMPETITOR_NEGATIVE_REVIEWS = [
+# Per-competitor negative reviews for more realistic data
+COMPETITOR_NEGATIVE_REVIEWS_MAP = {
+    "The Corner Store": [
+        "Waited forever at checkout. Only one register open on a Saturday!",
+        "The store is so cluttered you can barely walk through the aisles.",
+        "Staff seemed annoyed that I was asking questions. Very unwelcoming.",
+        "Bought a shirt that fell apart after one wash. Poor quality for the price.",
+    ],
+    "City Goods Co": [
+        "Very overpriced for what you get. Found the same stuff cheaper online.",
+        "The store smelled musty and the lighting was terrible. Not inviting at all.",
+        "Staff was on their phones the entire time. Nobody offered to help.",
+        "Limited selection and high prices. Not sure how they stay in business.",
+        "Returned an item and they gave me store credit only. No refund policy is ridiculous.",
+    ],
+    "Market Square Boutique": [
+        "Beautiful store but way too expensive. $80 for a basic tote bag? Come on.",
+        "Felt very judged when I walked in. The staff was snobbish.",
+    ],
+    "Urban Supply Co": [
+        "Slow service and long lines. They need more staff during weekends.",
+        "The quality has gone downhill lately. My last few purchases were disappointing.",
+        "Store hours are unreliable. Showed up twice during posted hours and they were closed.",
+        "Used to love this place but it's gone downhill. Dirty floors and messy displays.",
+    ],
+    "Neighborhood Finds": [
+        "Everything is overpriced thrift store quality. Don't be fooled by the cute exterior.",
+        "Found a stain on a 'new' item they were selling at full price. Sketchy.",
+        "The owner was rude when I asked about a return. Never going back.",
+        "Tiny store with barely any selection. Waste of a trip.",
+        "Prices keep going up but quality keeps going down. Very disappointing.",
+    ],
+    "Style Hub": [
+        "Terrible experience. Waited 15 minutes and nobody acknowledged me.",
+        "The store is dirty and disorganized. Products just thrown on shelves.",
+        "Rude staff. I asked for help and was told 'just look around.'",
+        "Bought a bag that broke within a week. When I went back they blamed me.",
+        "This place has really gone downhill. Used to be great, now it's awful.",
+        "Slow checkout, rude cashier, and the item I bought was defective. 0 stars if I could.",
+    ],
+    "The Crafted Home": [
+        "Nice products but the prices are insane. $35 for a small candle?",
+        "Parking is terrible and the store is hard to find. Frustrating experience.",
+        "Staff was helpful but they didn't have sizes/colors I needed. Very limited stock.",
+    ],
+    "Fresh Kicks": [
+        "Waited 20 minutes for slow service. The staff didn't seem to care at all.",
+        "Prices jumped way up recently. Same shoes cost 30% more than last year.",
+        "The store is messy and disorganized. Shoes just piled on tables randomly.",
+        "Bought sneakers that started falling apart in two weeks. Total waste of money.",
+        "Used to be my go-to but the quality and service have tanked. Very sad.",
+        "Staff was pushy and kept trying to upsell me on expensive stuff I didn't want.",
+    ],
+}
+
+COMPETITOR_NEGATIVE_REVIEWS_DEFAULT = [
     "Terrible customer service. Staff was rude and unhelpful.",
     "Very overpriced. Found the same products for half the price online.",
     "Dirty store, broken shelving. They really need to clean up.",
+    "Slow service and the staff seemed disinterested. Won't be coming back.",
 ]
 
 
@@ -243,6 +311,7 @@ def main():
         shops = db.query(Shop).filter(Shop.user_id == existing.id).all()
         for shop in shops:
             db.query(Recommendation).filter(Recommendation.shop_id == shop.id).delete()
+            db.query(MarketingResponse).filter(MarketingResponse.shop_id == shop.id).delete()
             db.query(MarketingCampaign).filter(MarketingCampaign.shop_id == shop.id).delete()
             db.query(RevenueGoal).filter(RevenueGoal.shop_id == shop.id).delete()
             db.query(Expense).filter(Expense.shop_id == shop.id).delete()
@@ -538,7 +607,8 @@ def main():
 
     # Create competitors with reviews
     print(f"Creating {len(COMPETITORS)} competitors...")
-    for name, address, category, rating, review_count in COMPETITORS:
+    comp_objs = []
+    for name, address, category, rating, review_count, old_rating_offset in COMPETITORS:
         comp = Competitor(
             id=nid(), shop_id=shop.id, name=name,
             google_place_id=f"mock-comp-{name[:4].lower()}", address=address,
@@ -549,36 +619,69 @@ def main():
         )
         db.add(comp)
         db.flush()
+        comp_objs.append(comp)
 
         # Competitor snapshots (weekly for past 6 months)
+        # Use old_rating_offset so recent snapshots show the drop
+        old_rating = rating + old_rating_offset
         for w in range(26):
             snap_date = today - timedelta(weeks=w)
-            drift = random.uniform(-0.3, 0.3)
+            # Gradual drift from old_rating to current rating over 26 weeks
+            progress = 1.0 - (w / 26.0)  # 1.0 at week 0 (now), 0.0 at week 26
+            snap_rating = old_rating + (rating - old_rating) * progress
+            snap_rating += random.uniform(-0.15, 0.15)
+            snap_rating = round(max(1.0, min(5.0, snap_rating)), 1)
             snap_reviews = review_count - w * random.randint(1, 4)
             cs = CompetitorSnapshot(
                 id=nid(), competitor_id=comp.id, date=snap_date,
-                rating=Decimal(str(round(max(1.0, min(5.0, rating + drift)), 1))),
+                rating=Decimal(str(snap_rating)),
                 review_count=max(10, snap_reviews),
             )
             db.add(cs)
 
-        # Competitor reviews (8-15 per competitor)
-        num_comp_reviews = random.randint(8, 15)
+        # Competitor reviews — many more per competitor (15-30)
+        neg_templates = COMPETITOR_NEGATIVE_REVIEWS_MAP.get(name, COMPETITOR_NEGATIVE_REVIEWS_DEFAULT)
+
+        # Adjust review sentiment distribution based on rating
+        if rating >= 4.3:
+            weights = [3, 5, 10, 35, 47]  # Mostly positive
+        elif rating >= 3.8:
+            weights = [8, 10, 15, 35, 32]  # Mixed
+        else:
+            weights = [12, 15, 20, 30, 23]  # More negative
+
+        num_comp_reviews = random.randint(15, 30)
+
+        # Some competitors get very recent negative reviews (for opportunity detection)
+        recent_neg_count = 0
+        if name == "Style Hub":
+            recent_neg_count = 4  # Lots of recent negatives
+        elif name == "Fresh Kicks":
+            recent_neg_count = 3
+        elif name == "Neighborhood Finds":
+            recent_neg_count = 2
+
         for j in range(num_comp_reviews):
-            days_ago = random.randint(0, 180)
-            cr_rating = random.choices([1, 2, 3, 4, 5], weights=[5, 8, 15, 35, 37])[0]
-            if cr_rating >= 4:
-                cr_text = random.choice(COMPETITOR_POSITIVE_REVIEWS)
-            elif cr_rating <= 2:
-                cr_text = random.choice(COMPETITOR_NEGATIVE_REVIEWS)
+            if j < recent_neg_count:
+                # Force recent negative reviews
+                days_ago = random.randint(0, 5)
+                cr_rating = random.choice([1, 2])
+                cr_text = random.choice(neg_templates)
             else:
-                cr_text = random.choice(COMPETITOR_NEUTRAL_REVIEWS)
+                days_ago = random.randint(1, 180)
+                cr_rating = random.choices([1, 2, 3, 4, 5], weights=weights)[0]
+                if cr_rating >= 4:
+                    cr_text = random.choice(COMPETITOR_POSITIVE_REVIEWS)
+                elif cr_rating <= 2:
+                    cr_text = random.choice(neg_templates)
+                else:
+                    cr_text = random.choice(COMPETITOR_NEUTRAL_REVIEWS)
 
             cr = CompetitorReview(
                 id=nid(), competitor_id=comp.id,
                 author_name=random.choice(REVIEWER_NAMES),
                 rating=cr_rating, text=cr_text,
-                review_date=datetime.now() - timedelta(days=days_ago),
+                review_date=datetime.now() - timedelta(days=days_ago, hours=random.randint(0, 23)),
                 sentiment=classify_sentiment(cr_text, cr_rating),
             )
             db.add(cr)
@@ -662,6 +765,133 @@ def main():
         )
         db.add(a)
 
+    # Create pre-generated marketing responses
+    print("Creating marketing responses...")
+    marketing_resp_data = [
+        {
+            "comp_name": "Style Hub",
+            "weakness": "Multiple customers reporting rude staff and long wait times",
+            "opp_type": "negative_reviews",
+            "priority": "hot",
+            "instagram": (
+                "At Urban Threads Boutique, great service is our promise. Every customer matters, "
+                "every visit counts. That's why our community keeps coming back! "
+                "Come experience the difference. #CustomerFirst #QualityService #ShopLocal"
+            ),
+            "email": (
+                "Hi!\n\nWe believe shopping should be a joy, not a chore. At Urban Threads Boutique, "
+                "our team is dedicated to making every visit special — from personalized "
+                "recommendations to a warm welcome at the door.\n\n"
+                "Don't take our word for it — come see for yourself! "
+                "This week, enjoy a free gift with any purchase over $30.\n\nWarm regards,\nThe Urban Threads Team"
+            ),
+            "promo": (
+                "\"Service Guarantee\" Campaign: Promote your customer service commitment. "
+                "Offer a free gift with purchase this week to drive foot traffic from "
+                "Style Hub's dissatisfied customers."
+            ),
+        },
+        {
+            "comp_name": "Fresh Kicks",
+            "weakness": "Rating dropped from 4.5 to 4.1 stars — quality and service complaints",
+            "opp_type": "rating_drop",
+            "priority": "hot",
+            "instagram": (
+                "Looking for a new favorite local shop? We've been rated 4.3+ stars by our "
+                "amazing community! Stop by Urban Threads this weekend and see why customers keep coming "
+                "back. First-time visitors get 10% off! #ShopLocal #NewFavorite"
+            ),
+            "email": (
+                "Hey there!\n\nLooking for a new go-to spot for unique finds? Urban Threads Boutique has "
+                "been earning rave reviews from the community. From curated accessories to handpicked "
+                "home goods, we pride ourselves on quality and service.\n\n"
+                "Come visit us this week and enjoy 15% off your first purchase!\n\nSee you soon!"
+            ),
+            "promo": (
+                "\"New Neighbor\" Welcome Offer: 15% off for first-time visitors. Run targeted local "
+                "ads this week while Fresh Kicks' rating is declining."
+            ),
+        },
+        {
+            "comp_name": "Neighborhood Finds",
+            "weakness": "Consistent complaints about overpriced items and quality issues",
+            "opp_type": "service_gap",
+            "priority": "good",
+            "instagram": (
+                "Quality doesn't have to break the bank! At Urban Threads Boutique, "
+                "we offer curated finds at prices you'll love. Every item handpicked for quality. "
+                "#ValueForMoney #ShopLocal #QualityMatters"
+            ),
+            "email": (
+                "Hi there!\n\nWe know what matters to you: quality products at fair prices. "
+                "That's why at Urban Threads, every item is handpicked and quality-checked.\n\n"
+                "Visit us this week for something special — and see the difference quality makes!\n\n"
+                "Best,\nThe Urban Threads Team"
+            ),
+            "promo": (
+                "\"Quality Promise\" Campaign: Highlight your quality commitment and fair pricing. "
+                "Create a comparison post showing the value you offer."
+            ),
+        },
+        {
+            "comp_name": "City Goods Co",
+            "weakness": "Low engagement — barely any new reviews in weeks",
+            "opp_type": "low_engagement",
+            "priority": "good",
+            "instagram": (
+                "New arrivals just dropped at Urban Threads! Fresh finds every week — "
+                "from handcrafted jewelry to one-of-a-kind home decor. Follow us for daily "
+                "updates and never miss a drop! #NewArrivals #AlwaysFresh #ShopLocal"
+            ),
+            "email": (
+                "Hey!\n\nWhile some shops go quiet, we keep things exciting! "
+                "This week at Urban Threads, we've got fresh arrivals, exclusive finds, "
+                "and a special surprise for our loyal customers.\n\n"
+                "Stop by or follow us on Instagram for daily updates!\n\nCheers,\nThe Urban Threads Team"
+            ),
+            "promo": (
+                "\"Always Something New\" social media blitz: Post daily for the next 2 weeks "
+                "showcasing new arrivals. Fill the engagement gap competitors are leaving."
+            ),
+        },
+        {
+            "comp_name": "Urban Supply Co",
+            "weakness": "Store hours unreliable and quality declining",
+            "opp_type": "service_gap",
+            "priority": "fyi",
+            "instagram": (
+                "Open when you need us, with the quality you deserve. Urban Threads Boutique — "
+                "reliable hours, consistent quality, always here for you. #ShopLocal #Reliable"
+            ),
+            "email": (
+                "Hi!\n\nYou can count on us. Urban Threads is open every day with consistent hours "
+                "and a team that's always ready to help.\n\nStop by anytime — we'll be here!\n\n"
+                "Best,\nThe Urban Threads Team"
+            ),
+            "promo": (
+                "Promote your reliable hours and consistent quality. Post your schedule "
+                "prominently on social media and highlight your consistency."
+            ),
+        },
+    ]
+
+    for mrd in marketing_resp_data:
+        # Find the competitor object
+        comp_obj = next((c for c in comp_objs if c.name == mrd["comp_name"]), None)
+        mr = MarketingResponse(
+            id=nid(), shop_id=shop.id,
+            competitor_id=comp_obj.id if comp_obj else None,
+            competitor_name=mrd["comp_name"],
+            weakness=mrd["weakness"],
+            opportunity_type=mrd["opp_type"],
+            instagram_post=mrd["instagram"],
+            email_content=mrd["email"],
+            promotion_idea=mrd["promo"],
+            priority=mrd["priority"],
+            status="new",
+        )
+        db.add(mr)
+
     db.commit()
     db.close()
 
@@ -676,8 +906,9 @@ def main():
     print(f"  Transactions: {total_tx}")
     print(f"  Products:    {len(PRODUCTS)}")
     print(f"  Customers:   500")
-    print(f"  Reviews:     55 (own) + ~80 (competitors)")
+    print(f"  Reviews:     55 (own) + ~180 (competitors)")
     print(f"  Competitors: {len(COMPETITORS)}")
+    print(f"  Marketing:   {len(marketing_resp_data)} pre-generated responses")
     print(f"  Expenses:    {len(expenses_data)}")
     print(f"  Campaigns:   {len(campaigns)}")
     print("=" * 60)

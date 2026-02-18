@@ -65,6 +65,7 @@ class Shop(Base):
     revenue_goals = relationship("RevenueGoal", back_populates="shop", cascade="all, delete-orphan")
     recommendations = relationship("Recommendation", back_populates="shop", cascade="all, delete-orphan")
     marketing_campaigns = relationship("MarketingCampaign", back_populates="shop", cascade="all, delete-orphan")
+    marketing_responses = relationship("MarketingResponse", back_populates="shop", cascade="all, delete-orphan")
 
 
 # ── Shop Settings ─────────────────────────────────────────────────────────────
@@ -321,6 +322,7 @@ class Competitor(Base):
     shop = relationship("Shop", back_populates="competitors")
     snapshots = relationship("CompetitorSnapshot", back_populates="competitor", cascade="all, delete-orphan")
     reviews = relationship("CompetitorReview", back_populates="competitor", cascade="all, delete-orphan")
+    marketing_responses = relationship("MarketingResponse", back_populates="competitor", cascade="all, delete-orphan")
 
 
 class CompetitorSnapshot(Base):
@@ -368,3 +370,25 @@ class Alert(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop", back_populates="alerts")
+
+
+# ── Marketing Response (Competitor Intelligence) ─────────────────────────────
+
+class MarketingResponse(Base):
+    __tablename__ = "marketing_responses"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False)
+    competitor_id = Column(String(36), ForeignKey("competitors.id"), nullable=True)
+    competitor_name = Column(String(255))
+    weakness = Column(Text, nullable=False)
+    opportunity_type = Column(String(50))  # rating_drop, negative_reviews, low_engagement, service_gap
+    instagram_post = Column(Text)
+    email_content = Column(Text)
+    promotion_idea = Column(Text)
+    priority = Column(String(20), default="good")  # hot, good, fyi
+    status = Column(String(20), default="new")  # new, saved, used
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop", back_populates="marketing_responses")
+    competitor = relationship("Competitor", back_populates="marketing_responses")

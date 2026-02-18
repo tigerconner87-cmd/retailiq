@@ -217,20 +217,84 @@
         </div>
       </section>
 
-      <!-- Competitors Section -->
+      <!-- Competitors Section (Full Intelligence Dashboard) -->
       <section class="section" id="sec-competitors">
-        <div class="kpi-grid small">
-          <div class="kpi-card"><div class="kpi-label">Your Rating</div><div class="kpi-value" id="ownRating">--</div></div>
-          <div class="kpi-card"><div class="kpi-label">Your Reviews</div><div class="kpi-value" id="ownReviewCount">--</div></div>
+        <!-- Sub-navigation tabs -->
+        <div class="comp-tabs" id="compTabs">
+          <button class="comp-tab active" data-tab="overview">Overview</button>
+          <button class="comp-tab" data-tab="comparison">Comparison</button>
+          <button class="comp-tab" data-tab="opportunities">Opportunities</button>
+          <button class="comp-tab" data-tab="review-feed">Review Feed</button>
+          <button class="comp-tab" data-tab="sentiment">Sentiment</button>
+          <button class="comp-tab" data-tab="market-map">Market Map</button>
+          <button class="comp-tab" data-tab="weekly-report">Weekly Report</button>
+          <button class="comp-tab" data-tab="marketing">Marketing</button>
         </div>
-        <div class="card mt">
-          <div class="card-header"><h3>Competitor Comparison</h3></div>
-          <div class="card-body">
-            <table class="data-table" id="competitorTable">
-              <thead><tr><th>Name</th><th>Address</th><th>Rating</th><th>Reviews</th><th>30d Change</th></tr></thead>
-              <tbody></tbody>
-            </table>
+
+        <!-- Tab: Overview -->
+        <div class="comp-panel active" id="compPanel-overview">
+          <div class="comp-cards-grid" id="compCardsGrid"></div>
+        </div>
+
+        <!-- Tab: Comparison -->
+        <div class="comp-panel" id="compPanel-comparison">
+          <div class="card">
+            <div class="card-header"><h3>Side-by-Side Competitor Comparison</h3></div>
+            <div class="card-body comp-table-wrap">
+              <table class="data-table comp-comparison-table" id="compComparisonTable">
+                <thead><tr><th>Business</th><th>Rating</th><th>Reviews</th><th>Response Rate</th><th>Sentiment</th><th>Est. Traffic</th><th>Strengths</th><th>Weaknesses</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
+        </div>
+
+        <!-- Tab: Opportunities -->
+        <div class="comp-panel" id="compPanel-opportunities">
+          <div class="opp-list" id="oppList"></div>
+        </div>
+
+        <!-- Tab: Review Feed -->
+        <div class="comp-panel" id="compPanel-review-feed">
+          <div class="comp-filters" id="compFilters">
+            <select id="filterCompetitor"><option value="">All Competitors</option></select>
+            <select id="filterRating"><option value="">All Ratings</option><option value="1">1 Star</option><option value="2">2 Stars</option><option value="3">3 Stars</option><option value="4">4 Stars</option><option value="5">5 Stars</option></select>
+            <select id="filterSentiment"><option value="">All Sentiments</option><option value="positive">Positive</option><option value="neutral">Neutral</option><option value="negative">Negative</option></select>
+          </div>
+          <div class="review-list" id="compReviewFeed"></div>
+        </div>
+
+        <!-- Tab: Sentiment -->
+        <div class="comp-panel" id="compPanel-sentiment">
+          <div class="sentiment-grid" id="sentimentGrid"></div>
+        </div>
+
+        <!-- Tab: Market Map -->
+        <div class="comp-panel" id="compPanel-market-map">
+          <div class="card">
+            <div class="card-header"><h3>Market Position Map</h3><span class="card-sub">X: Review Volume | Y: Rating</span></div>
+            <div class="card-body">
+              <div class="market-map-container">
+                <canvas id="marketMapChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Weekly Report -->
+        <div class="comp-panel" id="compPanel-weekly-report">
+          <div class="weekly-report" id="weeklyReport"></div>
+        </div>
+
+        <!-- Tab: Marketing Responses -->
+        <div class="comp-panel" id="compPanel-marketing">
+          <div class="marketing-filters">
+            <button class="mkt-filter-btn active" data-status="">All</button>
+            <button class="mkt-filter-btn" data-status="new">New</button>
+            <button class="mkt-filter-btn" data-status="saved">Saved</button>
+            <button class="mkt-filter-btn" data-status="used">Used</button>
+          </div>
+          <div class="marketing-list" id="marketingList"></div>
         </div>
       </section>
 
@@ -262,6 +326,10 @@
     </div>
   </main>
 
+  <script>
+    window.__ACTIVE_SECTION = "{{ active_section|default('overview') }}";
+    window.__SUB_SECTION = "{{ sub_section|default('') }}";
+  </script>
   <script src="/static/dashboard.js"></script>
 </body>
 </html>
