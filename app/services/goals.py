@@ -183,7 +183,7 @@ def get_goal_history(db: Session, shop_id: str) -> dict:
             "unit": g.unit,
             "period_key": g.period_key,
             "progress_pct": min(100, pct),
-            "status": g.status,
+            "status": "met" if achieved >= target else "missed",
         })
 
     return {"history": result}
