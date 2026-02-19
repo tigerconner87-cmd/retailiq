@@ -1476,6 +1476,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (tab === 'hashtags') await loadMkeHashtags();
       else if (tab === 'mke-report') await loadMkeWeeklyReport();
       else if (tab === 'email-builder') await loadMkeEmailBuilder();
+      else if (tab === 'weekly-digest') await loadWeeklyDigest();
       mkeDataLoaded[tab] = true;
     } catch (err) {
       console.error('[RetailIQ] Error loading marketing tab:', tab, err);
@@ -1961,6 +1962,32 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
     `;
+  }
+
+  // ── Weekly Digest Preview Tab ──
+  async function loadWeeklyDigest() {
+    const wrap = $('#digestPreviewWrap');
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="ai-loading">Loading digest preview...</div>';
+    try {
+      const token = localStorage.getItem('retailiq_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/dashboard/weekly-digest-preview', {headers, credentials: 'same-origin'});
+      if (!res.ok) { wrap.innerHTML = '<p class="text-muted">Could not load digest preview.</p>'; return; }
+      const html = await res.text();
+      wrap.innerHTML = `
+        <div class="digest-iframe-wrap">
+          <iframe id="digestIframe" class="digest-iframe" sandbox="allow-same-origin" srcdoc="${html.replace(/"/g, '&quot;')}"></iframe>
+        </div>
+        <div class="digest-actions">
+          <button class="mke-btn primary" onclick="window.open('/api/dashboard/weekly-digest-preview','_blank')">Open Full Preview</button>
+          <button class="mke-btn" onclick="copyToClipboard(document.getElementById('digestIframe').srcdoc, this)">Copy HTML</button>
+        </div>
+      `;
+    } catch (e) {
+      wrap.innerHTML = '<p class="text-muted">Error loading digest.</p>';
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════

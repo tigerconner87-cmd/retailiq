@@ -1024,3 +1024,8 @@ a{color:inherit;text-decoration:none}
 .be-scenario-result{font-size:12px;font-weight:600;margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm)}
 .be-scenario-result.profitable{background:rgba(16,185,129,.1);color:var(--success)}
 .be-scenario-result.unprofitable{background:rgba(239,68,68,.1);color:var(--danger)}
+
+/* ── Weekly Digest Preview ── */
+.digest-iframe-wrap{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:16px}
+.digest-iframe{width:100%;min-height:600px;border:none;background:#f3f4f6}
+.digest-actions{display:flex;gap:10px}
