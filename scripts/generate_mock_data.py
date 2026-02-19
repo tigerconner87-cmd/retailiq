@@ -1,17 +1,16 @@
 """Generate 180 days of realistic mock data for RetailIQ demo.
 
-Features:
-- 180 days of transaction history with seasonal patterns
-- 35 products across categories with realistic pricing
-- 500+ unique customers with segment distributions
-- 55 Google reviews with realistic text and sentiment
-- 8 competitors with varying ratings and review histories
-- Day-of-week patterns (weekends busier)
-- Time-of-day patterns (lunch and after-work peaks)
-- Seasonal patterns (Nov-Dec holiday boost)
-- Anomaly days (unusually high or low sales)
-- Progressive growth trend
-- Expenses, goals, marketing campaigns
+Targets realistic small retail boutique doing $30K-$40K/month:
+- 500 customers with realistic visit/spend distributions
+- 35 products ($15-$120 range, 40-60% COGS)
+- Daily revenue: $800-$2,500 weekdays, $1,500-$4,000 weekends
+- Monthly revenue: $25,000-$45,000
+- Seasonal patterns: Nov-Dec busier, Jan-Feb slower
+- Time patterns: lunch (11am-1pm) and after-work (5pm-7pm) peaks
+- Weekend patterns: Saturday busiest, Sunday moderate, Tuesday slowest
+- Power law product distribution (some products sell much more)
+- 55 own reviews (mostly 4-5 stars), realistic competitor reviews
+- 40-60 at-risk customers (30+ days inactive), 20-30 lost (60+ days)
 
 Run:  python -m scripts.generate_mock_data
 """
@@ -44,59 +43,59 @@ DEMO_NAME = "Alex Demo"
 SHOP_NAME = "Urban Threads Boutique"
 DAYS = 180
 
+# 35 products: $15-$120 range, costs = 40-60% of price
 PRODUCTS = [
     # (name, category, price, cost, sku, stock)
-    ("Organic Cotton T-Shirt", "Apparel", 29.99, 12.00, "APP-001", 85),
-    ("Slim Fit Jeans", "Apparel", 59.99, 22.00, "APP-002", 45),
-    ("Cotton Hoodie", "Apparel", 54.99, 20.00, "APP-003", 38),
-    ("Linen Summer Dress", "Apparel", 64.99, 24.00, "APP-004", 30),
-    ("Vintage Denim Jacket", "Apparel", 79.99, 28.00, "APP-005", 22),
-    ("Beanie Hat", "Apparel", 19.99, 6.00, "APP-006", 60),
-    ("Wool Blend Sweater", "Apparel", 49.99, 18.00, "APP-007", 35),
-    ("Canvas Tote Bag", "Accessories", 24.99, 8.00, "ACC-001", 70),
-    ("Bamboo Sunglasses", "Accessories", 34.99, 11.00, "ACC-002", 55),
-    ("Linen Scarf", "Accessories", 22.99, 7.00, "ACC-003", 48),
-    ("Leather Wallet", "Accessories", 44.99, 15.00, "ACC-004", 40),
-    ("Enamel Pin Set", "Accessories", 9.99, 2.50, "ACC-005", 120),
-    ("Silver Pendant Necklace", "Accessories", 38.99, 12.00, "ACC-006", 32),
-    ("Woven Belt", "Accessories", 27.99, 9.00, "ACC-007", 42),
-    ("Ceramic Travel Mug", "Home", 18.99, 6.50, "HOM-001", 65),
-    ("Soy Candle Set", "Home", 27.99, 9.00, "HOM-002", 50),
-    ("Reusable Water Bottle", "Home", 21.99, 7.00, "HOM-003", 55),
-    ("Linen Apron", "Home", 32.99, 11.00, "HOM-004", 28),
-    ("Macrame Plant Hanger", "Home", 26.99, 8.50, "HOM-005", 35),
-    ("Scented Diffuser", "Home", 34.99, 11.00, "HOM-006", 30),
-    ("Recycled Notebook", "Stationery", 12.99, 3.50, "STA-001", 90),
-    ("Brush Pen Set", "Stationery", 16.99, 5.00, "STA-002", 75),
-    ("Washi Tape Collection", "Stationery", 8.99, 2.80, "STA-003", 100),
-    ("Leather Journal", "Stationery", 28.99, 9.50, "STA-004", 40),
-    ("Sticker Pack", "Stationery", 6.99, 1.50, "STA-005", 150),
-    ("Graphic Print Poster", "Decor", 16.99, 4.00, "DEC-001", 45),
-    ("Handmade Coasters (4pk)", "Decor", 14.99, 4.50, "DEC-002", 55),
-    ("Photo Frame (5x7)", "Decor", 19.99, 6.00, "DEC-003", 40),
-    ("Artisan Soap Bar", "Beauty", 8.99, 2.50, "BEA-001", 80),
-    ("Hand Cream Duo", "Beauty", 18.99, 5.50, "BEA-002", 60),
-    ("Lip Balm Set", "Beauty", 11.99, 3.00, "BEA-003", 90),
-    ("Essential Oil Blend", "Beauty", 22.99, 7.00, "BEA-004", 45),
-    ("Lavender Bath Salts", "Beauty", 15.99, 4.50, "BEA-005", 50),
+    ("Organic Cotton T-Shirt", "Apparel", 32.00, 14.40, "APP-001", 85),
+    ("Slim Fit Jeans", "Apparel", 62.00, 27.90, "APP-002", 45),
+    ("Cotton Hoodie", "Apparel", 55.00, 24.75, "APP-003", 38),
+    ("Linen Summer Dress", "Apparel", 68.00, 30.60, "APP-004", 30),
+    ("Vintage Denim Jacket", "Apparel", 85.00, 38.25, "APP-005", 22),
+    ("Beanie Hat", "Apparel", 22.00, 9.90, "APP-006", 60),
+    ("Wool Blend Sweater", "Apparel", 54.00, 24.30, "APP-007", 35),
+    ("Canvas Tote Bag", "Accessories", 28.00, 12.60, "ACC-001", 70),
+    ("Bamboo Sunglasses", "Accessories", 36.00, 16.20, "ACC-002", 55),
+    ("Linen Scarf", "Accessories", 24.00, 10.80, "ACC-003", 48),
+    ("Leather Wallet", "Accessories", 48.00, 21.60, "ACC-004", 40),
+    ("Enamel Pin Set", "Accessories", 15.00, 6.00, "ACC-005", 120),
+    ("Silver Pendant Necklace", "Accessories", 42.00, 18.90, "ACC-006", 32),
+    ("Woven Belt", "Accessories", 30.00, 13.50, "ACC-007", 42),
+    ("Ceramic Travel Mug", "Home", 22.00, 9.90, "HOM-001", 65),
+    ("Soy Candle Set", "Home", 30.00, 13.50, "HOM-002", 50),
+    ("Reusable Water Bottle", "Home", 24.00, 10.80, "HOM-003", 55),
+    ("Linen Apron", "Home", 35.00, 15.75, "HOM-004", 28),
+    ("Macrame Plant Hanger", "Home", 28.00, 12.60, "HOM-005", 35),
+    ("Scented Diffuser", "Home", 38.00, 17.10, "HOM-006", 30),
+    ("Recycled Notebook", "Stationery", 16.00, 6.40, "STA-001", 90),
+    ("Brush Pen Set", "Stationery", 18.00, 7.20, "STA-002", 75),
+    ("Washi Tape Collection", "Stationery", 15.00, 6.00, "STA-003", 100),
+    ("Leather Journal", "Stationery", 32.00, 14.40, "STA-004", 40),
+    ("Sticker Pack", "Stationery", 12.00, 4.80, "STA-005", 150),
+    ("Graphic Print Poster", "Decor", 20.00, 8.00, "DEC-001", 45),
+    ("Handmade Coasters (4pk)", "Decor", 18.00, 7.20, "DEC-002", 55),
+    ("Photo Frame (5x7)", "Decor", 22.00, 9.90, "DEC-003", 40),
+    ("Artisan Soap Bar", "Beauty", 15.00, 6.00, "BEA-001", 80),
+    ("Hand Cream Duo", "Beauty", 22.00, 9.90, "BEA-002", 60),
+    ("Lip Balm Set", "Beauty", 16.00, 6.40, "BEA-003", 90),
+    ("Essential Oil Blend", "Beauty", 26.00, 11.70, "BEA-004", 45),
+    ("Lavender Bath Salts", "Beauty", 18.00, 7.20, "BEA-005", 50),
     ("Gift Card $25", "Gift Cards", 25.00, 0, "GFT-025", 999),
     ("Gift Card $50", "Gift Cards", 50.00, 0, "GFT-050", 999),
 ]
 
-# Product popularity weights (higher = more likely to sell)
+# Power-law product popularity weights (top sellers dominate)
 PRODUCT_WEIGHTS = [
-    14, 11, 9, 7, 8, 6, 5,  # Apparel
-    8, 6, 5, 5, 7, 4, 3,    # Accessories
-    7, 5, 6, 3, 3, 3,       # Home
-    6, 4, 5, 3, 4,          # Stationery
-    3, 3, 2,                 # Decor
-    5, 4, 4, 3, 3,          # Beauty
-    2, 1,                    # Gift Cards
+    18, 14, 10, 6, 5, 8, 4,      # Apparel: T-shirt & jeans dominate
+    10, 5, 4, 4, 12, 3, 2,       # Accessories: tote & pins are impulse buys
+    7, 6, 5, 2, 2, 3,            # Home: mugs & candles popular
+    8, 4, 6, 2, 9,               # Stationery: notebooks & stickers high volume
+    2, 3, 2,                     # Decor: slower
+    6, 4, 5, 3, 3,               # Beauty: steady sellers
+    1, 1,                        # Gift Cards: occasional
 ]
 
 COMPETITORS = [
     # (name, address, category, current_rating, review_count, old_rating_offset)
-    # old_rating_offset: how much their rating was HIGHER 30 days ago (positive = they dropped)
     ("The Corner Store", "123 Main St", "retail", 4.2, 187, 0.1),
     ("City Goods Co", "456 Oak Ave", "retail", 3.9, 94, 0.0),
     ("Market Square Boutique", "789 Elm Blvd", "boutique", 4.5, 256, -0.1),
@@ -171,7 +170,6 @@ COMPETITOR_NEUTRAL_REVIEWS = [
     "Staff was friendly but they didn't have what I was looking for. Average experience.",
 ]
 
-# Per-competitor negative reviews for more realistic data
 COMPETITOR_NEGATIVE_REVIEWS_MAP = {
     "The Corner Store": [
         "Waited forever at checkout. Only one register open on a Saturday!",
@@ -249,36 +247,55 @@ def classify_sentiment(text: str, rating: int) -> str:
 # ── Seasonal & Pattern Helpers ────────────────────────────────────────────────
 
 def get_seasonal_factor(d: date) -> float:
-    """Returns a multiplier for seasonal patterns. Nov-Dec gets holiday boost."""
+    """Returns a multiplier for seasonal patterns. Nov-Dec boost, Jan-Feb dip."""
     month = d.month
     factors = {
-        1: 0.85, 2: 0.88, 3: 0.92, 4: 0.95, 5: 1.0,
-        6: 1.05, 7: 1.02, 8: 0.98, 9: 0.95, 10: 1.0,
-        11: 1.15, 12: 1.35,
+        1: 0.78, 2: 0.82, 3: 0.90, 4: 0.95, 5: 1.0,
+        6: 1.05, 7: 1.02, 8: 0.98, 9: 0.95, 10: 1.02,
+        11: 1.18, 12: 1.40,
     }
     base = factors.get(month, 1.0)
     # Extra boost around Black Friday (last week of Nov)
     if month == 11 and d.day >= 23:
-        base *= 1.3
-    # Extra boost mid-December
+        base *= 1.35
+    # Extra boost mid-December gift shopping
     if month == 12 and 10 <= d.day <= 23:
-        base *= 1.2
+        base *= 1.25
     # Dip around Christmas/New Year
     if month == 12 and d.day >= 26:
-        base *= 0.6
+        base *= 0.55
     return base
 
 
 def get_dow_factor(dow: int) -> float:
-    """Day-of-week multiplier. 0=Mon, 6=Sun."""
-    return {0: 0.75, 1: 0.82, 2: 0.90, 3: 0.95, 4: 1.15, 5: 1.35, 6: 1.05}[dow]
+    """Day-of-week multiplier. 0=Mon, 6=Sun.
+    Tuesday slowest, Saturday busiest, Sunday moderate."""
+    return {
+        0: 0.80,  # Monday
+        1: 0.70,  # Tuesday (slowest)
+        2: 0.85,  # Wednesday
+        3: 0.90,  # Thursday
+        4: 1.10,  # Friday
+        5: 1.55,  # Saturday (busiest)
+        6: 1.10,  # Sunday (moderate)
+    }[dow]
 
 
 def get_hour_weights() -> list[float]:
-    """Hourly weights for transaction distribution (9am-9pm)."""
+    """Hourly weights for transaction distribution (9am-8pm).
+    Peaks at lunch (11am-1pm) and after work (5pm-7pm)."""
     return [
-        3, 5, 8, 12, 10, 7,   # 9-10, 10-11, 11-12, 12-1, 1-2, 2-3
-        5, 6, 9, 11, 8, 4,    # 3-4, 4-5, 5-6, 6-7, 7-8, 8-9
+        3,   # 9-10am:  just opened, light
+        5,   # 10-11am: warming up
+        11,  # 11-12pm: lunch crowd starts
+        14,  # 12-1pm:  peak lunch
+        8,   # 1-2pm:   post-lunch
+        5,   # 2-3pm:   afternoon lull
+        4,   # 3-4pm:   quiet
+        6,   # 4-5pm:   picking up
+        12,  # 5-6pm:   after-work peak
+        13,  # 6-7pm:   after-work peak
+        7,   # 7-8pm:   winding down
     ]
 
 
@@ -288,10 +305,10 @@ def is_anomaly_day(d: date) -> tuple[bool, float]:
     r = random.random()
     random.seed(42 + d.toordinal())
 
-    if r < 0.02:  # 2% chance of very high day
-        return True, random.uniform(1.6, 2.0)
-    elif r < 0.04:  # 2% chance of very low day
-        return True, random.uniform(0.3, 0.5)
+    if r < 0.02:  # 2% chance of very high day (event, viral post, etc.)
+        return True, random.uniform(1.5, 2.0)
+    elif r < 0.04:  # 2% chance of very low day (weather, road closure, etc.)
+        return True, random.uniform(0.35, 0.55)
     return False, 1.0
 
 
@@ -362,7 +379,7 @@ def main():
     print("Creating shop settings...")
     shop_settings = ShopSettings(
         id=nid(), shop_id=shop.id,
-        monthly_rent=Decimal("3200"), avg_cogs_percentage=38.0,
+        monthly_rent=Decimal("3200"), avg_cogs_percentage=48.0,
         staff_hourly_rate=Decimal("17.50"), tax_rate=8.25,
         email_frequency="weekly",
     )
@@ -384,38 +401,121 @@ def main():
         product_objs.append(p)
     db.flush()
 
-    # Create customers with segment distribution
-    print("Creating 500 customers...")
+    # ── Create 500 customers with planned visit budgets ──
+    print("Creating 500 customers with realistic segments...")
     today = date.today()
     start_date = today - timedelta(days=DAYS)
-    customer_pool = []
 
-    for i in range(500):
-        first_day = start_date + timedelta(days=random.randint(0, DAYS - 10))
-        # Assign segments: 10% VIP, 50% regular, 25% at-risk, 15% lost
-        r = random.random()
-        if r < 0.10:
-            segment = "vip"
-        elif r < 0.60:
-            segment = "regular"
-        elif r < 0.85:
-            segment = "at_risk"
-        else:
-            segment = "lost"
+    # Plan customer segments with visit/spend budgets
+    customer_plans = []
+
+    # 20 VIPs: 15-30 visits, $2,000-$5,000 total, joined early
+    for i in range(20):
+        join_day = random.randint(0, 40)  # Joined in first ~40 days
+        visits = random.randint(15, 30)
+        customer_plans.append({
+            "segment": "vip", "visits": visits,
+            "join_day": join_day, "idx": i,
+        })
+
+    # 80 regulars: 5-15 visits, $500-$2,000 total
+    for i in range(80):
+        join_day = random.randint(0, 100)
+        visits = random.randint(5, 15)
+        customer_plans.append({
+            "segment": "regular", "visits": visits,
+            "join_day": join_day, "idx": 20 + i,
+        })
+
+    # 200 occasional: 2-5 visits, $100-$500 total
+    for i in range(200):
+        join_day = random.randint(10, 160)
+        visits = random.randint(2, 5)
+        customer_plans.append({
+            "segment": "occasional", "visits": visits,
+            "join_day": join_day, "idx": 100 + i,
+        })
+
+    # 200 one-time: 1 visit, $30-$150 total
+    for i in range(200):
+        join_day = random.randint(5, 175)
+        visits = 1
+        customer_plans.append({
+            "segment": "onetime", "visits": visits,
+            "join_day": join_day, "idx": 300 + i,
+        })
+
+    # Create Customer objects
+    customer_pool = []
+    customer_tx_budget = {}  # customer_id -> remaining visits to assign
+
+    for plan in customer_plans:
+        idx = plan["idx"]
+        first_day = start_date + timedelta(days=plan["join_day"])
+        has_email = random.random() > 0.25  # 75% have email
 
         c = Customer(
-            id=nid(), shop_id=shop.id, external_id=f"sq-cust-{i+1:04d}",
-            email=f"customer{i+1}@example.com" if random.random() > 0.3 else None,
-            segment=segment,
+            id=nid(), shop_id=shop.id, external_id=f"sq-cust-{idx+1:04d}",
+            email=f"customer{idx+1}@example.com" if has_email else None,
+            segment="regular",  # Will be recalculated later
             first_seen=datetime.combine(first_day, datetime.min.time()),
             last_seen=datetime.combine(first_day, datetime.min.time()),
             visit_count=0, total_spent=Decimal("0"),
         )
         db.add(c)
         customer_pool.append(c)
+        customer_tx_budget[c.id] = {
+            "remaining": plan["visits"],
+            "segment": plan["segment"],
+            "join_date": first_day,
+        }
     db.flush()
 
-    # Generate transactions
+    # ── Pre-schedule customer visits across the 180 days ──
+    # This ensures each customer gets the right number of visits
+    print("Scheduling customer visits across 180 days...")
+    scheduled_visits = defaultdict(list)  # date -> list of customer objects
+
+    for c in customer_pool:
+        budget = customer_tx_budget[c.id]
+        join_date = budget["join_date"]
+        num_visits = budget["remaining"]
+        seg = budget["segment"]
+
+        available_days = (today - join_date).days
+        if available_days < 1:
+            available_days = 1
+
+        # For at-risk/lost simulation: some customers stop visiting
+        # ~50 customers should have last_seen 30-60 days ago (at_risk)
+        # ~25 customers should have last_seen 60+ days ago (lost)
+        cutoff_date = today  # Default: can visit up to today
+
+        if seg == "occasional" and random.random() < 0.22:
+            # ~44 of 200 occasional become at-risk (last visit 30-60 days ago)
+            cutoff_date = today - timedelta(days=random.randint(31, 58))
+        elif seg == "onetime" and random.random() < 0.12:
+            # ~24 of 200 one-time become lost (last visit 60+ days ago)
+            cutoff_date = today - timedelta(days=random.randint(61, 120))
+        elif seg == "regular" and random.random() < 0.10:
+            # ~8 regulars become at-risk
+            cutoff_date = today - timedelta(days=random.randint(32, 50))
+
+        max_day = min((cutoff_date - join_date).days, available_days)
+        if max_day < 1:
+            max_day = 1
+
+        # Distribute visits across the available window
+        visit_days = sorted(random.sample(
+            range(max_day), min(num_visits, max_day)
+        )) if max_day >= num_visits else list(range(max_day))
+
+        for vd in visit_days:
+            visit_date = join_date + timedelta(days=vd)
+            if visit_date <= today:
+                scheduled_visits[visit_date].append(c)
+
+    # ── Generate transactions day by day ──
     print(f"Generating {DAYS} days of transactions...")
     daily_data = defaultdict(lambda: {
         "revenue": Decimal("0"), "cost": Decimal("0"), "tx_count": 0, "items_sold": 0,
@@ -425,9 +525,9 @@ def main():
 
     seen_customers = set()
     total_tx = 0
+    total_revenue = Decimal("0")
     hour_weights = get_hour_weights()
 
-    # Seed for reproducibility of anomalies
     random.seed(42)
 
     current_date = start_date
@@ -436,55 +536,59 @@ def main():
         day_offset = (current_date - start_date).days
 
         # Calculate multipliers
-        growth_factor = 1.0 + day_offset * 0.0015  # Gradual growth
+        growth_factor = 1.0 + day_offset * 0.001  # Very gradual growth (~18% over 180 days)
         seasonal = get_seasonal_factor(current_date)
         dow_factor = get_dow_factor(dow)
         is_anom, anom_factor = is_anomaly_day(current_date)
 
-        # Base transactions per day
-        base_count = 52
-        tx_count = int(base_count * growth_factor * seasonal * dow_factor * anom_factor)
-        tx_count += random.randint(-5, 5)
-        tx_count = max(8, tx_count)
+        # Base daily transactions: ~22 avg to hit ~$35K/month
+        # With avg tx of ~$52 and seasonal/dow variation
+        base_count = 22
+        tx_count_target = int(base_count * growth_factor * seasonal * dow_factor * anom_factor)
+        tx_count_target += random.randint(-2, 2)
+        tx_count_target = max(6, tx_count_target)
 
-        for _ in range(tx_count):
-            hour = random.choices(range(9, 21), weights=hour_weights)[0]
+        # Get scheduled customer visits for this day
+        day_customers = list(scheduled_visits.get(current_date, []))
+
+        # Fill remaining slots with anonymous transactions
+        anon_count = max(0, tx_count_target - len(day_customers))
+
+        # Generate customer transactions
+        all_day_txs = []
+        for customer in day_customers:
+            all_day_txs.append(("customer", customer))
+        for _ in range(anon_count):
+            all_day_txs.append(("anon", None))
+
+        random.shuffle(all_day_txs)
+
+        for tx_type, customer in all_day_txs:
+            hour = random.choices(range(9, 20), weights=hour_weights)[0]
             minute = random.randint(0, 59)
             second = random.randint(0, 59)
             ts = datetime(current_date.year, current_date.month, current_date.day, hour, minute, second)
 
-            # Pick customer: 25% anonymous, 75% tracked
-            customer = None
-            if random.random() > 0.25:
-                # VIP customers shop more frequently
-                if random.random() < 0.3:
-                    vips = [c for c in customer_pool if c.segment == "vip" and c.first_seen and ts >= c.first_seen]
-                    if vips:
-                        customer = random.choice(vips)
-                if not customer:
-                    eligible = [c for c in customer_pool if c.first_seen and ts >= c.first_seen]
-                    if eligible:
-                        customer = random.choice(eligible)
-
-            # Pick items
-            num_items = random.choices([1, 2, 3, 4, 5], weights=[38, 30, 20, 9, 3])[0]
+            # Pick items: most transactions are 1-2 items for a small boutique
+            num_items = random.choices([1, 2, 3, 4], weights=[45, 32, 18, 5])[0]
             chosen_products = random.choices(product_objs, weights=PRODUCT_WEIGHTS, k=num_items)
 
             subtotal = Decimal("0")
             total_cost = Decimal("0")
             items_data = []
             for prod in chosen_products:
-                qty = random.choices([1, 2, 3], weights=[72, 22, 6])[0]
+                qty = random.choices([1, 2], weights=[88, 12])[0]
                 line_total = prod.price * qty
                 subtotal += line_total
                 if prod.cost:
                     total_cost += prod.cost * qty
                 items_data.append((prod, qty, line_total))
 
-            # Occasional discounts (10% of transactions)
+            # Occasional discounts (8% of transactions)
             discount = Decimal("0")
-            if random.random() < 0.10:
-                discount = (subtotal * Decimal(str(random.choice([0.10, 0.15, 0.20])))).quantize(Decimal("0.01"))
+            if random.random() < 0.08:
+                pct = Decimal(str(random.choice([0.10, 0.15, 0.20])))
+                discount = (subtotal * pct).quantize(Decimal("0.01"))
                 subtotal -= discount
 
             tax = (subtotal * Decimal("0.0825")).quantize(Decimal("0.01"))
@@ -530,6 +634,7 @@ def main():
             daily_data[current_date]["hourly"][hour]["count"] += 1
 
             total_tx += 1
+            total_revenue += total
 
         current_date += timedelta(days=1)
 
@@ -537,31 +642,51 @@ def main():
             db.flush()
 
     db.flush()
+    avg_daily = float(total_revenue) / DAYS
+    avg_monthly = avg_daily * 30.44
     print(f"  Generated {total_tx} transactions")
+    print(f"  Total revenue: ${float(total_revenue):,.0f}")
+    print(f"  Avg daily: ${avg_daily:,.0f}")
+    print(f"  Avg monthly: ${avg_monthly:,.0f}")
 
-    # Update customer segments based on actual behavior
+    # ── Update customer segments based on actual behavior ──
     print("Updating customer segments...")
+    seg_counts = {"vip": 0, "regular": 0, "at_risk": 0, "lost": 0}
     for c in customer_pool:
         if c.visit_count == 0:
             c.segment = "lost"
+            seg_counts["lost"] += 1
             continue
+
+        days_since = 0
         if c.last_seen:
             days_since = (datetime.combine(today, datetime.min.time()) - c.last_seen).days
-            if c.total_spent and float(c.total_spent) > 500 and c.visit_count >= 5:
-                c.segment = "vip"
-            elif days_since > 60:
-                c.segment = "lost"
-            elif days_since > 30:
-                c.segment = "at_risk"
-            else:
-                c.segment = "regular"
-            # Calculate avg days between visits
-            if c.visit_count > 1 and c.first_seen and c.last_seen:
-                total_days = (c.last_seen - c.first_seen).days
-                c.avg_days_between_visits = round(total_days / (c.visit_count - 1), 1) if c.visit_count > 1 else None
-    db.flush()
 
-    # Create snapshots
+        spent = float(c.total_spent) if c.total_spent else 0
+
+        # VIP: high spend + frequent visits + still active
+        if spent >= 1500 and c.visit_count >= 10 and days_since <= 30:
+            c.segment = "vip"
+            seg_counts["vip"] += 1
+        elif days_since > 60:
+            c.segment = "lost"
+            seg_counts["lost"] += 1
+        elif days_since > 30:
+            c.segment = "at_risk"
+            seg_counts["at_risk"] += 1
+        else:
+            c.segment = "regular"
+            seg_counts["regular"] += 1
+
+        # Calculate avg days between visits
+        if c.visit_count > 1 and c.first_seen and c.last_seen:
+            total_days = (c.last_seen - c.first_seen).days
+            c.avg_days_between_visits = round(total_days / (c.visit_count - 1), 1) if total_days > 0 else None
+    db.flush()
+    print(f"  Segments: VIP={seg_counts['vip']}, Regular={seg_counts['regular']}, "
+          f"At-risk={seg_counts['at_risk']}, Lost={seg_counts['lost']}")
+
+    # ── Create snapshots ──
     print("Creating daily and hourly snapshots...")
     for d, data in daily_data.items():
         unique = len(data["customers"])
@@ -587,11 +712,12 @@ def main():
             )
             db.add(hs)
 
-    # Create reviews for own shop
+    # ── Create reviews for own shop ──
     print("Creating 55 reviews...")
     for i in range(55):
         days_ago = random.randint(0, 300)
-        rating = random.choices([1, 2, 3, 4, 5], weights=[4, 5, 10, 28, 53])[0]
+        # Mostly 4-5 stars: realistic for a well-run small shop
+        rating = random.choices([1, 2, 3, 4, 5], weights=[3, 4, 8, 30, 55])[0]
         if rating >= 4:
             text = random.choice(POSITIVE_REVIEWS)
         elif rating <= 2:
@@ -609,7 +735,7 @@ def main():
         )
         db.add(r)
 
-    # Create competitors with reviews
+    # ── Create competitors with reviews ──
     print(f"Creating {len(COMPETITORS)} competitors...")
     comp_objs = []
     for name, address, category, rating, review_count, old_rating_offset in COMPETITORS:
@@ -626,12 +752,10 @@ def main():
         comp_objs.append(comp)
 
         # Competitor snapshots (weekly for past 6 months)
-        # Use old_rating_offset so recent snapshots show the drop
         old_rating = rating + old_rating_offset
         for w in range(26):
             snap_date = today - timedelta(weeks=w)
-            # Gradual drift from old_rating to current rating over 26 weeks
-            progress = 1.0 - (w / 26.0)  # 1.0 at week 0 (now), 0.0 at week 26
+            progress = 1.0 - (w / 26.0)
             snap_rating = old_rating + (rating - old_rating) * progress
             snap_rating += random.uniform(-0.15, 0.15)
             snap_rating = round(max(1.0, min(5.0, snap_rating)), 1)
@@ -643,23 +767,21 @@ def main():
             )
             db.add(cs)
 
-        # Competitor reviews — many more per competitor (15-30)
+        # Competitor reviews
         neg_templates = COMPETITOR_NEGATIVE_REVIEWS_MAP.get(name, COMPETITOR_NEGATIVE_REVIEWS_DEFAULT)
 
-        # Adjust review sentiment distribution based on rating
         if rating >= 4.3:
-            weights = [3, 5, 10, 35, 47]  # Mostly positive
+            weights = [3, 5, 10, 35, 47]
         elif rating >= 3.8:
-            weights = [8, 10, 15, 35, 32]  # Mixed
+            weights = [8, 10, 15, 35, 32]
         else:
-            weights = [12, 15, 20, 30, 23]  # More negative
+            weights = [12, 15, 20, 30, 23]
 
         num_comp_reviews = random.randint(15, 30)
 
-        # Some competitors get very recent negative reviews (for opportunity detection)
         recent_neg_count = 0
         if name == "Style Hub":
-            recent_neg_count = 4  # Lots of recent negatives
+            recent_neg_count = 4
         elif name == "Fresh Kicks":
             recent_neg_count = 3
         elif name == "Neighborhood Finds":
@@ -667,7 +789,6 @@ def main():
 
         for j in range(num_comp_reviews):
             if j < recent_neg_count:
-                # Force recent negative reviews
                 days_ago = random.randint(0, 5)
                 cr_rating = random.choice([1, 2])
                 cr_text = random.choice(neg_templates)
@@ -690,7 +811,7 @@ def main():
             )
             db.add(cr)
 
-    # Create expenses
+    # ── Create expenses ──
     print("Creating expenses...")
     expenses_data = [
         ("rent", "Store Rent", 3200),
@@ -709,19 +830,19 @@ def main():
         )
         db.add(e)
 
-    # Create revenue goals for recent months
+    # ── Create revenue goals ──
     print("Creating revenue goals...")
     for m_offset in range(6):
         goal_month = today.replace(day=1) - timedelta(days=30 * m_offset)
         goal_str = goal_month.strftime("%Y-%m")
-        target = 38000 + m_offset * 500  # Increasing goals
+        target = 35000 + m_offset * 500
         rg = RevenueGoal(
             id=nid(), shop_id=shop.id, month=goal_str,
             target_amount=Decimal(str(target)),
         )
         db.add(rg)
 
-    # Create marketing campaigns
+    # ── Create marketing campaigns ──
     print("Creating marketing campaigns...")
     campaigns = [
         ("Summer Sale Instagram Campaign", "social", 250, 45, 3200),
@@ -740,7 +861,7 @@ def main():
         )
         db.add(mc)
 
-    # Create alerts
+    # ── Create alerts ──
     print("Creating alerts...")
     alerts_data = [
         ("revenue_drop", "critical", "revenue", "Revenue dropped 18% this week",
@@ -752,9 +873,9 @@ def main():
         ("competitor_drop", "info", "competitors", "Style Hub dropped to 3.8 stars",
          "Your competitor Style Hub just dropped from 4.3 to 3.8 stars. This is an opportunity."),
         ("goal_progress", "info", "goals", "Monthly goal 72% complete with 8 days left",
-         "You've hit $27,360 of your $38,000 goal. You need $1,330/day to hit target."),
-        ("revenue_milestone", "success", "revenue", "Best Saturday ever: $4,230 in revenue!",
-         "Last Saturday was your highest revenue day ever, beating the previous record by 12%."),
+         "You've hit $25,200 of your $35,000 goal. You need $1,225/day to hit target."),
+        ("revenue_milestone", "success", "revenue", "Best Saturday ever: $3,850 in revenue!",
+         "Last Saturday was your highest revenue day ever, beating the previous record by 15%."),
         ("slow_mover", "warning", "inventory", "3 products haven't sold in 14+ days",
          "Macrame Plant Hanger, Photo Frame, and Woven Belt have had zero sales in 2+ weeks."),
         ("return_rate_drop", "warning", "customers", "Customer return rate below target",
@@ -769,7 +890,7 @@ def main():
         )
         db.add(a)
 
-    # Create pre-generated marketing responses
+    # ── Create marketing responses ──
     print("Creating marketing responses...")
     marketing_resp_data = [
         {
@@ -880,7 +1001,6 @@ def main():
     ]
 
     for mrd in marketing_resp_data:
-        # Find the competitor object
         comp_obj = next((c for c in comp_objs if c.name == mrd["comp_name"]), None)
         mr = MarketingResponse(
             id=nid(), shop_id=shop.id,
@@ -896,18 +1016,17 @@ def main():
         )
         db.add(mr)
 
-    # Create goals
+    # ── Create goals ──
     print("Creating goals & strategy data...")
     current_month = today.strftime("%Y-%m")
     current_q_num = (today.month - 1) // 3 + 1
     current_quarter = f"{today.year}-Q{current_q_num}"
 
-    # Active goals for current month
     goals_data = [
-        ("revenue", "Monthly Revenue Target", 38000, "$", "monthly", current_month),
-        ("transactions", "Monthly Transactions", 1500, "#", "monthly", current_month),
-        ("customers", "New Customer Acquisition", 45, "#", "monthly", current_month),
-        ("aov", "Average Order Value", 55, "$", "monthly", current_month),
+        ("revenue", "Monthly Revenue Target", 35000, "$", "monthly", current_month),
+        ("transactions", "Monthly Transactions", 680, "#", "monthly", current_month),
+        ("customers", "New Customer Acquisition", 30, "#", "monthly", current_month),
+        ("aov", "Average Order Value", 52, "$", "monthly", current_month),
     ]
     for gtype, title, target, unit, period, pkey in goals_data:
         g = Goal(
@@ -919,12 +1038,11 @@ def main():
         )
         db.add(g)
 
-    # Past goals (for history) — compute status from actual snapshot data
-    # Use a mix of achievable and stretch targets to produce realistic met/missed
+    # Past goals — compute status from actual snapshot data
     db.flush()
     from calendar import monthrange as _mr
-    rev_targets_by_month = [170000, 200000, 220000]  # m=1,2,3 — some above actual
-    tx_targets_by_month = [1800, 3000, 2000]          # some achievable, some stretch
+    rev_targets = [33000, 36000, 34000]
+    tx_targets = [650, 700, 660]
     for m in range(1, 4):
         past_start = today.replace(day=1) - timedelta(days=30 * m)
         past_month = past_start.strftime("%Y-%m")
@@ -933,8 +1051,7 @@ def main():
         month_start = date(yr, mo, 1)
         month_end = date(yr, mo, last_day)
 
-        # Revenue goal — compare actual to target
-        rev_target = rev_targets_by_month[m - 1]
+        rev_target = rev_targets[m - 1]
         actual_rev = sum(
             float(d["revenue"]) for dt, d in daily_data.items()
             if month_start <= dt <= month_end
@@ -948,8 +1065,7 @@ def main():
         )
         db.add(g)
 
-        # Transaction goal — compare actual to target
-        tx_target = tx_targets_by_month[m - 1]
+        tx_target = tx_targets[m - 1]
         actual_tx = sum(
             d["tx_count"] for dt, d in daily_data.items()
             if month_start <= dt <= month_end
@@ -963,8 +1079,8 @@ def main():
         )
         db.add(g2)
 
-    # Product goals for top products — mix of achievable and stretch targets
-    product_targets = [150, 250, 80, 200, 120, 300, 60, 100]
+    # Product goals for top products
+    product_targets = [60, 45, 35, 50, 40, 55, 30, 25]
     for i, p in enumerate(product_objs[:8]):
         pg = ProductGoal(
             id=nid(), shop_id=shop.id,
@@ -980,23 +1096,22 @@ def main():
         quarter=current_quarter,
         title="Growth & Community Building",
         objectives=[
-            "Increase monthly revenue to $40K by end of quarter",
-            "Grow repeat customer base by 20%",
+            "Increase monthly revenue to $38K by end of quarter",
+            "Grow repeat customer base by 15%",
             "Launch Instagram presence with 500+ followers",
-            "Expand product line with 10 new curated items",
+            "Expand product line with 8 new curated items",
         ],
         key_results=[
-            "Revenue: $38K -> $40K monthly",
-            "Repeat rate: 28% -> 35%",
+            "Revenue: $35K -> $38K monthly",
+            "Repeat rate: 28% -> 33%",
             "Instagram followers: 0 -> 500",
-            "New products: launch 10 items with 60%+ margin",
+            "New products: launch 8 items with 50%+ margin",
         ],
         notes="Focus on building local community engagement through events and social media. Partner with 2-3 local artisans for exclusive collections.",
         status="active",
     )
     db.add(sn)
 
-    # Previous quarter strategy
     if current_q_num > 1:
         prev_quarter = f"{today.year}-Q{current_q_num - 1}"
     else:
@@ -1006,18 +1121,18 @@ def main():
         quarter=prev_quarter,
         title="Foundation & Operations",
         objectives=[
-            "Stabilize monthly revenue at $35K+",
+            "Stabilize monthly revenue at $30K+",
             "Implement inventory management system",
             "Hire and train 2 part-time staff",
             "Set up loyalty program",
         ],
         key_results=[
-            "Revenue consistently above $35K/mo",
+            "Revenue consistently above $30K/mo",
             "Inventory accuracy at 95%+",
             "Staff trained with 4.5+ customer satisfaction",
-            "Loyalty program: 100+ members",
+            "Loyalty program: 80+ members",
         ],
-        notes="Successfully established operational foundation. Inventory system in place, staff performing well. Loyalty program soft-launched with 85 members.",
+        notes="Successfully established operational foundation. Inventory system in place, staff performing well. Loyalty program soft-launched with 72 members.",
         status="completed",
     )
     db.add(sn2)
@@ -1029,18 +1144,18 @@ def main():
     print("=" * 60)
     print("  Mock data generated successfully!")
     print("=" * 60)
-    print(f"  Email:       {DEMO_EMAIL}")
-    print(f"  Password:    {DEMO_PASSWORD}")
-    print(f"  Shop:        {SHOP_NAME}")
-    print(f"  Days:        {DAYS}")
+    print(f"  Email:        {DEMO_EMAIL}")
+    print(f"  Password:     {DEMO_PASSWORD}")
+    print(f"  Shop:         {SHOP_NAME}")
+    print(f"  Days:         {DAYS}")
     print(f"  Transactions: {total_tx}")
-    print(f"  Products:    {len(PRODUCTS)}")
-    print(f"  Customers:   500")
-    print(f"  Reviews:     55 (own) + ~180 (competitors)")
-    print(f"  Competitors: {len(COMPETITORS)}")
-    print(f"  Marketing:   {len(marketing_resp_data)} pre-generated responses")
-    print(f"  Expenses:    {len(expenses_data)}")
-    print(f"  Campaigns:   {len(campaigns)}")
+    print(f"  Avg daily:    ${avg_daily:,.0f}")
+    print(f"  Avg monthly:  ${avg_monthly:,.0f}")
+    print(f"  Products:     {len(PRODUCTS)}")
+    print(f"  Customers:    500 (VIP={seg_counts['vip']}, Regular={seg_counts['regular']}, "
+          f"At-risk={seg_counts['at_risk']}, Lost={seg_counts['lost']})")
+    print(f"  Reviews:      55 (own) + ~180 (competitors)")
+    print(f"  Competitors:  {len(COMPETITORS)}")
     print("=" * 60)
 
 
