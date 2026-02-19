@@ -82,6 +82,11 @@ from app.services.marketing_engine import (
     build_email_template,
 )
 from app.services.cache import cache_get, cache_set
+from app.services.dashboard_service import (
+    get_activity_feed,
+    get_customer_segments,
+    get_revenue_heatmap,
+)
 from app.services.competitor_intelligence import (
     get_competitor_overview,
     get_competitor_comparison,
@@ -106,6 +111,34 @@ def _get_shop(db: Session, user: User):
     if not shop:
         raise HTTPException(status_code=404, detail="No shop found for this user")
     return shop
+
+
+# ── Activity Feed ────────────────────────────────────────────────────────────
+
+@router.get("/activity-feed")
+def dashboard_activity_feed(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return {"events": get_activity_feed(db, shop.id, limit=10)}
+
+
+# ── Customer Segments ────────────────────────────────────────────────────────
+
+@router.get("/customers/segments")
+def dashboard_customer_segments(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_customer_segments(db, shop.id)
+
+
+# ── Revenue Heatmap ──────────────────────────────────────────────────────────
+
+@router.get("/sales/heatmap")
+def dashboard_revenue_heatmap(
+    days: int = Query(90),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    return {"days": get_revenue_heatmap(db, shop.id, days=days)}
 
 
 # ── Overview ─────────────────────────────────────────────────────────────────

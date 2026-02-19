@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=16">
+  <link rel="stylesheet" href="/static/dashboard.css?v=17">
 </head>
 <body>
   <!-- Sidebar -->
@@ -69,6 +69,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Alerts
         <span class="badge" id="alertBadge" hidden>0</span>
+      </a>
+      <a href="/dashboard/settings" class="nav-item {{ 'active' if sec == 'settings' }}" data-section="settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -291,6 +295,15 @@
           </div>
         </div>
 
+        <!-- Quick Actions Bar -->
+        <div class="quick-actions" id="quickActions">
+          <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;marketing&quot;]').click()">&#128221; Create Post</button>
+          <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;winback&quot;]').click()">&#128231; Send Campaign</button>
+          <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;competitors&quot;]').click()">&#128269; Check Competitors</button>
+          <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;briefing&quot;]').click()">&#128202; View Report</button>
+          <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;goals&quot;]').click()">&#127919; Update Goals</button>
+        </div>
+
         <div class="kpi-grid" id="kpiGrid">
           <div class="kpi-card" data-tooltip="Total revenue earned today (or latest data date)">
             <div class="kpi-label">Revenue Today</div>
@@ -350,6 +363,14 @@
             </div>
           </div>
         </div>
+
+        <!-- Activity Feed -->
+        <div class="card mt">
+          <div class="card-header"><h3>Live Activity Feed</h3><span class="ai-tag">Real-time</span></div>
+          <div class="card-body" id="activityFeedBody">
+            <div class="ai-loading">Loading activity...</div>
+          </div>
+        </div>
       </section>
 
       <!-- Sales Section -->
@@ -372,6 +393,13 @@
           <div class="card">
             <div class="card-header"><h3>Monthly Summary</h3></div>
             <div class="card-body"><table class="data-table" id="monthlyTable"><thead><tr><th>Month</th><th>Revenue</th><th>Transactions</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <!-- Revenue Heatmap Calendar -->
+        <div class="card mt" id="revenueHeatmapCard">
+          <div class="card-header"><h3>Revenue Heatmap — Last 90 Days</h3></div>
+          <div class="card-body" id="revenueHeatmapBody">
+            <div class="ai-loading">Building heatmap...</div>
           </div>
         </div>
         <!-- Break-Even Analysis -->
@@ -398,6 +426,13 @@
               <thead><tr><th>#</th><th>Product</th><th>Category</th><th>Revenue</th><th>Units Sold</th><th>Avg Price</th><th>Margin</th></tr></thead>
               <tbody></tbody>
             </table>
+          </div>
+        </div>
+        <!-- Product Performance Cards -->
+        <div class="card mt">
+          <div class="card-header"><h3>Product Performance Overview</h3></div>
+          <div class="card-body" id="productPerfBody">
+            <div class="ai-loading">Loading performance cards...</div>
           </div>
         </div>
         <!-- AI Product Recommendations -->
@@ -430,6 +465,14 @@
               <thead><tr><th>#</th><th>Customer</th><th>Visits</th><th>Total Spent</th><th>Last Seen</th></tr></thead>
               <tbody></tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Customer Segments Visualization -->
+        <div class="card mt">
+          <div class="card-header"><h3>Customer Segments</h3><span class="ai-tag">Auto-segmented</span></div>
+          <div class="card-body" id="customerSegmentsBody">
+            <div class="ai-loading">Analyzing customer segments...</div>
           </div>
         </div>
       </section>
@@ -540,6 +583,16 @@
             <button class="mkt-filter-btn" data-status="used">Used</button>
           </div>
           <div class="marketing-list" id="marketingList"></div>
+        </div>
+
+        <!-- Competitor Price Comparison Teaser -->
+        <div class="card mt comp-price-teaser">
+          <div class="card-body" style="text-align:center;padding:40px 24px">
+            <div style="font-size:48px;margin-bottom:16px">&#128176;</div>
+            <h3 style="margin-bottom:8px;font-size:18px">Price Comparison Intelligence</h3>
+            <p style="color:var(--text2);font-size:14px;max-width:400px;margin:0 auto 20px;line-height:1.6">Compare your pricing against competitors in real-time. Get alerts when competitors change prices and find opportunities to optimize.</p>
+            <span class="coming-soon-badge">Coming Soon</span>
+          </div>
         </div>
       </section>
 
@@ -903,8 +956,95 @@
           </div>
         </div>
       </section>
+
+      <!-- Settings Section -->
+      <section class="section {{ 'active' if sec == 'settings' }}" id="sec-settings">
+        <div class="settings-page">
+          <div class="settings-group">
+            <h3 class="settings-group-title">Shop Information</h3>
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label class="settings-label">Shop Name</label>
+                <input type="text" class="settings-input" id="setShopName" placeholder="Your shop name">
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Address</label>
+                <input type="text" class="settings-input" id="setAddress" placeholder="Shop address">
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Category</label>
+                <select class="settings-input" id="setCategory">
+                  <option value="retail">Retail</option>
+                  <option value="restaurant">Restaurant</option>
+                  <option value="cafe">Cafe</option>
+                  <option value="boutique">Boutique</option>
+                  <option value="grocery">Grocery</option>
+                  <option value="salon">Salon</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Store Size (sq ft)</label>
+                <input type="number" class="settings-input" id="setStoreSize" placeholder="e.g. 1200">
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Staff Count</label>
+                <input type="number" class="settings-input" id="setStaffCount" placeholder="e.g. 5">
+              </div>
+            </div>
+          </div>
+          <div class="settings-group">
+            <h3 class="settings-group-title">Financial Settings</h3>
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label class="settings-label">Monthly Rent ($)</label>
+                <input type="number" class="settings-input" id="setRent" placeholder="e.g. 3000" step="0.01">
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Avg COGS %</label>
+                <input type="number" class="settings-input" id="setCogs" placeholder="e.g. 40" step="0.1">
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Staff Hourly Rate ($)</label>
+                <input type="number" class="settings-input" id="setHourlyRate" placeholder="e.g. 15" step="0.01">
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Tax Rate (%)</label>
+                <input type="number" class="settings-input" id="setTaxRate" placeholder="e.g. 8.25" step="0.01">
+              </div>
+            </div>
+          </div>
+          <div class="settings-group">
+            <h3 class="settings-group-title">Notifications & Alerts</h3>
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label class="settings-label">Email Digest Frequency</label>
+                <select class="settings-input" id="setEmailFreq">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="never">Never</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-toggles">
+              <label class="settings-toggle"><input type="checkbox" id="setAlertRevenue" checked><span>Revenue alerts</span></label>
+              <label class="settings-toggle"><input type="checkbox" id="setAlertCustomers" checked><span>Customer alerts</span></label>
+              <label class="settings-toggle"><input type="checkbox" id="setAlertReviews" checked><span>Review alerts</span></label>
+              <label class="settings-toggle"><input type="checkbox" id="setAlertCompetitors" checked><span>Competitor alerts</span></label>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+            <span class="settings-saved-msg" id="settingsSavedMsg" hidden>Settings saved!</span>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
+
+  <!-- Help Tooltip Button -->
+  <button class="help-tooltip-btn" id="helpTooltipBtn" title="Toggle help tooltips">?</button>
 
   <!-- Mobile sidebar overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -938,7 +1078,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=16"></script>
+  <script src="/static/dashboard.js?v=17"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

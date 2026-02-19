@@ -189,6 +189,13 @@ def winback_page(
     return _dashboard_section(request, db, user, "winback")
 
 
+@router.get("/dashboard/settings", response_class=HTMLResponse)
+def settings_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "settings")
+
+
 @router.get("/dashboard/competitors/weekly-report", response_class=HTMLResponse)
 def weekly_report_page(
     request: Request,

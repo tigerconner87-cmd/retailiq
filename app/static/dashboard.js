@@ -199,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (section === 'winback') await loadWinback();
       else if (section === 'reviews') await loadReviews();
       else if (section === 'alerts') await loadAlerts();
+      else if (section === 'settings') await loadSettings();
       // Stagger card entrance animation
       const sec = $(`#sec-${section}`);
       if (sec) animateCards(sec);
@@ -336,6 +337,9 @@ document.addEventListener('DOMContentLoaded', () => {
         badge.hidden = true;
       }
     }
+
+    // Load activity feed
+    loadActivityFeed();
   }
 
   async function loadSales() {
@@ -368,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ).join('');
 
     loadBreakEvenAnalysis();
+    loadRevenueHeatmap();
   }
 
   async function loadBreakEvenAnalysis() {
@@ -446,6 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ).join('');
 
     loadProductRecommendations();
+    loadProductPerformance(data.top_products);
   }
 
   async function loadProductRecommendations() {
@@ -511,6 +517,9 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML = data.top_customers.map((c, i) =>
       `<tr><td>${i + 1}</td><td>Customer ${c.id.slice(0, 8)}</td><td>${c.visit_count}</td><td>${fmt(c.total_spent)}</td><td>${c.last_seen ? c.last_seen.split('T')[0] : '-'}</td></tr>`
     ).join('');
+
+    // Load customer segments visualization
+    loadCustomerSegments();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -2717,6 +2726,223 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
     return `<span class="sparkline"><svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ACTIVITY FEED, SEGMENTS, HEATMAP, PRODUCT PERF, SETTINGS, TOOLTIPS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async function loadActivityFeed() {
+    const body = $('#activityFeedBody');
+    if (!body) return;
+    const data = await api('/api/dashboard/activity-feed');
+    if (!data || !data.events || data.events.length === 0) {
+      body.innerHTML = '<p style="color:var(--text3);text-align:center;padding:20px">No recent activity yet.</p>';
+      return;
+    }
+    body.innerHTML = `<div class="activity-feed">${data.events.map(e => `
+      <div class="af-item">
+        <span class="af-icon">${e.icon}</span>
+        <div class="af-content">
+          <div class="af-desc">${esc(e.description)}</div>
+          <div class="af-time">${esc(e.time_ago)}</div>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  }
+
+  async function loadCustomerSegments() {
+    const body = $('#customerSegmentsBody');
+    if (!body) return;
+    const data = await api('/api/dashboard/customers/segments');
+    if (!data || !data.segments || data.total === 0) {
+      body.innerHTML = '<p style="color:var(--text3);text-align:center;padding:20px">Not enough customers for segmentation.</p>';
+      return;
+    }
+    const total = data.total;
+    // Build donut chart using conic-gradient
+    let cumPct = 0;
+    const gradientStops = [];
+    const segs = data.segments.filter(s => s.count > 0);
+    segs.forEach(s => {
+      const pct = (s.count / total) * 100;
+      gradientStops.push(`${s.color} ${cumPct}% ${cumPct + pct}%`);
+      cumPct += pct;
+    });
+    if (gradientStops.length === 0) gradientStops.push('var(--bg-3) 0% 100%');
+    const gradient = `conic-gradient(${gradientStops.join(', ')})`;
+
+    body.innerHTML = `
+      <div class="cs-wrap">
+        <div class="cs-donut" style="background:${gradient}">
+          <div class="cs-donut-hole">${total}<br><small>total</small></div>
+        </div>
+        <div class="cs-legend">
+          ${data.segments.map(s => `
+            <div class="cs-legend-item">
+              <span class="cs-dot" style="background:${s.color}"></span>
+              <span class="cs-legend-label">${esc(s.label)}</span>
+              <span class="cs-legend-count">${s.count}</span>
+              <span class="cs-legend-rev">${fmt(s.total_revenue)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadRevenueHeatmap() {
+    const body = $('#revenueHeatmapBody');
+    if (!body) return;
+    const data = await api('/api/dashboard/sales/heatmap?days=90');
+    if (!data || !data.days || data.days.length === 0) {
+      body.innerHTML = '<p style="color:var(--text3);text-align:center;padding:20px">Not enough data for heatmap.</p>';
+      return;
+    }
+    const days = data.days;
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // Group by week
+    const weeks = [];
+    let currentWeek = [];
+    days.forEach((d, i) => {
+      currentWeek.push(d);
+      if (d.day_of_week === 6 || i === days.length - 1) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+    });
+
+    body.innerHTML = `
+      <div class="hm-wrap">
+        <div class="hm-labels">${dayLabels.map(l => `<span class="hm-label">${l}</span>`).join('')}</div>
+        <div class="hm-grid">
+          ${weeks.map(w => `<div class="hm-week">${
+            w.map(d => {
+              const alpha = Math.max(0.1, d.intensity);
+              return `<div class="hm-cell" style="background:rgba(99,102,241,${alpha})" title="${d.date}: ${fmt(d.revenue)}"></div>`;
+            }).join('')
+          }</div>`).join('')}
+        </div>
+      </div>
+      <div class="hm-scale">
+        <span>Less</span>
+        <span class="hm-cell-sm" style="background:rgba(99,102,241,0.1)"></span>
+        <span class="hm-cell-sm" style="background:rgba(99,102,241,0.3)"></span>
+        <span class="hm-cell-sm" style="background:rgba(99,102,241,0.6)"></span>
+        <span class="hm-cell-sm" style="background:rgba(99,102,241,1)"></span>
+        <span>More</span>
+      </div>
+    `;
+  }
+
+  function loadProductPerformance(products) {
+    const body = $('#productPerfBody');
+    if (!body) return;
+    if (!products || products.length === 0) {
+      body.innerHTML = '<p style="color:var(--text3);text-align:center;padding:20px">No product data available.</p>';
+      return;
+    }
+    const maxRevenue = Math.max(...products.map(p => p.revenue));
+    body.innerHTML = `<div class="pp-grid">${products.slice(0, 8).map(p => {
+      const pct = Math.round((p.revenue / maxRevenue) * 100);
+      const status = pct >= 70 ? 'top' : pct >= 40 ? 'mid' : 'low';
+      const statusLabel = {top: 'Top Seller', mid: 'Steady', low: 'Underperforming'};
+      const statusColor = {top: 'var(--success)', mid: 'var(--warning)', low: 'var(--danger)'};
+      return `
+        <div class="pp-card">
+          <div class="pp-header">
+            <span class="pp-name">${esc(p.name)}</span>
+            <span class="pp-badge" style="color:${statusColor[status]};border-color:${statusColor[status]}">${statusLabel[status]}</span>
+          </div>
+          <div class="pp-revenue">${fmt(p.revenue)}</div>
+          <div class="pp-bar-wrap"><div class="pp-bar" style="width:${pct}%;background:${statusColor[status]}"></div></div>
+          <div class="pp-meta">
+            <span>${fmtInt(p.units_sold)} units</span>
+            <span>${fmt(p.avg_price)} avg</span>
+            ${p.margin != null ? `<span>${p.margin}% margin</span>` : ''}
+          </div>
+        </div>`;
+    }).join('')}</div>`;
+  }
+
+  // ── Settings ──
+  async function loadSettings() {
+    showRefresh();
+    const data = await api('/api/dashboard/settings');
+    hideRefresh();
+    if (!data) return;
+    const s = id => $(id);
+    if (s('#setShopName')) s('#setShopName').value = data.shop_name || '';
+    if (s('#setAddress')) s('#setAddress').value = data.address || '';
+    if (s('#setCategory')) s('#setCategory').value = data.category || 'retail';
+    if (s('#setStoreSize')) s('#setStoreSize').value = data.store_size_sqft || '';
+    if (s('#setStaffCount')) s('#setStaffCount').value = data.staff_count || '';
+    if (s('#setRent')) s('#setRent').value = data.monthly_rent || '';
+    if (s('#setCogs')) s('#setCogs').value = data.avg_cogs_percentage || '';
+    if (s('#setHourlyRate')) s('#setHourlyRate').value = data.staff_hourly_rate || '';
+    if (s('#setTaxRate')) s('#setTaxRate').value = data.tax_rate || '';
+    if (s('#setEmailFreq')) s('#setEmailFreq').value = data.email_frequency || 'weekly';
+    if (s('#setAlertRevenue')) s('#setAlertRevenue').checked = data.alert_revenue !== false;
+    if (s('#setAlertCustomers')) s('#setAlertCustomers').checked = data.alert_customers !== false;
+    if (s('#setAlertReviews')) s('#setAlertReviews').checked = data.alert_reviews !== false;
+    if (s('#setAlertCompetitors')) s('#setAlertCompetitors').checked = data.alert_competitors !== false;
+  }
+
+  // Save settings handler
+  const saveBtn = $('#saveSettingsBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      const token = localStorage.getItem('retailiq_token');
+      const headers = {'Content-Type': 'application/json'};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const body = {
+        shop_name: $('#setShopName')?.value || null,
+        address: $('#setAddress')?.value || null,
+        category: $('#setCategory')?.value || null,
+        store_size_sqft: $('#setStoreSize')?.value ? parseInt($('#setStoreSize').value) : null,
+        staff_count: $('#setStaffCount')?.value ? parseInt($('#setStaffCount').value) : null,
+        monthly_rent: $('#setRent')?.value ? parseFloat($('#setRent').value) : null,
+        avg_cogs_percentage: $('#setCogs')?.value ? parseFloat($('#setCogs').value) : null,
+        staff_hourly_rate: $('#setHourlyRate')?.value ? parseFloat($('#setHourlyRate').value) : null,
+        tax_rate: $('#setTaxRate')?.value ? parseFloat($('#setTaxRate').value) : null,
+        email_frequency: $('#setEmailFreq')?.value || null,
+        alert_revenue: $('#setAlertRevenue')?.checked,
+        alert_customers: $('#setAlertCustomers')?.checked,
+        alert_reviews: $('#setAlertReviews')?.checked,
+        alert_competitors: $('#setAlertCompetitors')?.checked,
+      };
+      try {
+        const res = await fetch('/api/dashboard/settings', {
+          method: 'PUT', headers, credentials: 'same-origin',
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          showToast('Settings saved successfully!', 'success');
+          const msg = $('#settingsSavedMsg');
+          if (msg) { msg.hidden = false; setTimeout(() => msg.hidden = true, 3000); }
+        } else {
+          showToast('Failed to save settings', 'error');
+        }
+      } catch (e) {
+        showToast('Network error saving settings', 'error');
+      }
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Settings';
+    });
+  }
+
+  // ── Help Tooltips ──
+  const helpBtn = $('#helpTooltipBtn');
+  let tooltipsActive = false;
+  if (helpBtn) {
+    helpBtn.addEventListener('click', () => {
+      tooltipsActive = !tooltipsActive;
+      document.body.classList.toggle('tooltips-active', tooltipsActive);
+      helpBtn.classList.toggle('active', tooltipsActive);
+      showToast(tooltipsActive ? 'Help tooltips ON — hover over elements to see tips' : 'Help tooltips OFF', 'info', 2000);
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════════════
