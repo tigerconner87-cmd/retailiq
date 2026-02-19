@@ -724,6 +724,79 @@ def _time_ago(dt):
     return dt.strftime("%b %d")
 
 
+# ── Insights ────────────────────────────────────────────────────────────────
+
+@router.get("/insights")
+def dashboard_insights(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.insights import generate_insights
+    shop = _get_shop(db, user)
+    return generate_insights(db, shop.id)
+
+
+@router.get("/sparkline")
+def dashboard_sparkline(days: int = 7, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.insights import get_sparkline_data
+    shop = _get_shop(db, user)
+    return get_sparkline_data(db, shop.id, days)
+
+
+# ── Search ──────────────────────────────────────────────────────────────────
+
+@router.get("/search")
+def dashboard_search(q: str = Query(""), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.models import Product, Customer, Competitor
+    shop = _get_shop(db, user)
+    if not q or len(q) < 2:
+        return {"results": []}
+
+    results = []
+    term = f"%{q}%"
+
+    # Search products
+    products = db.query(Product).filter(
+        Product.shop_id == shop.id,
+        Product.name.ilike(term),
+    ).limit(5).all()
+    for p in products:
+        results.append({
+            "type": "product",
+            "icon": "📦",
+            "title": p.name,
+            "subtitle": p.category or "Product",
+            "section": "products",
+        })
+
+    # Search customers
+    customers = db.query(Customer).filter(
+        Customer.shop_id == shop.id,
+        Customer.email.ilike(term),
+    ).limit(5).all()
+    for c in customers:
+        results.append({
+            "type": "customer",
+            "icon": "👤",
+            "title": c.email or f"Customer #{c.id[:8]}",
+            "subtitle": f"{c.segment} — {c.visit_count} visits",
+            "section": "customers",
+        })
+
+    # Search competitors
+    competitors = db.query(Competitor).filter(
+        Competitor.shop_id == shop.id,
+        Competitor.name.ilike(term),
+    ).limit(3).all()
+    for comp in competitors:
+        results.append({
+            "type": "competitor",
+            "icon": "🔍",
+            "title": comp.name,
+            "subtitle": f"Rating: {float(comp.rating):.1f}" if comp.rating else "Competitor",
+            "section": "competitors",
+        })
+
+    return {"results": results[:10]}
+
+
 # ── Plan Interest (Upgrade Page) ──────────────────────────────────────────
 
 @router.post("/plan-interest")
