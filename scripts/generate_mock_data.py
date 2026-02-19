@@ -919,25 +919,44 @@ def main():
         )
         db.add(g)
 
-    # Past goals (for history)
+    # Past goals (for history) — compute status from actual snapshot data
+    db.flush()
     for m in range(1, 4):
-        past_month = (today.replace(day=1) - timedelta(days=30 * m)).strftime("%Y-%m")
-        target = 36000 + m * 1000
+        past_start = today.replace(day=1) - timedelta(days=30 * m)
+        past_month = past_start.strftime("%Y-%m")
+        yr, mo = int(past_month[:4]), int(past_month[5:7])
+        from calendar import monthrange
+        _, last_day = monthrange(yr, mo)
+        month_start = date(yr, mo, 1)
+        month_end = date(yr, mo, last_day)
+
+        # Query actual revenue for that month
+        rev_target = 36000 + m * 1000
+        actual_rev = sum(
+            float(d["revenue"]) for dt, d in daily_data.items()
+            if month_start <= dt <= month_end
+        )
         g = Goal(
             id=nid(), shop_id=shop.id,
             goal_type="revenue", title="Monthly Revenue Target",
-            target_value=Decimal(str(target)), unit="$",
+            target_value=Decimal(str(rev_target)), unit="$",
             period="monthly", period_key=past_month,
-            status="met" if m % 2 == 0 else "missed",
+            status="met" if actual_rev >= rev_target else "missed",
         )
         db.add(g)
 
+        # Query actual transactions for that month
+        tx_target = 1400
+        actual_tx = sum(
+            d["tx_count"] for dt, d in daily_data.items()
+            if month_start <= dt <= month_end
+        )
         g2 = Goal(
             id=nid(), shop_id=shop.id,
             goal_type="transactions", title="Monthly Transactions",
-            target_value=Decimal("1400"), unit="#",
+            target_value=Decimal(str(tx_target)), unit="#",
             period="monthly", period_key=past_month,
-            status="met" if m % 3 != 0 else "missed",
+            status="met" if actual_tx >= tx_target else "missed",
         )
         db.add(g2)
 
