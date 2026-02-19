@@ -81,6 +81,7 @@ from app.services.marketing_engine import (
     get_weekly_marketing_report,
     build_email_template,
 )
+from app.services.cache import cache_get, cache_set
 from app.services.competitor_intelligence import (
     get_competitor_overview,
     get_competitor_comparison,
@@ -112,7 +113,12 @@ def _get_shop(db: Session, user: User):
 @router.get("/summary", response_model=SummaryResponse)
 def dashboard_summary(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     shop = _get_shop(db, user)
-    return get_summary(db, shop.id)
+    hit = cache_get(f"riq:summary:{shop.id}")
+    if hit:
+        return hit
+    result = get_summary(db, shop.id)
+    cache_set(f"riq:summary:{shop.id}", result, ttl=30)
+    return result
 
 
 @router.get("/ai-actions")
@@ -126,7 +132,13 @@ def dashboard_ai_actions(user: User = Depends(get_current_user), db: Session = D
 @router.get("/sales", response_model=SalesResponse)
 def dashboard_sales(days: int = 30, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     shop = _get_shop(db, user)
-    return get_sales_trends(db, shop.id, days=days)
+    key = f"riq:sales:{shop.id}:{days}"
+    hit = cache_get(key)
+    if hit:
+        return hit
+    result = get_sales_trends(db, shop.id, days=days)
+    cache_set(key, result, ttl=60)
+    return result
 
 
 @router.get("/sales/velocity", response_model=SalesVelocityResponse)

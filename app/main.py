@@ -66,6 +66,23 @@ def on_startup():
         for stmt in _ALTER_STMTS:
             conn.execute(text(stmt))
 
+    # 3. Add performance indexes (idempotent — IF NOT EXISTS)
+    _INDEX_STMTS = [
+        "CREATE INDEX IF NOT EXISTS ix_transactions_shop_timestamp ON transactions (shop_id, timestamp DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_daily_snapshots_shop_date ON daily_snapshots (shop_id, date DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_transaction_items_transaction ON transaction_items (transaction_id)",
+        "CREATE INDEX IF NOT EXISTS ix_transaction_items_product ON transaction_items (product_id)",
+        "CREATE INDEX IF NOT EXISTS ix_reviews_shop ON reviews (shop_id)",
+        "CREATE INDEX IF NOT EXISTS ix_hourly_snapshots_shop_date ON hourly_snapshots (shop_id, date)",
+        "CREATE INDEX IF NOT EXISTS ix_customers_shop ON customers (shop_id)",
+        "CREATE INDEX IF NOT EXISTS ix_alerts_shop_read ON alerts (shop_id, is_read)",
+        "CREATE INDEX IF NOT EXISTS ix_competitors_shop ON competitors (shop_id)",
+        "CREATE INDEX IF NOT EXISTS ix_expenses_shop ON expenses (shop_id)",
+    ]
+    with engine.begin() as conn:
+        for stmt in _INDEX_STMTS:
+            conn.execute(text(stmt))
+
     log.info("Schema sync complete")
 
 # Static files
@@ -79,7 +96,24 @@ app.include_router(pages.router)
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "version": "2.0.0"}
+    checks = {"api": "ok"}
+    # DB check
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "error"
+    # Redis check
+    try:
+        import redis as _redis
+        r = _redis.from_url("redis://redis:6379/0", socket_timeout=1)
+        r.ping()
+        checks["redis"] = "ok"
+    except Exception:
+        checks["redis"] = "unavailable"
+    overall = "ok" if checks.get("database") == "ok" else "degraded"
+    return {"status": overall, "version": "2.0.0", "checks": checks}
 
 
 @app.exception_handler(404)
