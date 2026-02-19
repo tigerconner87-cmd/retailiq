@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Your Dashboard — RetailIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg:#09090b;--bg1:#111114;--bg2:#1a1a1f;--bg3:#232329;--surface:#18181b;--border:#27272a;--border-light:#3f3f46;--text:#fafafa;--text2:#a1a1aa;--text3:#71717a;--primary:#6366f1;--primary-light:#818cf8;--primary-dark:#4f46e5;--accent:#06b6d4;--danger:#ef4444;--success:#10b981;--warning:#f59e0b;--radius:12px;--radius-sm:8px}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;overflow-x:hidden}
+    .bg-glow{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+    .bg-glow-1{width:500px;height:500px;background:rgba(99,102,241,.1);top:-150px;left:-100px}
+    .bg-glow-2{width:400px;height:400px;background:rgba(6,182,212,.08);bottom:-100px;right:-100px}
+    .onboarding-container{position:relative;z-index:1;width:100%;max-width:560px}
+    .logo-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:24px}
+    .logo-row svg rect{fill:url(#lg)}
+    .logo-text{font-weight:800;font-size:22px}
+
+    /* Progress */
+    .progress-bar{display:flex;gap:8px;margin-bottom:32px}
+    .progress-step{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .3s}
+    .progress-step.active{background:linear-gradient(90deg,var(--primary),var(--accent))}
+    .progress-step.done{background:var(--success)}
+    .step-label{text-align:center;font-size:13px;color:var(--text3);margin-bottom:8px}
+
+    /* Card */
+    .onboarding-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px 32px}
+    .step-title{font-size:22px;font-weight:800;margin-bottom:4px}
+    .step-sub{color:var(--text2);font-size:14px;margin-bottom:28px}
+    .step-panel{display:none}
+    .step-panel.active{display:block}
+
+    /* Form elements */
+    .form-group{margin-bottom:16px}
+    .form-group label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
+    .form-group input,.form-group select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+    .form-group input:focus,.form-group select:focus{border-color:var(--primary)}
+    .form-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+    .form-group select option{background:var(--bg1);color:var(--text)}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .form-hint{font-size:11px;color:var(--text3);margin-top:4px}
+
+    /* Radio group */
+    .radio-group{display:flex;flex-direction:column;gap:8px}
+    .radio-option{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);cursor:pointer;transition:.2s;font-size:14px}
+    .radio-option:hover{border-color:var(--border-light)}
+    .radio-option.selected{border-color:var(--primary);background:rgba(99,102,241,.04)}
+    .radio-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s}
+    .radio-option.selected .radio-dot{border-color:var(--primary)}
+    .radio-option.selected .radio-dot::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--primary)}
+
+    /* Competitor inputs */
+    .comp-inputs{display:flex;flex-direction:column;gap:8px}
+    .comp-input-row{display:flex;gap:8px;align-items:center}
+    .comp-input-row input{flex:1}
+    .comp-num{width:24px;height:24px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text3);flex-shrink:0}
+
+    /* Revenue input */
+    .revenue-input-wrap{position:relative}
+    .revenue-input-wrap .currency-sign{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-weight:600;font-size:14px}
+    .revenue-input-wrap input{padding-left:28px}
+
+    /* Buttons */
+    .btn-row{display:flex;gap:12px;margin-top:24px}
+    .btn{flex:1;padding:13px;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
+    .btn-primary:hover{box-shadow:0 4px 20px rgba(99,102,241,.4);transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+    .btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
+    .btn-ghost:hover{border-color:var(--border-light);color:var(--text)}
+    .btn-skip{background:transparent;border:none;color:var(--text3);font-size:13px;font-weight:500;cursor:pointer;text-align:center;width:100%;margin-top:12px;padding:8px}
+    .btn-skip:hover{color:var(--text2)}
+
+    .error-msg{color:var(--danger);font-size:13px;text-align:center;min-height:18px;margin-top:8px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:520px){.form-row{grid-template-columns:1fr}.onboarding-card{padding:28px 20px}}
+  </style>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="onboarding-container">
+    <div class="logo-row">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8"/>
+        <path d="M9 22V12l4 4 4-6 4 8v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+      </svg>
+      <span class="logo-text">RetailIQ</span>
+    </div>
+
+    <div class="step-label" id="stepLabel">Step 1 of 3</div>
+    <div class="progress-bar">
+      <div class="progress-step active" id="prog1"></div>
+      <div class="progress-step" id="prog2"></div>
+      <div class="progress-step" id="prog3"></div>
+    </div>
+
+    <div class="onboarding-card">
+      <!-- STEP 1 -->
+      <div class="step-panel active" id="step1">
+        <h2 class="step-title">Tell us about your shop</h2>
+        <p class="step-sub">This helps us customize your dashboard and generate accurate insights.</p>
+
+        <div class="form-group">
+          <label for="s1Name">Business Name</label>
+          <input type="text" id="s1Name" value="{{ shop.name if shop else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label for="s1Address">Business Address</label>
+          <input type="text" id="s1Address" placeholder="123 Main St, Portland, OR 97201" value="{{ shop.address or '' }}">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="s1Locations">How many locations?</label>
+            <select id="s1Locations">
+              <option value="1" selected>1 location</option>
+              <option value="2-3">2-3 locations</option>
+              <option value="4+">4+ locations</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="s1Revenue">Monthly revenue range</label>
+            <select id="s1Revenue">
+              <option value="under_10k">Under $10,000</option>
+              <option value="10k_25k" selected>$10,000 - $25,000</option>
+              <option value="25k_50k">$25,000 - $50,000</option>
+              <option value="50k_100k">$50,000 - $100,000</option>
+              <option value="100k_plus">$100,000+</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="s1POS">How do you currently track sales?</label>
+          <select id="s1POS">
+            <option value="shopify">Shopify</option>
+            <option value="square">Square</option>
+            <option value="clover">Clover</option>
+            <option value="spreadsheets">Spreadsheets</option>
+            <option value="pen_paper">Pen & Paper</option>
+            <option value="other" selected>Other</option>
+          </select>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="s1Next">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-panel" id="step2">
+        <h2 class="step-title">Find your competitors</h2>
+        <p class="step-sub">We'll start monitoring their reviews and activity immediately. You can add more later.</p>
+
+        <div class="comp-inputs">
+          <div class="comp-input-row"><span class="comp-num">1</span><input type="text" class="comp-name" placeholder="e.g. Bean & Brew Coffee"></div>
+          <div class="comp-input-row"><span class="comp-num">2</span><input type="text" class="comp-name" placeholder="e.g. Style Hub Clothing"></div>
+          <div class="comp-input-row"><span class="comp-num">3</span><input type="text" class="comp-name" placeholder="e.g. Fresh Finds Market"></div>
+          <div class="comp-input-row"><span class="comp-num">4</span><input type="text" class="comp-name" placeholder="Competitor name (optional)"></div>
+          <div class="comp-input-row"><span class="comp-num">5</span><input type="text" class="comp-name" placeholder="Competitor name (optional)"></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="s2Back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+          <button class="btn btn-primary" id="s2Next">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+        </div>
+        <button class="btn-skip" id="s2Skip">Skip for now</button>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-panel" id="step3">
+        <h2 class="step-title">Set your first goal</h2>
+        <p class="step-sub">What are you working toward this month? We'll track your progress automatically.</p>
+
+        <div class="form-group">
+          <label for="s3Target">Monthly revenue target</label>
+          <div class="revenue-input-wrap">
+            <span class="currency-sign">$</span>
+            <input type="number" id="s3Target" value="25000" min="1000" step="1000">
+          </div>
+          <div class="form-hint">We'll show your progress toward this goal on your dashboard.</div>
+        </div>
+
+        <div class="form-group">
+          <label>What's your biggest challenge?</label>
+          <div class="radio-group" id="challengeGroup">
+            <div class="radio-option" data-value="new_customers">
+              <div class="radio-dot"></div>
+              <span>Getting new customers</span>
+            </div>
+            <div class="radio-option" data-value="retention">
+              <div class="radio-dot"></div>
+              <span>Keeping customers coming back</span>
+            </div>
+            <div class="radio-option" data-value="marketing">
+              <div class="radio-dot"></div>
+              <span>Marketing my shop</span>
+            </div>
+            <div class="radio-option" data-value="competitors">
+              <div class="radio-dot"></div>
+              <span>Understanding my competitors</span>
+            </div>
+            <div class="radio-option selected" data-value="all">
+              <div class="radio-dot"></div>
+              <span>All of the above</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="s3Back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+          <button class="btn btn-primary" id="s3Launch">Launch My Dashboard <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+    let selectedChallenge = 'all';
+    const data = {step1: {}, step2: {competitors: []}, step3: {}};
+
+    function showStep(n) {
+      currentStep = n;
+      document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('step' + n).classList.add('active');
+      document.getElementById('stepLabel').textContent = 'Step ' + n + ' of 3';
+      for (let i = 1; i <= 3; i++) {
+        const el = document.getElementById('prog' + i);
+        el.classList.remove('active', 'done');
+        if (i < n) el.classList.add('done');
+        else if (i === n) el.classList.add('active');
+      }
+    }
+
+    // Radio group
+    document.querySelectorAll('.radio-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedChallenge = opt.dataset.value;
+      });
+    });
+
+    // Step 1 → 2
+    document.getElementById('s1Next').addEventListener('click', async () => {
+      data.step1 = {
+        business_name: document.getElementById('s1Name').value.trim(),
+        address: document.getElementById('s1Address').value.trim(),
+        locations: document.getElementById('s1Locations').value,
+        monthly_revenue: document.getElementById('s1Revenue').value,
+        pos_system: document.getElementById('s1POS').value,
+      };
+
+      // Save step 1
+      try {
+        await fetch('/api/dashboard/onboarding/step1', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data.step1),
+        });
+      } catch (e) {}
+
+      // Set revenue target default based on selection
+      const revMap = {under_10k: 8000, '10k_25k': 20000, '25k_50k': 40000, '50k_100k': 75000, '100k_plus': 125000};
+      document.getElementById('s3Target').value = revMap[data.step1.monthly_revenue] || 25000;
+
+      showStep(2);
+    });
+
+    // Step 2 → 3
+    document.getElementById('s2Next').addEventListener('click', () => {
+      data.step2.competitors = Array.from(document.querySelectorAll('.comp-name'))
+        .map(el => el.value.trim()).filter(v => v);
+      showStep(3);
+    });
+
+    document.getElementById('s2Skip').addEventListener('click', () => {
+      data.step2.competitors = [];
+      showStep(3);
+    });
+
+    // Back buttons
+    document.getElementById('s2Back').addEventListener('click', () => showStep(1));
+    document.getElementById('s3Back').addEventListener('click', () => showStep(2));
+
+    // Launch
+    document.getElementById('s3Launch').addEventListener('click', async () => {
+      const btn = document.getElementById('s3Launch');
+      const errEl = document.getElementById('errorMsg');
+      errEl.textContent = '';
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-block;width:18px;height:18px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></span> Setting up your dashboard...';
+
+      data.step3 = {
+        revenue_target: parseFloat(document.getElementById('s3Target').value) || 25000,
+        biggest_challenge: selectedChallenge,
+        competitors: data.step2.competitors || [],
+        monthly_revenue: (data.step1.monthly_revenue) || '10k_25k',
+      };
+
+      try {
+        // Save competitors
+        await fetch('/api/dashboard/onboarding/step2', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({competitors: data.step2.competitors}),
+        });
+
+        // Complete onboarding (generates data)
+        const res = await fetch('/api/dashboard/onboarding/complete', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data.step3),
+        });
+
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.detail || 'Setup failed');
+        }
+
+        // Redirect to dashboard with welcome flag
+        window.location.href = '/dashboard?welcome=1';
+      } catch (err) {
+        errEl.textContent = err.message || 'Something went wrong. Please try again.';
+        btn.disabled = false;
+        btn.innerHTML = 'Launch My Dashboard <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1503,4 +1503,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (active) loadSection(active.dataset.section);
   }, 60000);
 
+  // Welcome banner dismiss
+  const welcomeDismiss = $('#welcomeDismiss');
+  if (welcomeDismiss) {
+    welcomeDismiss.addEventListener('click', () => {
+      const banner = $('#welcomeBanner');
+      if (banner) {
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(-10px)';
+        banner.style.transition = 'opacity .3s, transform .3s';
+        setTimeout(() => banner.remove(), 300);
+      }
+      // Clean up URL
+      const url = new URL(window.location);
+      url.searchParams.delete('welcome');
+      window.history.replaceState({}, '', url.pathname);
+    });
+  }
+
 });

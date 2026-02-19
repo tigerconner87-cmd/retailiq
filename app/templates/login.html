@@ -3,154 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — RetailIQ</title>
+  <title>Log In — RetailIQ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-    :root{--bg:#09090b;--surface:#18181b;--border:#27272a;--text:#fafafa;--text2:#a1a1aa;--primary:#6366f1;--primary-dark:#4f46e5;--accent:#06b6d4;--danger:#ef4444;--radius:12px}
-    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .login-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px 32px}
-    .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;justify-content:center;margin-bottom:8px}
-    .logo svg rect{fill:url(#lg)}
-    .subtitle{text-align:center;color:var(--text2);font-size:14px;margin-bottom:32px}
+    :root{--bg:#09090b;--bg1:#111114;--surface:#18181b;--border:#27272a;--text:#fafafa;--text2:#a1a1aa;--text3:#71717a;--primary:#6366f1;--primary-light:#818cf8;--primary-dark:#4f46e5;--accent:#06b6d4;--danger:#ef4444;--success:#10b981;--radius:12px;--radius-sm:8px}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow-x:hidden}
+    .bg-glow{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+    .bg-glow-1{width:500px;height:500px;background:rgba(99,102,241,.1);top:-150px;left:-100px}
+    .bg-glow-2{width:400px;height:400px;background:rgba(6,182,212,.08);bottom:-100px;right:-100px}
+    .login-container{position:relative;z-index:1;width:100%;max-width:420px}
+    .logo-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:8px}
+    .logo-row svg rect{fill:url(#lg)}
+    .logo-text{font-weight:800;font-size:24px;letter-spacing:-.02em}
+    .tagline{text-align:center;color:var(--text2);font-size:15px;margin-bottom:32px}
+    .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px 32px}
+    .card-title{font-size:22px;font-weight:800;margin-bottom:4px;text-align:center}
+    .card-sub{text-align:center;color:var(--text2);font-size:14px;margin-bottom:28px}
     .form-group{margin-bottom:16px}
-    .form-group label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
-    .form-group input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;background:#111114;color:var(--text);font-size:15px;font-family:inherit;outline:none;transition:border-color .2s}
+    .form-group label{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
+    .form-group label a{color:var(--primary-light);font-weight:500;font-size:12px;text-decoration:none}
+    .form-group label a:hover{text-decoration:underline}
+    .form-group input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:15px;font-family:inherit;outline:none;transition:border-color .2s}
     .form-group input:focus{border-color:var(--primary)}
-    .error-msg{color:var(--danger);font-size:13px;margin-top:12px;text-align:center;min-height:20px}
-    .btn{width:100%;padding:13px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:box-shadow .2s,transform .2s;margin-top:8px}
+    .error-msg{color:var(--danger);font-size:13px;margin-bottom:12px;text-align:center;min-height:18px}
+    .btn{width:100%;padding:13px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;align-items:center;justify-content:center;gap:8px}
     .btn:hover{box-shadow:0 4px 20px rgba(99,102,241,.4);transform:translateY(-1px)}
     .btn:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
-    .footer-link{text-align:center;margin-top:24px;font-size:13px;color:var(--text2)}
-    .footer-link a{color:var(--primary);font-weight:600;text-decoration:none}
-    .footer-link a:hover{text-decoration:underline}
-    .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:28px}
-    .tab{flex:1;padding:10px;text-align:center;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
-    .tab.active{color:var(--primary);border-bottom-color:var(--primary)}
-    .register-fields{display:none}
-    .register-fields.show{display:block}
+    .divider{display:flex;align-items:center;gap:12px;margin:24px 0;color:var(--text3);font-size:12px}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+    .demo-btn{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .demo-btn:hover{border-color:var(--primary);color:var(--primary-light);background:rgba(99,102,241,.04)}
+    .footer-links{text-align:center;margin-top:24px;font-size:13px;color:var(--text2)}
+    .footer-links a{color:var(--primary-light);font-weight:600;text-decoration:none}
+    .footer-links a:hover{text-decoration:underline}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
-  <div class="login-card">
-    <div class="logo">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="login-container">
+    <div class="logo-row">
+      <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
         <rect width="32" height="32" rx="8"/>
         <path d="M9 22V12l4 4 4-6 4 8v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
       </svg>
-      <span>RetailIQ</span>
+      <span class="logo-text">RetailIQ</span>
     </div>
-    <p class="subtitle">Sign in to your dashboard</p>
+    <p class="tagline">Sales intelligence for retail shop owners</p>
 
-    <div class="tabs">
-      <div class="tab active" data-tab="login">Log In</div>
-      <div class="tab" data-tab="register">Sign Up</div>
+    <div class="login-card">
+      <h1 class="card-title">Welcome back</h1>
+      <p class="card-sub">Log in to your dashboard</p>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@yourshop.com" required>
+        </div>
+        <div class="form-group">
+          <label for="password"><span>Password</span> <a href="#">Forgot password?</a></label>
+          <input type="password" id="password" placeholder="Enter your password" required>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+        <button type="submit" class="btn" id="submitBtn">Log In</button>
+      </form>
+
+      <div class="divider">or</div>
+
+      <button class="demo-btn" id="demoBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Try the demo account
+      </button>
     </div>
 
-    <form id="authForm">
-      <div class="register-fields" id="registerFields">
-        <div class="form-group">
-          <label for="fullName">Full Name</label>
-          <input type="text" id="fullName" placeholder="Jane Smith">
-        </div>
-        <div class="form-group">
-          <label for="shopName">Shop Name</label>
-          <input type="text" id="shopName" placeholder="Jane's Boutique">
-        </div>
-        <div class="form-group">
-          <label for="posSystem">POS System</label>
-          <input type="text" id="posSystem" placeholder="square, shopify, or clover" value="square">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="you@yourshop.com" required>
-      </div>
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Enter your password" required>
-      </div>
-
-      <div class="error-msg" id="errorMsg"></div>
-      <button type="submit" class="btn" id="submitBtn">Log In</button>
-    </form>
-
-    <p class="footer-link">
-      <a href="/">Back to RetailIQ home</a>
+    <p class="footer-links">
+      Don't have an account? <a href="/register">Start free trial</a>
+      <br><br>
+      <a href="/" style="color:var(--text3);font-weight:400">Back to RetailIQ home</a>
     </p>
   </div>
 
   <script>
-    const tabs = document.querySelectorAll('.tab');
-    const registerFields = document.getElementById('registerFields');
-    const submitBtn = document.getElementById('submitBtn');
     const errorMsg = document.getElementById('errorMsg');
-    let mode = 'login';
+    const submitBtn = document.getElementById('submitBtn');
 
-    // Auto-switch to register if on /register
-    if (window.location.pathname === '/register') {
-      mode = 'register';
-      tabs.forEach(t => t.classList.remove('active'));
-      document.querySelector('[data-tab="register"]').classList.add('active');
-      registerFields.classList.add('show');
-      submitBtn.textContent = 'Create Account';
+    async function doLogin(email, password) {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email, password}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Login failed');
+      return data;
     }
 
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        mode = tab.dataset.tab;
-        registerFields.classList.toggle('show', mode === 'register');
-        submitBtn.textContent = mode === 'login' ? 'Log In' : 'Create Account';
-        errorMsg.textContent = '';
-      });
-    });
-
-    document.getElementById('authForm').addEventListener('submit', async (e) => {
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       errorMsg.textContent = '';
       submitBtn.disabled = true;
 
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
       try {
-        let res;
-        if (mode === 'login') {
-          res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, password}),
-          });
-        } else {
-          const fullName = document.getElementById('fullName').value;
-          const shopName = document.getElementById('shopName').value;
-          const posSystem = document.getElementById('posSystem').value || 'other';
-          res = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, password, full_name: fullName, shop_name: shopName, pos_system: posSystem}),
-          });
-        }
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          errorMsg.textContent = data.detail || 'Something went wrong';
-          submitBtn.disabled = false;
-          return;
-        }
-
+        const data = await doLogin(
+          document.getElementById('email').value.trim(),
+          document.getElementById('password').value,
+        );
         localStorage.setItem('retailiq_token', data.access_token);
         window.location.href = '/dashboard';
       } catch (err) {
-        errorMsg.textContent = 'Network error. Please try again.';
+        errorMsg.textContent = err.message || 'Network error. Please try again.';
         submitBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('demoBtn').addEventListener('click', async () => {
+      errorMsg.textContent = '';
+      const btn = document.getElementById('demoBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></span> Logging in...';
+
+      try {
+        const data = await doLogin('demo@retailiq.com', 'demo1234');
+        localStorage.setItem('retailiq_token', data.access_token);
+        window.location.href = '/dashboard';
+      } catch (err) {
+        errorMsg.textContent = 'Demo login failed. Please try manually.';
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Try the demo account';
       }
     });
   </script>

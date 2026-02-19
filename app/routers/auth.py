@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_current_user, get_db
 from app.models import User
 from app.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
-from app.services.auth import authenticate_user, create_access_token, register_user
+from app.services.auth import authenticate_user, create_access_token, register_user, get_trial_days_remaining
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -19,6 +19,8 @@ def register(body: RegisterRequest, response: Response, db: Session = Depends(ge
             full_name=body.full_name,
             shop_name=body.shop_name,
             pos_system=body.pos_system,
+            shop_type=body.shop_type,
+            city=body.city,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))

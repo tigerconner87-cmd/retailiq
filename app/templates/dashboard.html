@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=6">
+  <link rel="stylesheet" href="/static/dashboard.css?v=7">
 </head>
 <body>
   <!-- Sidebar -->
@@ -97,6 +97,29 @@
         </button>
       </div>
     </header>
+
+    {% if show_trial_banner %}
+    <div class="trial-banner" id="trialBanner">
+      <div class="trial-banner-left">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Free Trial: <strong>{{ trial_days }} day{{ 's' if trial_days != 1 else '' }}</strong> remaining</span>
+      </div>
+      <a href="/dashboard/upgrade" class="trial-banner-btn">Upgrade Now</a>
+    </div>
+    {% endif %}
+
+    {% if welcome %}
+    <div class="welcome-banner" id="welcomeBanner">
+      <div class="welcome-banner-content">
+        <div class="welcome-emoji">&#127881;</div>
+        <div>
+          <div class="welcome-title">Welcome to RetailIQ!</div>
+          <div class="welcome-sub">Your dashboard is ready with 30 days of starter data. Explore your analytics below.</div>
+        </div>
+      </div>
+      <button class="welcome-dismiss" id="welcomeDismiss">&times;</button>
+    </div>
+    {% endif %}
 
     <div class="content" id="content">
       <!-- Overview Section -->
@@ -478,7 +501,8 @@
   <script>
     window.__ACTIVE_SECTION = "{{ active_section|default('overview') }}";
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
+    window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=6"></script>
+  <script src="/static/dashboard.js?v=7"></script>
 </body>
 </html>

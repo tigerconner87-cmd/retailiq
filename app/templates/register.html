@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Start Free Trial — RetailIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg:#09090b;--bg1:#111114;--bg2:#1a1a1f;--surface:#18181b;--border:#27272a;--border-light:#3f3f46;--text:#fafafa;--text2:#a1a1aa;--text3:#71717a;--primary:#6366f1;--primary-light:#818cf8;--primary-dark:#4f46e5;--accent:#06b6d4;--danger:#ef4444;--success:#10b981;--warning:#f59e0b;--radius:12px;--radius-sm:8px}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow-x:hidden}
+    .bg-glow{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+    .bg-glow-1{width:500px;height:500px;background:rgba(99,102,241,.1);top:-150px;left:-100px}
+    .bg-glow-2{width:400px;height:400px;background:rgba(6,182,212,.08);bottom:-100px;right:-100px}
+    .register-container{position:relative;z-index:1;width:100%;max-width:480px}
+    .logo-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:8px}
+    .logo-row svg rect{fill:url(#lg)}
+    .logo-text{font-weight:800;font-size:24px;letter-spacing:-.02em}
+    .tagline{text-align:center;color:var(--text2);font-size:15px;margin-bottom:32px}
+    .register-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px 32px}
+    .card-title{font-size:22px;font-weight:800;margin-bottom:4px;text-align:center}
+    .card-sub{text-align:center;color:var(--text2);font-size:14px;margin-bottom:28px}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .form-group{margin-bottom:16px}
+    .form-group label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
+    .form-group input,.form-group select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+    .form-group input:focus,.form-group select:focus{border-color:var(--primary)}
+    .form-group input.error,.form-group select.error{border-color:var(--danger)}
+    .form-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+    .form-group select option{background:var(--bg1);color:var(--text)}
+    .field-error{font-size:11px;color:var(--danger);margin-top:4px;min-height:0}
+    .password-wrap{position:relative}
+    .password-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;padding:4px}
+    .password-toggle:hover{color:var(--text2)}
+    .strength-bar{height:4px;border-radius:2px;background:var(--border);margin-top:8px;overflow:hidden}
+    .strength-fill{height:100%;border-radius:2px;transition:width .3s,background .3s;width:0}
+    .strength-text{font-size:11px;color:var(--text3);margin-top:4px}
+    .error-msg{color:var(--danger);font-size:13px;margin-bottom:12px;text-align:center;min-height:18px}
+    .btn{width:100%;padding:13px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn:hover{box-shadow:0 4px 20px rgba(99,102,241,.4);transform:translateY(-1px)}
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+    .no-cc{text-align:center;font-size:12px;color:var(--text3);margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px}
+    .no-cc svg{color:var(--success)}
+    .footer-links{text-align:center;margin-top:24px;font-size:13px;color:var(--text2)}
+    .footer-links a{color:var(--primary-light);font-weight:600;text-decoration:none}
+    .footer-links a:hover{text-decoration:underline}
+    @media(max-width:520px){.form-row{grid-template-columns:1fr}.register-card{padding:28px 20px}}
+  </style>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="register-container">
+    <div class="logo-row">
+      <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8"/>
+        <path d="M9 22V12l4 4 4-6 4 8v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+      </svg>
+      <span class="logo-text">RetailIQ</span>
+    </div>
+    <p class="tagline">Sales intelligence for retail shop owners</p>
+
+    <div class="register-card">
+      <h1 class="card-title">Start your free 14-day trial</h1>
+      <p class="card-sub">No credit card required. Setup takes 5 minutes.</p>
+
+      <form id="registerForm" novalidate>
+        <div class="form-group">
+          <label for="fullName">Full Name *</label>
+          <input type="text" id="fullName" placeholder="Jane Smith" required>
+          <div class="field-error" id="fullNameError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email *</label>
+          <input type="email" id="email" placeholder="you@yourshop.com" required>
+          <div class="field-error" id="emailError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password *</label>
+          <div class="password-wrap">
+            <input type="password" id="password" placeholder="At least 8 characters" required>
+            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+          <div class="strength-text" id="strengthText"></div>
+          <div class="field-error" id="passwordError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="shopName">Shop Name *</label>
+          <input type="text" id="shopName" placeholder="Jane's Boutique" required>
+          <div class="field-error" id="shopNameError"></div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shopType">Shop Type</label>
+            <select id="shopType">
+              <option value="boutique">Boutique</option>
+              <option value="clothing">Clothing Store</option>
+              <option value="gift_shop">Gift Shop</option>
+              <option value="home_goods">Home Goods</option>
+              <option value="shoe_store">Shoe Store</option>
+              <option value="jewelry">Jewelry</option>
+              <option value="general_retail" selected>General Retail</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="city">City / Location</label>
+            <input type="text" id="city" placeholder="Portland, OR">
+          </div>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+        <button type="submit" class="btn" id="submitBtn">
+          Start Free 14-Day Trial
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </form>
+
+      <div class="no-cc">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        No credit card required
+      </div>
+    </div>
+
+    <p class="footer-links">
+      Already have an account? <a href="/login">Log in</a>
+      <br><br>
+      <a href="/" style="color:var(--text3);font-weight:400">Back to RetailIQ home</a>
+    </p>
+  </div>
+
+  <script>
+    // Password toggle
+    const pwInput = document.getElementById('password');
+    const pwToggle = document.getElementById('passwordToggle');
+    pwToggle.addEventListener('click', () => {
+      const show = pwInput.type === 'password';
+      pwInput.type = show ? 'text' : 'password';
+    });
+
+    // Password strength
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthText = document.getElementById('strengthText');
+    pwInput.addEventListener('input', () => {
+      const pw = pwInput.value;
+      let score = 0;
+      if (pw.length >= 8) score++;
+      if (pw.length >= 12) score++;
+      if (/[A-Z]/.test(pw)) score++;
+      if (/[0-9]/.test(pw)) score++;
+      if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+      const levels = [
+        {w:'0%', c:'var(--border)', t:''},
+        {w:'20%', c:'var(--danger)', t:'Weak'},
+        {w:'40%', c:'var(--warning)', t:'Fair'},
+        {w:'60%', c:'var(--warning)', t:'Good'},
+        {w:'80%', c:'var(--success)', t:'Strong'},
+        {w:'100%', c:'var(--success)', t:'Very strong'},
+      ];
+      const l = levels[Math.min(score, 5)];
+      strengthFill.style.width = l.w;
+      strengthFill.style.background = l.c;
+      strengthText.textContent = l.t;
+      strengthText.style.color = l.c;
+    });
+
+    // Validation
+    function validate() {
+      let ok = true;
+      const fields = [
+        {id:'fullName', err:'fullNameError', msg:'Full name is required'},
+        {id:'email', err:'emailError', msg:'Valid email is required'},
+        {id:'password', err:'passwordError', msg:'Password must be at least 8 characters'},
+        {id:'shopName', err:'shopNameError', msg:'Shop name is required'},
+      ];
+
+      fields.forEach(f => {
+        const el = document.getElementById(f.id);
+        const errEl = document.getElementById(f.err);
+        el.classList.remove('error');
+        errEl.textContent = '';
+
+        if (!el.value.trim()) {
+          el.classList.add('error');
+          errEl.textContent = f.msg;
+          ok = false;
+        }
+      });
+
+      const emailEl = document.getElementById('email');
+      if (emailEl.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value)) {
+        emailEl.classList.add('error');
+        document.getElementById('emailError').textContent = 'Please enter a valid email';
+        ok = false;
+      }
+
+      if (pwInput.value && pwInput.value.length < 8) {
+        pwInput.classList.add('error');
+        document.getElementById('passwordError').textContent = 'Password must be at least 8 characters';
+        ok = false;
+      }
+
+      return ok;
+    }
+
+    // Submit
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('errorMsg').textContent = '';
+
+      if (!validate()) return;
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-block;width:18px;height:18px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></span> Creating account...';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            email: document.getElementById('email').value.trim(),
+            password: pwInput.value,
+            full_name: document.getElementById('fullName').value.trim(),
+            shop_name: document.getElementById('shopName').value.trim(),
+            shop_type: document.getElementById('shopType').value,
+            city: document.getElementById('city').value.trim(),
+            pos_system: 'other',
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById('errorMsg').textContent = data.detail || 'Something went wrong';
+          btn.disabled = false;
+          btn.innerHTML = 'Start Free 14-Day Trial <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+          return;
+        }
+
+        localStorage.setItem('retailiq_token', data.access_token);
+        window.location.href = '/dashboard/onboarding';
+      } catch (err) {
+        document.getElementById('errorMsg').textContent = 'Network error. Please try again.';
+        btn.disabled = false;
+        btn.innerHTML = 'Start Free 14-Day Trial';
+      }
+    });
+  </script>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</body>
+</html>

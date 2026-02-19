@@ -24,6 +24,9 @@ from app.schemas import (
     GoalProgressResponse,
     MarketingInsights,
     OnboardingUpdate,
+    OnboardingStep1,
+    OnboardingStep2,
+    OnboardingStep3,
     ProductsResponse,
     RecommendationsResponse,
     ReviewsResponse,
@@ -590,6 +593,53 @@ def update_onboarding(body: OnboardingUpdate, user: User = Depends(get_current_u
         user.onboarding_completed = True
     db.commit()
     return {"detail": "Onboarding updated", "step": user.onboarding_step, "completed": user.onboarding_completed}
+
+
+@router.post("/onboarding/step1")
+def onboarding_step1(body: OnboardingStep1, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if shop:
+        shop.name = body.business_name or shop.name
+        shop.address = body.address or shop.address
+        shop.pos_system = body.pos_system or shop.pos_system
+    user.onboarding_step = 1
+    db.commit()
+    return {"detail": "Step 1 saved"}
+
+
+@router.post("/onboarding/step2")
+def onboarding_step2(body: OnboardingStep2, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Just save step progress; competitors are created in /complete
+    user.onboarding_step = 2
+    db.commit()
+    return {"detail": "Step 2 saved"}
+
+
+@router.post("/onboarding/complete")
+def onboarding_complete(body: OnboardingStep3, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.onboarding_data import generate_starter_data
+
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(status_code=400, detail="No shop found for user")
+
+    # Check if data was already generated (idempotency)
+    from app.models import Transaction
+    existing = db.query(Transaction).filter(Transaction.shop_id == shop.id).first()
+    if not existing:
+        generate_starter_data(
+            db=db,
+            shop=shop,
+            monthly_revenue=body.monthly_revenue,
+            revenue_target=body.revenue_target,
+            competitor_names=body.competitors,
+            biggest_challenge=body.biggest_challenge,
+        )
+
+    user.onboarding_step = 3
+    user.onboarding_completed = True
+    db.commit()
+    return {"detail": "Onboarding complete", "redirect": "/dashboard?welcome=1"}
 
 
 # ── Export ───────────────────────────────────────────────────────────────────

@@ -27,6 +27,8 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     onboarding_completed = Column(Boolean, default=False)
     onboarding_step = Column(Integer, default=0)
+    trial_start_date = Column(DateTime)
+    trial_end_date = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shops = relationship("Shop", back_populates="owner", cascade="all, delete-orphan")
@@ -44,6 +46,7 @@ class Shop(Base):
     pos_credentials = Column(Text)
     google_place_id = Column(String(255))
     address = Column(String(500))
+    city = Column(String(255))
     category = Column(String(100), default="retail")
     store_size_sqft = Column(Integer)
     staff_count = Column(Integer, default=1)

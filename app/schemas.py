@@ -12,6 +12,8 @@ class RegisterRequest(BaseModel):
     password: str
     full_name: str
     shop_name: str
+    shop_type: str = "general_retail"
+    city: str = ""
     pos_system: str = "other"
 
 
@@ -33,6 +35,8 @@ class UserResponse(BaseModel):
     is_active: bool
     onboarding_completed: bool
     onboarding_step: int
+    trial_start_date: Optional[datetime] = None
+    trial_end_date: Optional[datetime] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -390,6 +394,25 @@ class ShopSettingsUpdate(BaseModel):
 class OnboardingUpdate(BaseModel):
     step: int
     completed: bool = False
+
+
+class OnboardingStep1(BaseModel):
+    business_name: str
+    address: str = ""
+    locations: str = "1"
+    monthly_revenue: str = "10k_25k"
+    pos_system: str = "other"
+
+
+class OnboardingStep2(BaseModel):
+    competitors: list[str] = []
+
+
+class OnboardingStep3(BaseModel):
+    revenue_target: float = 25000
+    biggest_challenge: str = "all"
+    competitors: list[str] = []
+    monthly_revenue: str = "10k_25k"
 
 
 # ── Export ────────────────────────────────────────────────────────────────────

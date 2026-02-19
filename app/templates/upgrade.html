@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upgrade Your Plan — RetailIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{--bg:#09090b;--bg1:#111114;--bg2:#1a1a1f;--bg3:#232329;--surface:#18181b;--border:#27272a;--border-light:#3f3f46;--text:#fafafa;--text2:#a1a1aa;--text3:#71717a;--primary:#6366f1;--primary-light:#818cf8;--primary-dark:#4f46e5;--accent:#06b6d4;--danger:#ef4444;--success:#10b981;--warning:#f59e0b;--radius:12px;--radius-sm:8px}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .bg-glow{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+    .bg-glow-1{width:500px;height:500px;background:rgba(99,102,241,.1);top:-150px;left:-100px}
+    .bg-glow-2{width:400px;height:400px;background:rgba(6,182,212,.08);bottom:-100px;right:-100px}
+    .upgrade-container{position:relative;z-index:1;width:100%;max-width:800px;text-align:center}
+    .logo-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:32px}
+    .logo-text{font-weight:800;font-size:22px}
+    .lock-icon{width:64px;height:64px;margin:0 auto 20px;background:rgba(239,68,68,.1);border-radius:50%;display:flex;align-items:center;justify-content:center}
+    h1{font-size:28px;font-weight:800;margin-bottom:8px}
+    .subtitle{color:var(--text2);font-size:16px;margin-bottom:40px}
+    .plans-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
+    .plan-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:32px 24px;text-align:left;transition:.2s}
+    .plan-card.featured{border-color:var(--primary);box-shadow:0 0 40px rgba(99,102,241,.15)}
+    .plan-badge{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 10px;border-radius:50px;margin-bottom:16px}
+    .plan-card:not(.featured) .plan-badge{background:var(--bg3);color:var(--text2)}
+    .plan-card.featured .plan-badge{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
+    .plan-name{font-size:20px;font-weight:800;margin-bottom:4px}
+    .plan-price{font-size:32px;font-weight:900;margin-bottom:4px}
+    .plan-price span{font-size:14px;font-weight:500;color:var(--text3)}
+    .plan-desc{font-size:13px;color:var(--text3);margin-bottom:20px}
+    .plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+    .plan-features li{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2)}
+    .plan-features li svg{flex-shrink:0;color:var(--success)}
+    .plan-btn{width:100%;padding:13px;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;transition:.2s}
+    .plan-btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
+    .plan-btn-primary:hover{box-shadow:0 4px 20px rgba(99,102,241,.4);transform:translateY(-1px)}
+    .plan-btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
+    .plan-btn-outline:hover{border-color:var(--border-light);color:var(--text)}
+    .back-link{color:var(--text3);font-size:14px;transition:.2s}
+    .back-link:hover{color:var(--text2)}
+    @media(max-width:640px){.plans-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="upgrade-container">
+    <div class="logo-row">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="url(#lg)"/>
+        <path d="M9 22V12l4 4 4-6 4 8v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+      </svg>
+      <span class="logo-text">RetailIQ</span>
+    </div>
+
+    <div class="lock-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+
+    <h1>Your free trial has ended</h1>
+    <p class="subtitle">Upgrade to keep using RetailIQ's powerful analytics and grow your business.</p>
+
+    <div class="plans-grid">
+      <div class="plan-card">
+        <span class="plan-badge">Starter</span>
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$29<span>/month</span></div>
+        <div class="plan-desc">Perfect for single-location shops</div>
+        <ul class="plan-features">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Sales & revenue analytics</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Customer insights</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Product performance</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Basic alerts</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> CSV export</li>
+        </ul>
+        <button class="plan-btn plan-btn-outline" onclick="alert('Payment integration coming soon!')">Choose Starter</button>
+      </div>
+
+      <div class="plan-card featured">
+        <span class="plan-badge">Most Popular</span>
+        <div class="plan-name">Growth</div>
+        <div class="plan-price">$79<span>/month</span></div>
+        <div class="plan-desc">Everything you need to outpace competitors</div>
+        <ul class="plan-features">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Everything in Starter</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> AI recommendations</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Competitor intelligence</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Marketing content engine</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Goals & strategy planner</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Priority support</li>
+        </ul>
+        <button class="plan-btn plan-btn-primary" onclick="alert('Payment integration coming soon!')">Choose Growth</button>
+      </div>
+    </div>
+
+    <a href="/login" class="back-link">Back to login</a>
+  </div>
+</body>
+</html>

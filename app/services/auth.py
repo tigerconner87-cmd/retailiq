@@ -24,15 +24,27 @@ def create_access_token(user_id: str) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def register_user(db: Session, email: str, password: str, full_name: str, shop_name: str, pos_system: str) -> User:
+def register_user(
+    db: Session,
+    email: str,
+    password: str,
+    full_name: str,
+    shop_name: str,
+    pos_system: str,
+    shop_type: str = "general_retail",
+    city: str = "",
+) -> User:
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise ValueError("Email already registered")
 
+    now = datetime.utcnow()
     user = User(
         email=email,
         hashed_password=hash_password(password),
         full_name=full_name,
+        trial_start_date=now,
+        trial_end_date=now + timedelta(days=14),
     )
     db.add(user)
     db.flush()
@@ -41,6 +53,8 @@ def register_user(db: Session, email: str, password: str, full_name: str, shop_n
         user_id=user.id,
         name=shop_name,
         pos_system=pos_system,
+        category=shop_type,
+        city=city,
     )
     db.add(shop)
     db.commit()
@@ -53,3 +67,22 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user
+
+
+def is_trial_active(user: User) -> bool:
+    """Check if user's trial is still active. Demo account never expires."""
+    if user.email == "demo@retailiq.com":
+        return True
+    if not user.trial_end_date:
+        return True  # No trial set = legacy user, treat as active
+    return datetime.utcnow() < user.trial_end_date
+
+
+def get_trial_days_remaining(user: User) -> int:
+    """Get number of days remaining in trial."""
+    if user.email == "demo@retailiq.com":
+        return 99  # Demo never expires
+    if not user.trial_end_date:
+        return 99
+    delta = user.trial_end_date - datetime.utcnow()
+    return max(0, delta.days)

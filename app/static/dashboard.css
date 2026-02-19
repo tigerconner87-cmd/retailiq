@@ -511,3 +511,20 @@ a{color:inherit;text-decoration:none}
   .mke-calendar-grid{grid-template-columns:1fr 1fr}
   .mke-panel-header{flex-direction:column}
 }
+
+/* ── Trial Banner ── */
+.trial-banner{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:linear-gradient(90deg,rgba(245,158,11,.12),rgba(239,68,68,.08));border-bottom:1px solid rgba(245,158,11,.2)}
+.trial-banner-left{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--warning)}
+.trial-banner-left strong{color:var(--text);font-weight:700}
+.trial-banner-btn{padding:6px 16px;border-radius:6px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-size:13px;font-weight:700;text-decoration:none;transition:.2s}
+.trial-banner-btn:hover{box-shadow:0 2px 12px rgba(99,102,241,.4);transform:translateY(-1px)}
+
+/* ── Welcome Banner ── */
+.welcome-banner{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;margin:16px 24px 0;background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(6,182,212,.08));border:1px solid rgba(99,102,241,.2);border-radius:var(--radius);animation:welcomeIn .5s ease-out}
+.welcome-banner-content{display:flex;align-items:center;gap:14px}
+.welcome-emoji{font-size:28px}
+.welcome-title{font-size:16px;font-weight:700;margin-bottom:2px}
+.welcome-sub{font-size:13px;color:var(--text2)}
+.welcome-dismiss{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:.2s}
+.welcome-dismiss:hover{color:var(--text);background:var(--bg-2)}
+@keyframes welcomeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
