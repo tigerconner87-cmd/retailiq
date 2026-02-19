@@ -287,6 +287,62 @@ document.addEventListener('DOMContentLoaded', () => {
     mTbody.innerHTML = data.monthly_totals.map(m =>
       `<tr><td>${m.month}</td><td>${fmt(m.revenue)}</td><td>${fmtInt(m.transactions)}</td></tr>`
     ).join('');
+
+    loadBreakEvenAnalysis();
+  }
+
+  async function loadBreakEvenAnalysis() {
+    const body = $('#breakEvenBody');
+    if (!body) return;
+    body.innerHTML = '<div class="ai-loading">Calculating break-even metrics...</div>';
+    const data = await api('/api/dashboard/financial/break-even');
+    if (!data || !data.status) {
+      body.innerHTML = '<p class="text-muted">Break-even data unavailable.</p>';
+      return;
+    }
+    const pos = data.status.position;
+    const statusColors = {above: 'var(--success)', below: 'var(--danger)', at: 'var(--warning)'};
+    const statusLabels = {above: 'Above Break-Even', below: 'Below Break-Even', at: 'At Break-Even'};
+    const monthlyRev = data.current.daily_avg_revenue * 30;
+    body.innerHTML = `
+      <div class="be-status" style="border-left:4px solid ${statusColors[pos] || 'var(--text3)'}">
+        <div class="be-status-label" style="color:${statusColors[pos]}">${statusLabels[pos] || pos}</div>
+        <div class="be-status-msg">Daily surplus of ${fmt(data.status.daily_surplus)} — estimated ${fmt(data.status.monthly_profit_estimate)}/month profit with ${data.status.cushion_pct}% cushion above break-even.</div>
+      </div>
+      <div class="be-metrics">
+        <div class="be-metric">
+          <span class="be-metric-label">Monthly Revenue</span>
+          <span class="be-metric-value">${fmt(monthlyRev)}</span>
+        </div>
+        <div class="be-metric">
+          <span class="be-metric-label">Monthly Fixed Costs</span>
+          <span class="be-metric-value">${fmt(data.costs.total_fixed_monthly)}</span>
+        </div>
+        <div class="be-metric">
+          <span class="be-metric-label">Break-Even Revenue</span>
+          <span class="be-metric-value">${fmt(data.break_even.monthly_revenue)}</span>
+        </div>
+        <div class="be-metric">
+          <span class="be-metric-label">Avg Transaction</span>
+          <span class="be-metric-value">${fmt(data.current.avg_transaction_value)}</span>
+        </div>
+      </div>
+      ${data.scenarios && data.scenarios.length > 0 ? `
+        <h4 class="be-scenarios-title">What-If Scenarios</h4>
+        <div class="be-scenarios">
+          ${data.scenarios.map(s => `
+            <div class="be-scenario">
+              <div class="be-scenario-name">${esc(s.name)}</div>
+              <div class="be-scenario-detail">${esc(s.description)}</div>
+              <div class="be-scenario-detail">Break-even: <strong>${s.break_even_tx} transactions/day</strong> (${s.change_from_current > 0 ? '+' : ''}${s.change_from_current})</div>
+              <div class="be-scenario-result ${s.change_from_current <= 0 ? 'profitable' : 'unprofitable'}">
+                ${esc(s.insight)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    `;
   }
 
   async function loadProducts() {
@@ -309,6 +365,46 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML = data.top_products.map((p, i) =>
       `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.category || '-')}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td><td>${fmt(p.avg_price)}</td><td>${p.margin != null ? p.margin + '%' : '-'}</td></tr>`
     ).join('');
+
+    loadProductRecommendations();
+  }
+
+  async function loadProductRecommendations() {
+    const body = $('#productRecsBody');
+    if (!body) return;
+    body.innerHTML = '<div class="ai-loading">Analyzing product data...</div>';
+    const data = await api('/api/dashboard/products/recommendations');
+    if (!data || !data.recommendations || data.recommendations.length === 0) {
+      body.innerHTML = '<p class="text-muted">No recommendations available yet.</p>';
+      return;
+    }
+    const priorityColor = {high: 'var(--danger)', medium: 'var(--warning)', low: 'var(--success)'};
+    const typeLabels = Object.entries(data.summary || {}).filter(([,v]) => v > 0).map(([k,v]) => `${v} ${k}`).join(' · ');
+    body.innerHTML = `
+      <div class="prod-recs-summary">
+        <span class="prod-recs-count">${data.total} recommendations</span>
+        <span class="prod-recs-types">${typeLabels}</span>
+      </div>
+      <div class="prod-recs-grid">
+        ${data.recommendations.map(r => {
+          let icon = r.icon;
+          if (/^[0-9A-Fa-f]{4,5}$/.test(icon)) icon = String.fromCodePoint(parseInt(icon, 16));
+          return `
+          <div class="prod-rec-card">
+            <div class="prod-rec-header">
+              <span class="prod-rec-icon">${icon}</span>
+              <span class="prod-rec-title">${esc(r.title)}</span>
+              <span class="prod-rec-priority" style="color:${priorityColor[r.priority] || 'var(--text3)'}">${r.priority}</span>
+            </div>
+            <p class="prod-rec-desc">${esc(r.description)}</p>
+            <div class="prod-rec-footer">
+              <span class="prod-rec-action">${esc(r.action)}</span>
+              ${r.estimated_impact ? `<span class="prod-rec-impact">${esc(r.estimated_impact)}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
   }
 
   async function loadCustomers() {

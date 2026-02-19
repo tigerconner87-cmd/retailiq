@@ -1411,3 +1411,279 @@ def _generate_fallback_actions(db: Session, shop_id: str) -> list[dict]:
         })
 
     return actions[:5]
+
+
+# ── Product Recommendations ──────────────────────────────────────────────
+
+
+def get_product_recommendations(db: Session, shop_id: str) -> dict:
+    """Generate product recommendations: bundling, markdown, timing, restocking."""
+    today = _today()
+    latest_tx = db.query(func.max(func.date(Transaction.timestamp))).filter(
+        Transaction.shop_id == shop_id,
+    ).scalar()
+    if latest_tx and latest_tx < today - timedelta(days=1):
+        today = latest_tx
+
+    since_30 = datetime.combine(today - timedelta(days=30), datetime.min.time())
+    since_14 = datetime.combine(today - timedelta(days=14), datetime.min.time())
+    since_60 = datetime.combine(today - timedelta(days=60), datetime.min.time())
+    since_prev = datetime.combine(today - timedelta(days=60), datetime.min.time())
+
+    # Get all products with sales data
+    products = (
+        db.query(
+            Product.id, Product.name, Product.category, Product.price, Product.cost,
+            Product.stock_quantity,
+            func.coalesce(func.sum(TransactionItem.total), 0).label("revenue_30d"),
+            func.coalesce(func.sum(TransactionItem.quantity), 0).label("units_30d"),
+        )
+        .outerjoin(TransactionItem, TransactionItem.product_id == Product.id)
+        .outerjoin(Transaction, and_(
+            Transaction.id == TransactionItem.transaction_id,
+            Transaction.timestamp >= since_30,
+        ))
+        .filter(Product.shop_id == shop_id, Product.is_active.is_(True))
+        .group_by(Product.id, Product.name, Product.category, Product.price, Product.cost, Product.stock_quantity)
+        .all()
+    )
+
+    recommendations = []
+
+    # 1. Bundling suggestions (from co-purchase)
+    bundles = _get_bundling_suggestions(db, shop_id, since_30)
+    for b in bundles[:3]:
+        recommendations.append({
+            "type": "bundle",
+            "icon": "1F381",
+            "title": f"Bundle: {b['product_a']} + {b['product_b']}",
+            "description": f"Purchased together {b['co_purchase_count']} times in the last 30 days. Create a bundle discount to increase AOV.",
+            "action": f"Create a bundle display and offer 10% off when bought together.",
+            "priority": "high" if b["co_purchase_count"] >= 5 else "medium",
+            "estimated_impact": f"+${b['co_purchase_count'] * 8} monthly revenue from bundle upsells",
+        })
+
+    # 2. Markdown suggestions (slow movers with stock)
+    for p in products:
+        units = int(p.units_30d)
+        stock = p.stock_quantity or 0
+        if units <= 1 and stock >= 5 and float(p.price) > 10:
+            discount_price = round(float(p.price) * 0.75, 2)
+            recommendations.append({
+                "type": "markdown",
+                "icon": "1F3F7",
+                "title": f"Mark down {p.name}",
+                "description": f"Only {units} sold in 30 days with {stock} in stock. Consider marking down from ${float(p.price):.0f} to ${discount_price:.0f}.",
+                "action": f"25% markdown to ${discount_price:.0f} to clear inventory.",
+                "priority": "medium",
+                "estimated_impact": f"Clear ${stock * discount_price:.0f} in stagnant inventory",
+            })
+            if len([r for r in recommendations if r["type"] == "markdown"]) >= 3:
+                break
+
+    # 3. Timing recommendations (best day/time to promote each top product)
+    top_prods = sorted(products, key=lambda p: float(p.revenue_30d), reverse=True)[:5]
+    for p in top_prods:
+        if int(p.units_30d) < 3:
+            continue
+        # Find when this product sells most
+        dow_sales = (
+            db.query(
+                extract("dow", Transaction.timestamp).label("dow"),
+                func.sum(TransactionItem.quantity).label("qty"),
+            )
+            .join(TransactionItem, TransactionItem.transaction_id == Transaction.id)
+            .filter(
+                TransactionItem.product_id == p.id,
+                Transaction.shop_id == shop_id,
+                Transaction.timestamp >= since_30,
+            )
+            .group_by("dow")
+            .order_by(func.sum(TransactionItem.quantity).desc())
+            .first()
+        )
+        if dow_sales:
+            day_names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+            best_dow = int(dow_sales.dow)
+            day_name = day_names[best_dow] if 0 <= best_dow < 7 else "weekdays"
+            recommendations.append({
+                "type": "timing",
+                "icon": "23F0",
+                "title": f"Promote {p.name} on {day_name}s",
+                "description": f"{p.name} sells best on {day_name}s ({int(dow_sales.qty)} units). Schedule social posts and feature it on that day.",
+                "action": f"Create a '{day_name} Special' featuring {p.name}.",
+                "priority": "medium",
+                "estimated_impact": f"+15% sales for {p.name} with targeted timing",
+            })
+            if len([r for r in recommendations if r["type"] == "timing"]) >= 3:
+                break
+
+    # 4. Restocking alerts
+    for p in products:
+        units = int(p.units_30d)
+        stock = p.stock_quantity or 0
+        if units >= 10 and stock <= 5 and stock > 0:
+            days_left = round(stock / (units / 30), 1) if units > 0 else 99
+            recommendations.append({
+                "type": "restock",
+                "icon": "1F4E6",
+                "title": f"Restock {p.name} soon",
+                "description": f"Only {stock} left in stock, selling ~{units} per month. Estimated {days_left} days until stockout.",
+                "action": f"Order more {p.name} immediately to avoid missed sales.",
+                "priority": "high",
+                "estimated_impact": f"Prevent ~${float(p.price) * units * 0.5:.0f} in lost sales",
+            })
+            if len([r for r in recommendations if r["type"] == "restock"]) >= 3:
+                break
+
+    # Sort: high priority first
+    priority_order = {"high": 0, "medium": 1, "low": 2}
+    recommendations.sort(key=lambda r: priority_order.get(r["priority"], 3))
+
+    return {
+        "recommendations": recommendations,
+        "total": len(recommendations),
+        "summary": {
+            "bundles": len([r for r in recommendations if r["type"] == "bundle"]),
+            "markdowns": len([r for r in recommendations if r["type"] == "markdown"]),
+            "timing": len([r for r in recommendations if r["type"] == "timing"]),
+            "restock": len([r for r in recommendations if r["type"] == "restock"]),
+        },
+    }
+
+
+# ── Break-Even Analysis ──────────────────────────────────────────────────
+
+
+def get_break_even_analysis(db: Session, shop_id: str) -> dict:
+    """Detailed break-even analysis with scenario modeling."""
+    today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
+
+    thirty_ago = today - timedelta(days=30)
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    settings = db.query(ShopSettings).filter(ShopSettings.shop_id == shop_id).first()
+
+    # Revenue data
+    rev_30d = float(
+        db.query(func.coalesce(func.sum(DailySnapshot.total_revenue), 0))
+        .filter(DailySnapshot.shop_id == shop_id, DailySnapshot.date >= thirty_ago)
+        .scalar() or 0
+    )
+
+    # Transaction metrics
+    avg_tx = float(
+        db.query(func.avg(Transaction.total))
+        .filter(Transaction.shop_id == shop_id, func.date(Transaction.timestamp) >= thirty_ago)
+        .scalar() or 50
+    )
+    daily_tx = float(
+        db.query(func.avg(DailySnapshot.transaction_count))
+        .filter(DailySnapshot.shop_id == shop_id, DailySnapshot.date >= thirty_ago)
+        .scalar() or 40
+    )
+
+    # Costs
+    cogs_pct = (settings.avg_cogs_percentage / 100) if settings else 0.38
+    monthly_rent = float(settings.monthly_rent) if settings else 2500
+    staff_rate = float(settings.staff_hourly_rate) if settings else 17.50
+    staff_count = shop.staff_count if shop else 2
+
+    # Calculate fixed & variable costs
+    expenses = db.query(Expense).filter(Expense.shop_id == shop_id, Expense.is_monthly.is_(True)).all()
+    total_fixed_monthly = sum(float(e.amount) for e in expenses) if expenses else monthly_rent + (staff_rate * 8 * 26 * staff_count)
+    daily_fixed = total_fixed_monthly / 30
+
+    # Margin per transaction
+    margin_per_tx = avg_tx * (1 - cogs_pct)
+
+    # Break-even calculations
+    break_even_daily_tx = math.ceil(daily_fixed / margin_per_tx) if margin_per_tx > 0 else 0
+    break_even_daily_rev = round(daily_fixed / (1 - cogs_pct), 2) if cogs_pct < 1 else 0
+    break_even_monthly_rev = round(break_even_daily_rev * 30, 2)
+
+    # Current status
+    daily_avg_rev = rev_30d / 30 if rev_30d > 0 else 0
+    surplus = round(daily_avg_rev - break_even_daily_rev, 2)
+    status = "above" if surplus > 0 else ("at" if abs(surplus) < 50 else "below")
+    cushion_pct = round((surplus / break_even_daily_rev) * 100, 1) if break_even_daily_rev > 0 else 0
+
+    # Scenario modeling
+    scenarios = []
+    # Scenario 1: 10% price increase
+    new_avg_tx_10 = avg_tx * 1.1
+    new_margin_10 = new_avg_tx_10 * (1 - cogs_pct)
+    be_tx_10 = math.ceil(daily_fixed / new_margin_10) if new_margin_10 > 0 else 0
+    scenarios.append({
+        "name": "10% Price Increase",
+        "description": "If you raise prices by 10%, how many fewer sales do you need?",
+        "break_even_tx": be_tx_10,
+        "change_from_current": be_tx_10 - break_even_daily_tx,
+        "insight": f"You'd need {be_tx_10} daily transactions instead of {break_even_daily_tx} — {break_even_daily_tx - be_tx_10} fewer sales needed.",
+    })
+
+    # Scenario 2: Reduce COGS by 5%
+    new_cogs = max(0, cogs_pct - 0.05)
+    new_margin_cogs = avg_tx * (1 - new_cogs)
+    be_tx_cogs = math.ceil(daily_fixed / new_margin_cogs) if new_margin_cogs > 0 else 0
+    scenarios.append({
+        "name": "5% Lower COGS",
+        "description": "Negotiate better supplier prices to reduce cost of goods by 5%.",
+        "break_even_tx": be_tx_cogs,
+        "change_from_current": be_tx_cogs - break_even_daily_tx,
+        "insight": f"Lower COGS saves ${daily_fixed * 0.05 * 30:,.0f}/month and reduces break-even to {be_tx_cogs} daily transactions.",
+    })
+
+    # Scenario 3: 20% revenue increase
+    new_daily_rev = daily_avg_rev * 1.2
+    new_daily_profit = new_daily_rev * (1 - cogs_pct) - daily_fixed
+    scenarios.append({
+        "name": "20% Revenue Growth",
+        "description": "What if you increase revenue by 20% through marketing?",
+        "break_even_tx": break_even_daily_tx,
+        "change_from_current": 0,
+        "insight": f"At 20% growth, daily profit jumps to ${new_daily_profit:,.0f} (${new_daily_profit * 30:,.0f}/month). Invest in marketing!",
+    })
+
+    # Scenario 4: Add 1 staff member
+    extra_staff_cost = staff_rate * 8 * 26
+    new_fixed = total_fixed_monthly + extra_staff_cost
+    new_be_rev = round(new_fixed / 30 / (1 - cogs_pct), 2) if cogs_pct < 1 else 0
+    new_be_tx = math.ceil((new_fixed / 30) / margin_per_tx) if margin_per_tx > 0 else 0
+    scenarios.append({
+        "name": "Hire 1 More Staff",
+        "description": f"Adding another employee at ${staff_rate}/hr adds ${extra_staff_cost:,.0f}/month in costs.",
+        "break_even_tx": new_be_tx,
+        "change_from_current": new_be_tx - break_even_daily_tx,
+        "insight": f"Break-even rises to {new_be_tx} daily transactions (+{new_be_tx - break_even_daily_tx}). Only hire if traffic justifies it.",
+    })
+
+    return {
+        "current": {
+            "daily_avg_revenue": round(daily_avg_rev, 2),
+            "daily_avg_transactions": round(daily_tx, 1),
+            "avg_transaction_value": round(avg_tx, 2),
+            "margin_per_transaction": round(margin_per_tx, 2),
+            "cogs_percentage": round(cogs_pct * 100, 1),
+        },
+        "costs": {
+            "total_fixed_monthly": round(total_fixed_monthly, 2),
+            "daily_fixed": round(daily_fixed, 2),
+        },
+        "break_even": {
+            "daily_transactions": break_even_daily_tx,
+            "daily_revenue": break_even_daily_rev,
+            "monthly_revenue": break_even_monthly_rev,
+        },
+        "status": {
+            "position": status,
+            "daily_surplus": surplus,
+            "cushion_pct": cushion_pct,
+            "monthly_profit_estimate": round(surplus * 30, 2),
+        },
+        "scenarios": scenarios,
+    }

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=13">
+  <link rel="stylesheet" href="/static/dashboard.css?v=14">
 </head>
 <body>
   <!-- Sidebar -->
@@ -374,6 +374,13 @@
             <div class="card-body"><table class="data-table" id="monthlyTable"><thead><tr><th>Month</th><th>Revenue</th><th>Transactions</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
+        <!-- Break-Even Analysis -->
+        <div class="card mt" id="breakEvenCard">
+          <div class="card-header"><h3>Break-Even Analysis</h3><span class="ai-tag">AI-powered</span></div>
+          <div class="card-body" id="breakEvenBody">
+            <div class="ai-loading">Calculating break-even metrics...</div>
+          </div>
+        </div>
       </section>
 
       <!-- Products Section -->
@@ -391,6 +398,13 @@
               <thead><tr><th>#</th><th>Product</th><th>Category</th><th>Revenue</th><th>Units Sold</th><th>Avg Price</th><th>Margin</th></tr></thead>
               <tbody></tbody>
             </table>
+          </div>
+        </div>
+        <!-- AI Product Recommendations -->
+        <div class="card mt" id="productRecsCard">
+          <div class="card-header"><h3>AI Product Recommendations</h3><span class="ai-tag">AI-powered</span></div>
+          <div class="card-body" id="productRecsBody">
+            <div class="ai-loading">Analyzing product data...</div>
           </div>
         </div>
       </section>
@@ -910,6 +924,6 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=13"></script>
+  <script src="/static/dashboard.js?v=14"></script>
 </body>
 </html>

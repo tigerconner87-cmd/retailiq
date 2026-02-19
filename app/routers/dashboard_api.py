@@ -58,6 +58,8 @@ from app.services.analytics import (
     get_sales_velocity,
     get_shop_for_user,
     get_summary,
+    get_product_recommendations,
+    get_break_even_analysis,
 )
 from app.services.reviews import get_competitors_summary, get_reviews_summary
 from app.services.ai_recommendations import generate_recommendations
@@ -172,6 +174,18 @@ def dashboard_peak_hours(days: int = 30, user: User = Depends(get_current_user),
 def dashboard_products(days: int = 30, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     shop = _get_shop(db, user)
     return get_product_rankings(db, shop.id, days=days)
+
+
+@router.get("/products/recommendations")
+def dashboard_product_recommendations(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_product_recommendations(db, shop.id)
+
+
+@router.get("/financial/break-even")
+def dashboard_break_even(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_break_even_analysis(db, shop.id)
 
 
 # ── Customers ────────────────────────────────────────────────────────────────

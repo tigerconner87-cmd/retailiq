@@ -971,4 +971,40 @@ a{color:inherit;text-decoration:none}
   .grid-2{grid-template-columns:1fr}
   .last-updated{display:none}
   .breadcrumb{display:none}
+  .prod-recs-grid{grid-template-columns:1fr}
+  .be-metrics{grid-template-columns:repeat(2,1fr)}
+  .be-scenarios{grid-template-columns:1fr}
 }
+
+/* ── Product Recommendations ── */
+.prod-recs-summary{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.prod-recs-count{font-size:15px;font-weight:700}
+.prod-recs-types{font-size:12px;color:var(--text3)}
+.prod-recs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.prod-rec-card{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;transition:border-color .2s}
+.prod-rec-card:hover{border-color:var(--primary)}
+.prod-rec-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.prod-rec-icon{font-size:18px}
+.prod-rec-title{font-size:13px;font-weight:600;flex:1}
+.prod-rec-priority{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.prod-rec-desc{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px}
+.prod-rec-footer{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.prod-rec-action{font-size:11px;font-weight:600;color:var(--primary-light);background:rgba(99,102,241,.08);padding:4px 10px;border-radius:20px}
+.prod-rec-impact{font-size:11px;color:var(--success);font-weight:600}
+
+/* ── Break-Even Analysis ── */
+.be-status{padding:14px 18px;background:var(--bg-2);border-radius:var(--radius-sm);margin-bottom:16px}
+.be-status-label{font-size:14px;font-weight:700;margin-bottom:4px}
+.be-status-msg{font-size:12px;color:var(--text2);line-height:1.5}
+.be-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.be-metric{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center}
+.be-metric-label{display:block;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.be-metric-value{display:block;font-size:18px;font-weight:700}
+.be-scenarios-title{font-size:14px;font-weight:700;margin-bottom:12px}
+.be-scenarios{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.be-scenario{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px}
+.be-scenario-name{font-size:13px;font-weight:600;margin-bottom:8px}
+.be-scenario-detail{font-size:12px;color:var(--text2);margin-bottom:4px}
+.be-scenario-result{font-size:12px;font-weight:600;margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm)}
+.be-scenario-result.profitable{background:rgba(16,185,129,.1);color:var(--success)}
+.be-scenario-result.unprofitable{background:rgba(239,68,68,.1);color:var(--danger)}
