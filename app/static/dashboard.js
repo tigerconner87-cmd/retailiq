@@ -900,7 +900,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (productGoals.product_goals.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">No product goals set</td></tr>';
       } else {
-        tbody.innerHTML = productGoals.product_goals.map(pg => `
+        tbody.innerHTML = productGoals.product_goals.map(pg => {
+          const actualPct = pg.actual_pct != null ? pg.actual_pct : pg.progress_pct;
+          const isOver = actualPct > 100;
+          const isLow = actualPct < 50;
+          const barClass = isOver ? 'overperforming' : isLow ? 'underperforming' : '';
+          const pctLabel = isOver
+            ? `<span class="progress-mini-pct overperforming">${actualPct}%</span><span class="progress-over-label">Overperforming!</span>`
+            : `<span class="progress-mini-pct ${isLow ? 'underperforming' : ''}">${actualPct}%</span>`;
+          return `
           <tr>
             <td>${esc(pg.product_name)}</td>
             <td>${esc(pg.product_category || '-')}</td>
@@ -908,12 +916,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <td>${fmtInt(pg.units_sold)}</td>
             <td>
               <div class="progress-mini">
-                <div class="progress-mini-bar"><div class="progress-mini-fill" style="width:${pg.progress_pct}%"></div></div>
-                <span class="progress-mini-pct">${pg.progress_pct}%</span>
+                <div class="progress-mini-bar"><div class="progress-mini-fill ${barClass}" style="width:${pg.progress_pct}%"></div></div>
+                ${pctLabel}
               </div>
             </td>
           </tr>
-        `).join('');
+        `}).join('');
       }
     }
 

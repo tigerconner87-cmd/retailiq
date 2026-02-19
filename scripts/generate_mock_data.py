@@ -920,18 +920,21 @@ def main():
         db.add(g)
 
     # Past goals (for history) — compute status from actual snapshot data
+    # Use a mix of achievable and stretch targets to produce realistic met/missed
     db.flush()
+    from calendar import monthrange as _mr
+    rev_targets_by_month = [170000, 200000, 220000]  # m=1,2,3 — some above actual
+    tx_targets_by_month = [1800, 3000, 2000]          # some achievable, some stretch
     for m in range(1, 4):
         past_start = today.replace(day=1) - timedelta(days=30 * m)
         past_month = past_start.strftime("%Y-%m")
         yr, mo = int(past_month[:4]), int(past_month[5:7])
-        from calendar import monthrange
-        _, last_day = monthrange(yr, mo)
+        _, last_day = _mr(yr, mo)
         month_start = date(yr, mo, 1)
         month_end = date(yr, mo, last_day)
 
-        # Query actual revenue for that month
-        rev_target = 36000 + m * 1000
+        # Revenue goal — compare actual to target
+        rev_target = rev_targets_by_month[m - 1]
         actual_rev = sum(
             float(d["revenue"]) for dt, d in daily_data.items()
             if month_start <= dt <= month_end
@@ -945,8 +948,8 @@ def main():
         )
         db.add(g)
 
-        # Query actual transactions for that month
-        tx_target = 1400
+        # Transaction goal — compare actual to target
+        tx_target = tx_targets_by_month[m - 1]
         actual_tx = sum(
             d["tx_count"] for dt, d in daily_data.items()
             if month_start <= dt <= month_end
@@ -960,12 +963,13 @@ def main():
         )
         db.add(g2)
 
-    # Product goals for top products
-    for p in product_objs[:8]:
+    # Product goals for top products — mix of achievable and stretch targets
+    product_targets = [150, 250, 80, 200, 120, 300, 60, 100]
+    for i, p in enumerate(product_objs[:8]):
         pg = ProductGoal(
             id=nid(), shop_id=shop.id,
             product_id=p.id,
-            target_units=random.randint(30, 80),
+            target_units=product_targets[i],
             period=current_month,
         )
         db.add(pg)

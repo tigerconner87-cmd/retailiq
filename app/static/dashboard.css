@@ -372,7 +372,12 @@ a{color:inherit;text-decoration:none}
 .progress-mini{display:flex;align-items:center;gap:8px}
 .progress-mini-bar{flex:1;height:6px;background:var(--bg-3);border-radius:3px;overflow:hidden;min-width:60px}
 .progress-mini-fill{height:100%;border-radius:3px;background:var(--primary)}
-.progress-mini-pct{font-size:11px;font-weight:700;color:var(--text2);width:38px;text-align:right}
+.progress-mini-pct{font-size:11px;font-weight:700;color:var(--text2);min-width:38px;text-align:right}
+.progress-mini-pct.overperforming{color:var(--success)}
+.progress-mini-pct.underperforming{color:var(--danger)}
+.progress-mini-fill.overperforming{background:var(--success)}
+.progress-mini-fill.underperforming{background:var(--danger)}
+.progress-over-label{font-size:10px;font-weight:600;color:var(--success);white-space:nowrap;margin-left:4px}
 
 /* ── Responsive ── */
 @media(max-width:1024px){

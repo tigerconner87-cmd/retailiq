@@ -115,6 +115,7 @@ def get_product_goals(db: Session, shop_id: str) -> dict:
             "target_units": pg.target_units,
             "units_sold": int(sold),
             "progress_pct": min(100, pct),
+            "actual_pct": pct,
             "period": pg.period,
         })
 
