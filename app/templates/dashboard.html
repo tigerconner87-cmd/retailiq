@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=10">
+  <link rel="stylesheet" href="/static/dashboard.css?v=11">
 </head>
 <body>
   <!-- Sidebar -->
@@ -152,6 +152,26 @@
       <button class="welcome-dismiss" id="welcomeDismiss">&times;</button>
     </div>
     {% endif %}
+
+    <!-- Quick Stats Bar -->
+    <div class="quick-stats-bar" id="quickStatsBar">
+      <div class="quick-stat-item">
+        <span class="quick-stat-icon">&#128202;</span>
+        <span>Today: <strong id="qsRevenue">--</strong></span>
+      </div>
+      <div class="quick-stat-item">
+        <span class="quick-stat-icon">&#128230;</span>
+        <span><strong id="qsTransactions">--</strong> transactions</span>
+      </div>
+      <div class="quick-stat-item">
+        <span class="quick-stat-icon">&#128101;</span>
+        <span><strong id="qsCustomers">--</strong> customers</span>
+      </div>
+      <div class="quick-stat-item">
+        <span class="quick-stat-icon">&#11088;</span>
+        <span><strong id="qsRating">--</strong> rating</span>
+      </div>
+    </div>
 
     <div class="content" id="content">
       <!-- Daily Briefing Section -->
@@ -725,6 +745,30 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=10"></script>
+  <script src="/static/dashboard.js?v=11"></script>
+  <script>
+    // Inline fallback: ensure notification bell works even if dashboard.js has issues
+    (function() {
+      var bellBtn = document.getElementById('notifBellBtn');
+      var dropdown = document.getElementById('notifDropdown');
+      if (!bellBtn || !dropdown) return;
+      // Check if handler is already attached by dashboard.js (it adds .show toggling)
+      // We add a second handler that will be harmless if dashboard.js already set it up
+      bellBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (dropdown.classList.contains('show')) {
+          dropdown.classList.remove('show');
+        } else {
+          dropdown.classList.add('show');
+        }
+      });
+      document.addEventListener('click', function(e) {
+        var wrap = document.getElementById('notifBellWrap');
+        if (wrap && !wrap.contains(e.target)) {
+          dropdown.classList.remove('show');
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

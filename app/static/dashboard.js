@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideRefresh();
 
     // Detect empty shop (truly no data — no customers and no revenue at all)
-    const isEmpty = summary && !summary.has_data;
+    const isEmpty = summary && summary.has_data === false;
 
     if (summary) {
       $('#kpiRevenue').textContent = fmt(summary.revenue_today);
@@ -2052,10 +2052,36 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOverview();
   }
 
+  // ── Quick Stats Bar ──
+  async function loadQuickStats() {
+    try {
+      const [summary, reviews] = await Promise.all([
+        api('/api/dashboard/summary'),
+        api('/api/dashboard/reviews'),
+      ]);
+      if (summary) {
+        const qsRev = $('#qsRevenue');
+        const qsTx = $('#qsTransactions');
+        const qsCust = $('#qsCustomers');
+        if (qsRev) qsRev.textContent = fmt(summary.revenue_today);
+        if (qsTx) qsTx.textContent = fmtInt(summary.transactions_today);
+        if (qsCust) qsCust.textContent = fmtInt(summary.total_customers);
+      }
+      if (reviews && reviews.avg_rating) {
+        const qsRating = $('#qsRating');
+        if (qsRating) qsRating.textContent = reviews.avg_rating;
+      }
+    } catch (e) {
+      console.warn('[RetailIQ] Quick stats error:', e);
+    }
+  }
+  loadQuickStats();
+
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {
     const active = $('.nav-item.active');
     if (active) loadSection(active.dataset.section);
+    loadQuickStats();
   }, 60000);
 
   // Welcome banner dismiss

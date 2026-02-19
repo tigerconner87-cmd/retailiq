@@ -63,6 +63,9 @@ class SummaryResponse(BaseModel):
     new_customers_today: int
     estimated_profit_today: float
     daily_foot_traffic_estimate: int
+    has_data: bool = True
+    effective_date: Optional[str] = None
+    data_is_stale: bool = False
 
 
 # ── Sales ─────────────────────────────────────────────────────────────────────
