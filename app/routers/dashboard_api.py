@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_current_user, get_db
 from app.models import (
     User, Alert, Shop, Recommendation, ShopSettings, Expense,
-    RevenueGoal, MarketingCampaign,
+    RevenueGoal, MarketingCampaign, PlanInterest, WinBackCampaign,
 )
 from app.schemas import (
     AlertsResponse,
@@ -27,6 +27,7 @@ from app.schemas import (
     OnboardingStep1,
     OnboardingStep2,
     OnboardingStep3,
+    PlanInterestRequest,
     ProductsResponse,
     RecommendationsResponse,
     ReviewsResponse,
@@ -640,6 +641,142 @@ def onboarding_complete(body: OnboardingStep3, user: User = Depends(get_current_
     user.onboarding_completed = True
     db.commit()
     return {"detail": "Onboarding complete", "redirect": "/dashboard?welcome=1"}
+
+
+# ── Daily Briefing ──────────────────────────────────────────────────────────
+
+@router.get("/briefing")
+def dashboard_briefing(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.briefing import get_briefing
+    shop = _get_shop(db, user)
+    return get_briefing(db, shop.id, user.full_name)
+
+
+# ── Notifications (Bell) ───────────────────────────────────────────────────
+
+@router.get("/notifications")
+def dashboard_notifications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    alerts = (
+        db.query(Alert)
+        .filter(Alert.shop_id == shop.id)
+        .order_by(Alert.created_at.desc())
+        .limit(15)
+        .all()
+    )
+    unread = sum(1 for a in alerts if not a.is_read)
+
+    severity_icons = {
+        "critical": "🔴", "warning": "🟡", "info": "🔵", "success": "🟢",
+    }
+    category_icons = {
+        "revenue": "💰", "customers": "👥", "reviews": "⭐", "competitors": "🔍",
+        "inventory": "📦", "goals": "🎯", "general": "📋",
+    }
+
+    return {
+        "notifications": [
+            {
+                "id": a.id,
+                "icon": category_icons.get(a.category or "general", "📋"),
+                "severity_icon": severity_icons.get(a.severity, "🔵"),
+                "title": a.title,
+                "message": (a.message or "")[:120],
+                "category": a.category or "general",
+                "severity": a.severity,
+                "is_read": a.is_read,
+                "time_ago": _time_ago(a.created_at),
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in alerts[:10]
+        ],
+        "unread_count": unread,
+    }
+
+
+@router.post("/notifications/read-all")
+def mark_all_notifications_read(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    db.query(Alert).filter(Alert.shop_id == shop.id, Alert.is_read.is_(False)).update({"is_read": True})
+    db.commit()
+    return {"detail": "All notifications marked as read"}
+
+
+def _time_ago(dt):
+    if not dt:
+        return "unknown"
+    diff = datetime.utcnow() - dt
+    seconds = int(diff.total_seconds())
+    if seconds < 60:
+        return "just now"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h ago"
+    days = hours // 24
+    if days < 7:
+        return f"{days}d ago"
+    weeks = days // 7
+    if weeks < 4:
+        return f"{weeks}w ago"
+    return dt.strftime("%b %d")
+
+
+# ── Plan Interest (Upgrade Page) ──────────────────────────────────────────
+
+@router.post("/plan-interest")
+def submit_plan_interest(body: PlanInterestRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    pi = PlanInterest(
+        user_id=user.id,
+        email=body.email,
+        plan=body.plan,
+        billing_cycle=body.billing_cycle,
+    )
+    db.add(pi)
+    db.commit()
+    return {"detail": "Interest recorded", "plan": body.plan}
+
+
+# ── Win-Back Campaigns ────────────────────────────────────────────────────
+
+@router.get("/winback/overview")
+def winback_overview(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.winback import get_winback_overview
+    shop = _get_shop(db, user)
+    return get_winback_overview(db, shop.id)
+
+
+@router.get("/winback/at-risk")
+def winback_at_risk(
+    sort_by: str = Query("days_since"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.services.winback import get_at_risk_customers
+    shop = _get_shop(db, user)
+    return get_at_risk_customers(db, shop.id, sort_by)
+
+
+@router.get("/winback/templates")
+def winback_templates(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.winback import get_campaign_templates
+    return get_campaign_templates()
+
+
+@router.get("/winback/history")
+def winback_history(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.winback import get_campaign_history
+    shop = _get_shop(db, user)
+    return get_campaign_history(db, shop.id)
+
+
+@router.get("/winback/settings")
+def winback_settings(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.winback import get_automation_settings
+    shop = _get_shop(db, user)
+    return get_automation_settings(db, shop.id)
 
 
 # ── Export ───────────────────────────────────────────────────────────────────

@@ -88,13 +88,14 @@ def upgrade_page(
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    # If trial is still active, redirect to dashboard
-    if is_trial_active(user):
-        return RedirectResponse(url="/dashboard", status_code=302)
+    trial_days = get_trial_days_remaining(user)
+    trial_active = is_trial_active(user)
 
     return templates.TemplateResponse("upgrade.html", {
         "request": request,
         "user": user,
+        "trial_active": trial_active,
+        "trial_days": trial_days,
     })
 
 
@@ -153,6 +154,54 @@ def competitors_page(
         "user": user,
         "shop": shop,
         "active_section": "competitors",
+        "trial_days": trial_days,
+        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
+    })
+
+
+@router.get("/dashboard/briefing", response_class=HTMLResponse)
+def briefing_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_optional),
+):
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if not user.onboarding_completed and user.email != "demo@retailiq.com":
+        return RedirectResponse(url="/dashboard/onboarding", status_code=302)
+    if not is_trial_active(user):
+        return RedirectResponse(url="/dashboard/upgrade", status_code=302)
+    shop = get_shop_for_user(db, user.id)
+    trial_days = get_trial_days_remaining(user)
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user,
+        "shop": shop,
+        "active_section": "briefing",
+        "trial_days": trial_days,
+        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
+    })
+
+
+@router.get("/dashboard/win-back", response_class=HTMLResponse)
+def winback_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_optional),
+):
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if not user.onboarding_completed and user.email != "demo@retailiq.com":
+        return RedirectResponse(url="/dashboard/onboarding", status_code=302)
+    if not is_trial_active(user):
+        return RedirectResponse(url="/dashboard/upgrade", status_code=302)
+    shop = get_shop_for_user(db, user.id)
+    trial_days = get_trial_days_remaining(user)
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user,
+        "shop": shop,
+        "active_section": "winback",
         "trial_days": trial_days,
         "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
     })

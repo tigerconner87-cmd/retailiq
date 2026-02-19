@@ -540,3 +540,135 @@ a{color:inherit;text-decoration:none}
 .empty-state-inline{padding:24px;text-align:center;color:var(--text3);font-size:14px}
 .comp-gathering{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--warning)}
 .comp-gathering svg{flex-shrink:0}
+
+/* ── Sidebar Upgrade Link ── */
+.sidebar-upgrade-link{display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;border:1px solid rgba(99,102,241,.25);border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(6,182,212,.05));color:var(--primary-light);font-size:13px;font-weight:600;transition:.2s;text-decoration:none}
+.sidebar-upgrade-link:hover{background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(6,182,212,.08));border-color:var(--primary);transform:translateY(-1px)}
+.sidebar-upgrade-link svg{color:var(--warning)}
+
+/* ── Notification Bell ── */
+.notif-bell-wrap{position:relative}
+.notif-bell-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;transition:.2s;position:relative}
+.notif-bell-btn:hover{border-color:var(--primary);color:var(--primary-light)}
+.notif-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:50px;min-width:16px;text-align:center;line-height:14px}
+.notif-dropdown{position:absolute;top:calc(100% + 8px);right:0;width:360px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 10px 40px rgba(0,0,0,.3);z-index:150;display:none;animation:notifSlide .2s ease}
+.notif-dropdown.show{display:block}
+@keyframes notifSlide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.notif-dropdown-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.notif-dropdown-title{font-size:14px;font-weight:700}
+.notif-mark-all{background:none;border:none;color:var(--primary-light);font-size:12px;font-weight:600;cursor:pointer;transition:.2s}
+.notif-mark-all:hover{color:var(--primary)}
+.notif-dropdown-body{max-height:380px;overflow-y:auto}
+.notif-item{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);transition:.15s;cursor:default}
+.notif-item:hover{background:var(--bg-2)}
+.notif-item.unread{background:rgba(99,102,241,.04)}
+.notif-item-icon{font-size:18px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--bg-2)}
+.notif-item-content{flex:1;min-width:0}
+.notif-item-title{font-size:13px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-item-msg{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-item-time{font-size:11px;color:var(--text3);flex-shrink:0;margin-top:2px}
+.notif-dropdown-footer{padding:10px 16px;border-top:1px solid var(--border);text-align:center}
+.notif-dropdown-footer a{font-size:13px;font-weight:600;color:var(--primary-light);text-decoration:none;transition:.2s}
+.notif-dropdown-footer a:hover{color:var(--primary)}
+
+/* ── Daily Briefing ── */
+.briefing-hero{padding:32px 0 24px;text-align:center}
+.briefing-greeting{font-size:28px;font-weight:900;margin-bottom:4px;background:linear-gradient(135deg,var(--primary-light),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.briefing-date{font-size:14px;color:var(--text3)}
+.briefing-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.briefing-section-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
+.briefing-section-title svg{color:var(--primary-light)}
+.briefing-numbers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.briefing-num-card{padding:16px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.briefing-num-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.briefing-num-value{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.briefing-num-change{font-size:12px;font-weight:600;margin-top:4px}
+.briefing-num-change.up{color:var(--success)}
+.briefing-num-change.down{color:var(--danger)}
+.briefing-num-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.briefing-goal-bar{height:6px;background:var(--bg-3);border-radius:3px;overflow:hidden;margin-top:8px}
+.briefing-goal-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width .6s ease}
+.briefing-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.briefing-todos{display:flex;flex-direction:column;gap:8px}
+.briefing-todo{display:flex;gap:14px;padding:14px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid var(--border);transition:.2s}
+.briefing-todo:hover{border-color:var(--primary);transform:translateX(4px)}
+.briefing-todo-priority{width:6px;border-radius:3px;flex-shrink:0}
+.briefing-todo-priority.high{background:var(--danger)}
+.briefing-todo-priority.medium{background:var(--warning)}
+.briefing-todo-priority.low{background:var(--success)}
+.briefing-todo-content{flex:1;min-width:0}
+.briefing-todo-title{font-size:14px;font-weight:700;margin-bottom:2px}
+.briefing-todo-desc{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px}
+.briefing-todo-meta{display:flex;align-items:center;gap:10px}
+.briefing-todo-impact{font-size:11px;font-weight:600;padding:2px 8px;border-radius:50px;background:rgba(99,102,241,.1);color:var(--primary-light)}
+.briefing-todo-link{font-size:12px;font-weight:600;color:var(--primary-light);cursor:pointer;transition:.2s;background:none;border:1px solid var(--primary);border-radius:var(--radius-sm);padding:4px 12px}
+.briefing-todo-link:hover{background:rgba(99,102,241,.1)}
+.briefing-comp-list{display:flex;flex-direction:column;gap:8px}
+.briefing-comp-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.briefing-comp-name{font-size:13px;font-weight:600}
+.briefing-comp-stats{display:flex;gap:12px;font-size:12px;color:var(--text3)}
+.briefing-comp-stats .neg{color:var(--danger);font-weight:600}
+.briefing-pulse{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.briefing-pulse-item{padding:14px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid var(--border);text-align:center}
+.briefing-pulse-value{font-size:22px;font-weight:800;margin-bottom:2px}
+.briefing-pulse-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.briefing-pulse-item.atrisk .briefing-pulse-value{color:var(--warning)}
+.briefing-pulse-item.vip .briefing-pulse-value{color:var(--primary-light)}
+.briefing-marketing-card{padding:16px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.briefing-mkt-title{font-size:14px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.briefing-mkt-platform{font-size:10px;font-weight:700;padding:2px 8px;border-radius:50px;text-transform:uppercase;background:rgba(99,102,241,.1);color:var(--primary-light)}
+.briefing-mkt-content{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+.briefing-mkt-copy{padding:6px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.2s}
+.briefing-mkt-copy:hover{border-color:var(--primary);color:var(--primary-light)}
+
+/* ── Win-Back Campaigns ── */
+.wb-overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.wb-metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;transition:.2s}
+.wb-metric-card:hover{transform:translateY(-2px)}
+.wb-metric-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.wb-metric-icon.active-icon{background:rgba(16,185,129,.12);color:var(--success)}
+.wb-metric-icon.atrisk-icon{background:rgba(245,158,11,.12);color:var(--warning)}
+.wb-metric-icon.lost-icon{background:rgba(239,68,68,.12);color:var(--danger)}
+.wb-metric-icon.wonback-icon{background:rgba(99,102,241,.12);color:var(--primary-light)}
+.wb-metric-value{font-size:28px;font-weight:800;margin-bottom:2px}
+.wb-metric-label{font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.wb-table-wrap{overflow-x:auto}
+.wb-sort-select{padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;cursor:pointer}
+.wb-templates{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.wb-template-card{padding:20px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);transition:.2s}
+.wb-template-card:hover{border-color:var(--primary);transform:translateY(-2px)}
+.wb-template-emoji{font-size:28px;margin-bottom:10px}
+.wb-template-name{font-size:15px;font-weight:700;margin-bottom:4px}
+.wb-template-desc{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:12px}
+.wb-template-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.wb-template-tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:50px;background:var(--bg-3);color:var(--text3)}
+.wb-template-tag.discount{background:rgba(16,185,129,.12);color:var(--success)}
+.wb-template-preview{font-size:11px;color:var(--text3);padding:10px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);line-height:1.5;max-height:80px;overflow:hidden;margin-bottom:10px}
+.wb-template-btn{width:100%;padding:8px;border:1px solid var(--primary);border-radius:var(--radius-sm);background:rgba(99,102,241,.08);color:var(--primary-light);font-size:12px;font-weight:600;cursor:pointer;transition:.2s}
+.wb-template-btn:hover{background:rgba(99,102,241,.15)}
+.wb-automation{display:flex;flex-direction:column;gap:16px}
+.wb-auto-toggle{display:flex;align-items:center;justify-content:space-between;padding:16px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.wb-auto-toggle-label{font-size:14px;font-weight:600}
+.wb-auto-toggle-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.wb-auto-switch{width:44px;height:24px;border-radius:12px;background:var(--bg-3);cursor:pointer;position:relative;transition:.3s;border:1px solid var(--border)}
+.wb-auto-switch.on{background:var(--primary)}
+.wb-auto-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.3s}
+.wb-auto-switch.on::after{left:22px}
+.wb-auto-settings{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.wb-auto-setting{padding:14px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.wb-auto-setting-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.wb-auto-setting-value{font-size:18px;font-weight:700}
+.wb-email-btn{padding:4px 12px;border:1px solid var(--primary);border-radius:var(--radius-sm);background:rgba(99,102,241,.08);color:var(--primary-light);font-size:11px;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
+.wb-email-btn:hover{background:rgba(99,102,241,.15)}
+
+@media(max-width:1024px){
+  .briefing-numbers{grid-template-columns:repeat(2,1fr)}
+  .briefing-grid-2{grid-template-columns:1fr}
+  .briefing-pulse{grid-template-columns:1fr 1fr}
+  .wb-overview-grid{grid-template-columns:repeat(2,1fr)}
+  .wb-templates{grid-template-columns:1fr}
+  .wb-auto-settings{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .notif-dropdown{width:300px;right:-80px}
+}

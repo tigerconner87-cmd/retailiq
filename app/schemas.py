@@ -423,6 +423,14 @@ class ExportRequest(BaseModel):
     date_to: Optional[str] = None
 
 
+# ── Plan Interest ────────────────────────────────────────────────────────────
+
+class PlanInterestRequest(BaseModel):
+    email: str
+    plan: str  # starter, growth, scale
+    billing_cycle: str = "monthly"  # monthly, annual
+
+
 # ── Anomaly ───────────────────────────────────────────────────────────────────
 
 class AnomalyItem(BaseModel):

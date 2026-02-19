@@ -124,13 +124,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadSection(section) {
     try {
-      if (section === 'overview') await loadOverview();
+      if (section === 'briefing') await loadBriefing();
+      else if (section === 'overview') await loadOverview();
       else if (section === 'sales') await loadSales();
       else if (section === 'products') await loadProducts();
       else if (section === 'customers') await loadCustomers();
       else if (section === 'competitors') await loadCompetitors();
       else if (section === 'goals') await loadGoals();
       else if (section === 'marketing') await loadMarketingEngine();
+      else if (section === 'winback') await loadWinback();
       else if (section === 'reviews') await loadReviews();
       else if (section === 'alerts') await loadAlerts();
     } catch (err) {
@@ -1377,6 +1379,442 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ══════════════════════════════════════════════════════════════════════════
   // END MARKETING CONTENT ENGINE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DAILY BRIEFING
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async function loadBriefing() {
+    showRefresh();
+    const data = await api('/api/dashboard/briefing');
+    hideRefresh();
+    if (!data) return;
+
+    // Greeting
+    const greetEl = $('#briefingGreeting');
+    greetEl.textContent = `${data.greeting}, ${data.first_name}!`;
+    $('#briefingDate').textContent = data.date;
+
+    // Numbers
+    const n = data.numbers;
+    animateValue($('#brfRevenue'), 0, n.yesterday_revenue, 800, fmt);
+    animateValue($('#brfTransactions'), 0, n.yesterday_transactions, 800, fmtInt);
+    $('#brfAov').textContent = fmt(n.yesterday_aov);
+
+    const revChangeEl = $('#brfRevChange');
+    revChangeEl.textContent = (n.rev_change_vs_last_week >= 0 ? '+' : '') + n.rev_change_vs_last_week + '% vs same day last week';
+    revChangeEl.className = 'briefing-num-change ' + (n.rev_change_vs_last_week >= 0 ? 'up' : 'down');
+
+    const txnChangeEl = $('#brfTxnChange');
+    txnChangeEl.textContent = (n.txn_change_vs_last_week >= 0 ? '+' : '') + n.txn_change_vs_last_week + '% vs last week';
+    txnChangeEl.className = 'briefing-num-change ' + (n.txn_change_vs_last_week >= 0 ? 'up' : 'down');
+
+    $('#brfGoalPct').textContent = n.goal_progress_pct + '%';
+    const fill = $('#brfGoalFill');
+    fill.style.width = '0%';
+    setTimeout(() => fill.style.width = Math.min(n.goal_progress_pct, 100) + '%', 100);
+    $('#brfGoalSub').textContent = fmt(n.monthly_total) + ' / ' + fmt(n.monthly_goal);
+
+    // Todos
+    const todosEl = $('#briefingTodos');
+    if (data.todos && data.todos.length > 0) {
+      todosEl.innerHTML = data.todos.map(t => `
+        <div class="briefing-todo">
+          <div class="briefing-todo-priority ${t.priority}"></div>
+          <div class="briefing-todo-content">
+            <div class="briefing-todo-title">${esc(t.title)}</div>
+            <div class="briefing-todo-desc">${esc(t.description)}</div>
+            <div class="briefing-todo-meta">
+              <span class="briefing-todo-impact">${esc(t.impact)}</span>
+              <button class="briefing-todo-link" data-link="${t.link}">Do It Now</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // "Do It Now" buttons navigate to the relevant section
+      $$('.briefing-todo-link', todosEl).forEach(btn => {
+        btn.addEventListener('click', () => {
+          const section = btn.dataset.link;
+          const navItem = $(`.nav-item[data-section="${section}"]`);
+          if (navItem) navItem.click();
+        });
+      });
+    } else {
+      todosEl.innerHTML = '<div class="ai-loading">Everything looks great! No urgent tasks today.</div>';
+    }
+
+    // Competitor Watch
+    const compEl = $('#briefingCompWatch');
+    if (data.competitor_watch && data.competitor_watch.length > 0) {
+      compEl.innerHTML = data.competitor_watch.map(c => `
+        <div class="briefing-comp-item">
+          <div class="briefing-comp-name">${esc(c.name)}</div>
+          <div class="briefing-comp-stats">
+            <span>${c.rating ? c.rating.toFixed(1) + ' &#9733;' : '--'}</span>
+            <span>${c.new_reviews} new review${c.new_reviews !== 1 ? 's' : ''}</span>
+            ${c.negative_reviews > 0 ? `<span class="neg">${c.negative_reviews} negative</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    } else {
+      compEl.innerHTML = '<div style="padding:12px;color:var(--text3);font-size:13px;">No competitor data yet. Add competitors in your settings.</div>';
+    }
+
+    // Customer Pulse
+    const pulseEl = $('#briefingPulse');
+    const p = data.customer_pulse;
+    pulseEl.innerHTML = `
+      <div class="briefing-pulse-item">
+        <div class="briefing-pulse-value">${fmtInt(p.new_customers_7d)}</div>
+        <div class="briefing-pulse-label">New This Week</div>
+      </div>
+      <div class="briefing-pulse-item atrisk">
+        <div class="briefing-pulse-value">${fmtInt(p.at_risk_count)}</div>
+        <div class="briefing-pulse-label">At Risk</div>
+      </div>
+      <div class="briefing-pulse-item vip">
+        <div class="briefing-pulse-value">${fmtInt(p.vip_count)}</div>
+        <div class="briefing-pulse-label">VIP Customers</div>
+      </div>
+      <div class="briefing-pulse-item">
+        <div class="briefing-pulse-value">${fmtInt(p.total_customers)}</div>
+        <div class="briefing-pulse-label">Total Customers</div>
+      </div>
+    `;
+
+    // Marketing Tip
+    const mktEl = $('#briefingMarketing');
+    const m = data.marketing;
+    mktEl.innerHTML = `
+      <div class="briefing-marketing-card">
+        <div class="briefing-mkt-title">
+          ${esc(m.title)}
+          <span class="briefing-mkt-platform">${esc(m.platform)}</span>
+        </div>
+        <div class="briefing-mkt-content">${esc(m.content)}</div>
+        <button class="briefing-mkt-copy" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Tip',2000)">Copy Tip</button>
+      </div>
+    `;
+  }
+
+  function animateValue(el, start, end, duration, formatter) {
+    if (!el) return;
+    const range = end - start;
+    if (range === 0) { el.textContent = formatter(end); return; }
+    const startTime = performance.now();
+    function step(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      const current = start + range * eased;
+      el.textContent = formatter(current);
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // WIN-BACK CAMPAIGNS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  let wbDonutChart = null;
+
+  async function loadWinback() {
+    showRefresh();
+    const [overview, atRisk, templates, history, settings] = await Promise.all([
+      api('/api/dashboard/winback/overview'),
+      api('/api/dashboard/winback/at-risk'),
+      api('/api/dashboard/winback/templates'),
+      api('/api/dashboard/winback/history'),
+      api('/api/dashboard/winback/settings'),
+    ]);
+    hideRefresh();
+
+    // Overview metrics
+    if (overview) {
+      $('#wbActive').textContent = fmtInt(overview.active);
+      $('#wbAtRisk').textContent = fmtInt(overview.at_risk);
+      $('#wbLost').textContent = fmtInt(overview.lost);
+      $('#wbWonBack').textContent = fmtInt(overview.won_back);
+
+      // Donut chart
+      renderWbDonut(overview.segments);
+    }
+
+    // At-risk table
+    if (atRisk && atRisk.customers) {
+      renderWbAtRiskTable(atRisk.customers);
+    }
+
+    // Templates
+    if (templates && templates.templates) {
+      window.__wbTemplates = {};
+      templates.templates.forEach(t => { window.__wbTemplates[t.id] = t.body; });
+
+      const tplEl = $('#wbTemplates');
+      tplEl.innerHTML = templates.templates.map(t => `
+        <div class="wb-template-card">
+          <div class="wb-template-emoji">${t.emoji}</div>
+          <div class="wb-template-name">${esc(t.name)}</div>
+          <div class="wb-template-desc">${esc(t.description)}</div>
+          <div class="wb-template-meta">
+            <span class="wb-template-tag">${esc(t.best_for)}</span>
+            ${t.discount > 0 ? `<span class="wb-template-tag discount">${t.discount}% off</span>` : '<span class="wb-template-tag">No discount</span>'}
+            <span class="wb-template-tag">${esc(t.expected_response)} response</span>
+          </div>
+          <div class="wb-template-preview">Subject: ${esc(t.subject)}</div>
+          <button class="wb-template-btn" data-tpl="${t.id}">Copy Email Template</button>
+        </div>
+      `).join('');
+
+      $$('.wb-template-btn', tplEl).forEach(btn => {
+        btn.addEventListener('click', () => {
+          const body = window.__wbTemplates[btn.dataset.tpl];
+          if (body) navigator.clipboard.writeText(body);
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.textContent = 'Copy Email Template', 2000);
+        });
+      });
+    }
+
+    // Campaign History
+    if (history && history.campaigns) {
+      const tbody = $('#wbHistoryTable tbody');
+      if (history.campaigns.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">No campaigns sent yet. Use a template above to get started!</td></tr>';
+      } else {
+        tbody.innerHTML = history.campaigns.map(c => `
+          <tr>
+            <td>${esc(c.name)}</td>
+            <td>${esc(c.template_type)}</td>
+            <td>${fmtInt(c.customers_targeted)}</td>
+            <td>${c.discount_percentage}%</td>
+            <td><span class="goal-status ${c.status}">${c.status}</span></td>
+            <td>${c.open_rate ? c.open_rate + '%' : '--'}</td>
+            <td>${c.revenue_recovered ? fmt(c.revenue_recovered) : '--'}</td>
+            <td>${c.sent_at ? c.sent_at.split('T')[0] : '--'}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Automation Settings
+    if (settings) {
+      const autoEl = $('#wbAutomation');
+      autoEl.innerHTML = `
+        <div class="wb-auto-toggle">
+          <div>
+            <div class="wb-auto-toggle-label">Automated Win-Back Emails</div>
+            <div class="wb-auto-toggle-sub">Automatically send personalized emails to at-risk customers</div>
+          </div>
+          <div class="wb-auto-switch ${settings.enabled ? 'on' : ''}" id="wbAutoSwitch"></div>
+        </div>
+        <div class="wb-auto-settings">
+          <div class="wb-auto-setting">
+            <div class="wb-auto-setting-label">Gentle Nudge After</div>
+            <div class="wb-auto-setting-value">${settings.gentle_nudge_days} days</div>
+          </div>
+          <div class="wb-auto-setting">
+            <div class="wb-auto-setting-label">Sweet Deal After</div>
+            <div class="wb-auto-setting-value">${settings.sweet_deal_days} days (${settings.sweet_deal_discount}% off)</div>
+          </div>
+          <div class="wb-auto-setting">
+            <div class="wb-auto-setting-label">Last Chance After</div>
+            <div class="wb-auto-setting-value">${settings.last_chance_days} days (${settings.last_chance_discount}% off)</div>
+          </div>
+        </div>
+      `;
+      const autoSwitch = $('#wbAutoSwitch');
+      if (autoSwitch) {
+        autoSwitch.addEventListener('click', () => {
+          autoSwitch.classList.toggle('on');
+        });
+      }
+    }
+  }
+
+  function renderWbDonut(segments) {
+    const ctx = $('#wbDonutChart');
+    if (!ctx) return;
+    if (wbDonutChart) wbDonutChart.destroy();
+
+    const c = chartColors();
+    wbDonutChart = new Chart(ctx.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Active', 'At Risk', 'Lost', 'Won Back'],
+        datasets: [{
+          data: [segments.active || 0, segments.at_risk || 0, segments.lost || 0, segments.won_back || 0],
+          backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#6366f1'],
+          borderColor: 'transparent',
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '65%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {color: c.text, font: {size: 12, family: 'Inter'}, padding: 16, usePointStyle: true},
+          },
+        },
+      },
+    });
+  }
+
+  function renderWbAtRiskTable(customers) {
+    const tbody = $('#wbAtRiskTable tbody');
+    if (!customers || customers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">No at-risk customers found. Great news!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = customers.map(c => `
+      <tr>
+        <td><input type="checkbox" class="wb-row-check" data-id="${c.id}"></td>
+        <td>${esc(c.email)}</td>
+        <td>${c.last_seen ? c.last_seen.split('T')[0] : '--'}</td>
+        <td><span style="color:${c.days_since_visit > 60 ? 'var(--danger)' : 'var(--warning)};font-weight:600">${c.days_since_visit}d</span></td>
+        <td>${fmt(c.total_spent)}</td>
+        <td>${esc(c.favorite_product)}</td>
+        <td>${fmtInt(c.visit_count)}</td>
+        <td><button class="wb-email-btn">Send Email</button></td>
+      </tr>
+    `).join('');
+
+    // Select all checkbox
+    const selectAll = $('#wbSelectAll');
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        $$('.wb-row-check').forEach(cb => cb.checked = selectAll.checked);
+      });
+    }
+
+    // Email buttons
+    $$('.wb-email-btn', tbody).forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.textContent = 'Coming Soon!';
+        setTimeout(() => btn.textContent = 'Send Email', 2000);
+      });
+    });
+  }
+
+  // Sort handler for at-risk table
+  const wbSort = $('#wbSortBy');
+  if (wbSort) {
+    wbSort.addEventListener('change', async () => {
+      showRefresh();
+      const data = await api('/api/dashboard/winback/at-risk?sort_by=' + wbSort.value);
+      hideRefresh();
+      if (data && data.customers) renderWbAtRiskTable(data.customers);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // NOTIFICATION BELL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const notifBellBtn = $('#notifBellBtn');
+  const notifDropdown = $('#notifDropdown');
+
+  if (notifBellBtn && notifDropdown) {
+    notifBellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = notifDropdown.classList.contains('show');
+      notifDropdown.classList.toggle('show');
+      if (!isOpen) loadNotifications();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!notifDropdown.contains(e.target) && e.target !== notifBellBtn) {
+        notifDropdown.classList.remove('show');
+      }
+    });
+
+    // Mark all read
+    const markAllBtn = $('#notifMarkAll');
+    if (markAllBtn) {
+      markAllBtn.addEventListener('click', async () => {
+        markAllBtn.textContent = 'Marking...';
+        await apiPost('/api/dashboard/notifications/read-all');
+        markAllBtn.textContent = 'Done!';
+        const badge = $('#notifBadge');
+        if (badge) { badge.textContent = '0'; badge.hidden = true; }
+        $$('.notif-item.unread', notifDropdown).forEach(el => el.classList.remove('unread'));
+        // Also update sidebar badge
+        const sidebarBadge = $('#alertBadge');
+        if (sidebarBadge) { sidebarBadge.textContent = '0'; sidebarBadge.hidden = true; }
+        setTimeout(() => markAllBtn.textContent = 'Mark All Read', 2000);
+      });
+    }
+
+    // View All link
+    const viewAllLink = $('#notifViewAll');
+    if (viewAllLink) {
+      viewAllLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        notifDropdown.classList.remove('show');
+        const navItem = $(`.nav-item[data-section="alerts"]`);
+        if (navItem) navItem.click();
+      });
+    }
+
+    // Load initial badge count
+    loadNotifBadge();
+  }
+
+  async function loadNotifBadge() {
+    const data = await api('/api/dashboard/notifications');
+    if (data) {
+      const badge = $('#notifBadge');
+      if (badge) {
+        if (data.unread_count > 0) {
+          badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+          badge.hidden = false;
+        } else {
+          badge.hidden = true;
+        }
+      }
+    }
+  }
+
+  async function loadNotifications() {
+    const body = $('#notifDropdownBody');
+    body.innerHTML = '<div class="ai-loading">Loading...</div>';
+    const data = await api('/api/dashboard/notifications');
+    if (!data || !data.notifications || data.notifications.length === 0) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No notifications</div>';
+      return;
+    }
+
+    body.innerHTML = data.notifications.map(n => `
+      <div class="notif-item ${n.is_read ? '' : 'unread'}">
+        <div class="notif-item-icon">${n.icon}</div>
+        <div class="notif-item-content">
+          <div class="notif-item-title">${esc(n.title)}</div>
+          <div class="notif-item-msg">${esc(n.message)}</div>
+        </div>
+        <div class="notif-item-time">${esc(n.time_ago)}</div>
+      </div>
+    `).join('');
+
+    // Update badge
+    const badge = $('#notifBadge');
+    if (badge) {
+      if (data.unread_count > 0) {
+        badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+        badge.hidden = false;
+      } else {
+        badge.hidden = true;
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // END NOTIFICATION BELL
   // ══════════════════════════════════════════════════════════════════════════
 
   async function loadReviews() {

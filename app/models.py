@@ -447,3 +447,39 @@ class StrategyNote(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop", back_populates="strategy_notes")
+
+
+# ── Plan Interest (Upgrade Page) ────────────────────────────────────────────
+
+class PlanInterest(Base):
+    __tablename__ = "plan_interests"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    email = Column(String(255), nullable=False)
+    plan = Column(String(50), nullable=False)  # starter, growth, scale
+    billing_cycle = Column(String(20), default="monthly")  # monthly, annual
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+# ── Win-Back Campaign ───────────────────────────────────────────────────────
+
+class WinBackCampaign(Base):
+    __tablename__ = "winback_campaigns"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    template_type = Column(String(50), nullable=False)  # gentle_nudge, sweet_deal, last_chance
+    customers_targeted = Column(Integer, default=0)
+    discount_percentage = Column(Integer, default=0)
+    status = Column(String(20), default="draft")  # draft, sent, completed
+    sent_at = Column(DateTime)
+    open_rate = Column(Float)
+    response_rate = Column(Float)
+    revenue_recovered = Column(Numeric(12, 2), default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")
