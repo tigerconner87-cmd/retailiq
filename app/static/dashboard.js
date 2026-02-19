@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('retailiq_token');
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
+    console.log('[RetailIQ] API call:', path, '| token:', token ? 'yes (' + token.slice(0, 20) + '...)' : 'NO TOKEN');
     try {
       const res = await fetch(path, {headers, credentials: 'same-origin'});
       if (res.status === 401) {
@@ -81,7 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[RetailIQ] API error', res.status, 'on', path);
         return null;
       }
-      return res.json();
+      const data = await res.json();
+      console.log('[RetailIQ] API response:', path, '→', typeof data === 'object' ? JSON.stringify(data).slice(0, 200) : data);
+      return data;
     } catch (err) {
       console.error('[RetailIQ] Network error on', path, err);
       return null;
@@ -214,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadOverview() {
+    console.log('[RetailIQ] loadOverview() called');
     showRefresh();
     const [summary, sales, products, peakHours, alerts, aiActions] = await Promise.all([
       api('/api/dashboard/summary'),
@@ -224,6 +228,12 @@ document.addEventListener('DOMContentLoaded', () => {
       api('/api/dashboard/ai-actions'),
     ]);
     hideRefresh();
+    console.log('[RetailIQ] loadOverview data:', {
+      summary: summary ? `has_data=${summary.has_data}, revenue=${summary.revenue_today}` : 'NULL',
+      sales: sales ? `${(sales.daily||[]).length} daily records` : 'NULL',
+      products: products ? `${(products.top_products||[]).length} products` : 'NULL',
+      alerts: alerts ? `${(alerts.alerts||[]).length} alerts` : 'NULL',
+    });
 
     // Detect empty shop (truly no data — no customers and no revenue at all)
     const isEmpty = summary && summary.has_data === false;
@@ -232,10 +242,20 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLastUpdated();
 
     if (summary) {
-      animateValue($('#kpiRevenue'), summary.revenue_today, 800, '$');
-      animateValue($('#kpiTransactions'), summary.transactions_today, 800);
-      animateValue($('#kpiAov'), summary.avg_order_value, 600, '$');
-      animateValue($('#kpiRepeat'), summary.repeat_customer_rate, 600, '', '%');
+      console.log('[RetailIQ] Rendering KPIs:', summary.revenue_today, summary.transactions_today, summary.avg_order_value, summary.repeat_customer_rate);
+      // Set text immediately as fallback, then animate
+      const kpiR = $('#kpiRevenue'), kpiT = $('#kpiTransactions'), kpiA = $('#kpiAov'), kpiRp = $('#kpiRepeat');
+      if (kpiR) kpiR.textContent = fmt(summary.revenue_today);
+      if (kpiT) kpiT.textContent = fmtInt(summary.transactions_today);
+      if (kpiA) kpiA.textContent = fmt(summary.avg_order_value);
+      if (kpiRp) kpiRp.textContent = Math.round(summary.repeat_customer_rate) + '%';
+      // Now animate over the top
+      try {
+        animateValue(kpiR, summary.revenue_today, 800, '$');
+        animateValue(kpiT, summary.transactions_today, 800);
+        animateValue(kpiA, summary.avg_order_value, 600, '$');
+        animateValue(kpiRp, summary.repeat_customer_rate, 600, '', '%');
+      } catch (e) { console.warn('[RetailIQ] animateValue error:', e); }
 
       // Update KPI label if showing historical data
       if (summary.data_is_stale && summary.has_data) {
@@ -2011,8 +2031,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Numbers
     const n = data.numbers;
-    animateValue($('#brfRevenue'), 0, n.yesterday_revenue, 800, fmt);
-    animateValue($('#brfTransactions'), 0, n.yesterday_transactions, 800, fmtInt);
+    animateValue($('#brfRevenue'), n.yesterday_revenue, 800, '$');
+    animateValue($('#brfTransactions'), n.yesterday_transactions, 800);
     $('#brfAov').textContent = fmt(n.yesterday_aov);
 
     const revChangeEl = $('#brfRevChange');
@@ -2112,21 +2132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
-  function animateValue(el, start, end, duration, formatter) {
-    if (!el) return;
-    const range = end - start;
-    if (range === 0) { el.textContent = formatter(end); return; }
-    const startTime = performance.now();
-    function step(currentTime) {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-      const current = start + range * eased;
-      el.textContent = formatter(current);
-      if (progress < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
+  // animateValue is defined later in the file — do not duplicate
 
   // ══════════════════════════════════════════════════════════════════════════
   // WIN-BACK CAMPAIGNS
@@ -2327,114 +2333,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // NOTIFICATION BELL
-  // ══════════════════════════════════════════════════════════════════════════
-
-  const notifBellBtn = $('#notifBellBtn');
-  const notifDropdown = $('#notifDropdown');
-  const notifBellWrap = $('#notifBellWrap');
-
-  if (notifBellBtn && notifDropdown) {
-    notifBellBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const isOpen = notifDropdown.classList.contains('show');
-      if (isOpen) {
-        notifDropdown.classList.remove('show');
-      } else {
-        notifDropdown.classList.add('show');
-        loadNotifications();
-      }
-    });
-
-    document.addEventListener('click', (e) => {
-      // Close dropdown if clicking outside the entire bell area
-      if (notifBellWrap && !notifBellWrap.contains(e.target)) {
-        notifDropdown.classList.remove('show');
-      }
-    });
-
-    // Mark all read
-    const markAllBtn = $('#notifMarkAll');
-    if (markAllBtn) {
-      markAllBtn.addEventListener('click', async () => {
-        markAllBtn.textContent = 'Marking...';
-        await apiPost('/api/dashboard/notifications/read-all');
-        markAllBtn.textContent = 'Done!';
-        const badge = $('#notifBadge');
-        if (badge) { badge.textContent = '0'; badge.hidden = true; }
-        $$('.notif-item.unread', notifDropdown).forEach(el => el.classList.remove('unread'));
-        // Also update sidebar badge
-        const sidebarBadge = $('#alertBadge');
-        if (sidebarBadge) { sidebarBadge.textContent = '0'; sidebarBadge.hidden = true; }
-        setTimeout(() => markAllBtn.textContent = 'Mark All Read', 2000);
-      });
-    }
-
-    // View All link
-    const viewAllLink = $('#notifViewAll');
-    if (viewAllLink) {
-      viewAllLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        notifDropdown.classList.remove('show');
-        const navItem = $(`.nav-item[data-section="alerts"]`);
-        if (navItem) navItem.click();
-      });
-    }
-
-    // Load initial badge count
-    loadNotifBadge();
-  }
-
-  async function loadNotifBadge() {
-    const data = await api('/api/dashboard/notifications');
-    if (data) {
-      const badge = $('#notifBadge');
-      if (badge) {
-        if (data.unread_count > 0) {
-          badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
-          badge.hidden = false;
-        } else {
-          badge.hidden = true;
-        }
-      }
-    }
-  }
-
-  async function loadNotifications() {
-    const body = $('#notifDropdownBody');
-    body.innerHTML = '<div class="ai-loading">Loading...</div>';
-    const data = await api('/api/dashboard/notifications');
-    if (!data || !data.notifications || data.notifications.length === 0) {
-      body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No notifications</div>';
-      return;
-    }
-
-    body.innerHTML = data.notifications.map(n => `
-      <div class="notif-item ${n.is_read ? '' : 'unread'}">
-        <div class="notif-item-icon">${n.icon}</div>
-        <div class="notif-item-content">
-          <div class="notif-item-title">${esc(n.title)}</div>
-          <div class="notif-item-msg">${esc(n.message)}</div>
-        </div>
-        <div class="notif-item-time">${esc(n.time_ago)}</div>
-      </div>
-    `).join('');
-
-    // Update badge
-    const badge = $('#notifBadge');
-    if (badge) {
-      if (data.unread_count > 0) {
-        badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
-        badge.hidden = false;
-      } else {
-        badge.hidden = true;
-      }
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // END NOTIFICATION BELL
+  // NOTIFICATION BELL — handled by inline <script> in dashboard.html
   // ══════════════════════════════════════════════════════════════════════════
 
   async function loadReviews() {
