@@ -130,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (section === 'customers') await loadCustomers();
       else if (section === 'competitors') await loadCompetitors();
       else if (section === 'goals') await loadGoals();
+      else if (section === 'marketing') await loadMarketingEngine();
       else if (section === 'reviews') await loadReviews();
       else if (section === 'alerts') await loadAlerts();
     } catch (err) {
@@ -974,6 +975,316 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ══════════════════════════════════════════════════════════════════════════
   // END GOALS & STRATEGY
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // MARKETING CONTENT ENGINE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  let mkeDataLoaded = {};
+
+  // Tab navigation
+  $$('.mke-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.dataset.tab;
+      $$('.mke-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      $$('.mke-panel').forEach(p => p.classList.remove('active'));
+      $(`#mkePanel-${tabName}`).classList.add('active');
+      loadMkeTab(tabName);
+    });
+  });
+
+  async function loadMarketingEngine() {
+    const activeTab = $('.mke-tab.active');
+    const tabName = activeTab ? activeTab.dataset.tab : 'calendar';
+    mkeDataLoaded = {};
+    await loadMkeTab(tabName);
+  }
+
+  async function loadMkeTab(tab) {
+    if (mkeDataLoaded[tab]) return;
+    showRefresh();
+    try {
+      if (tab === 'calendar') await loadMkeCalendar();
+      else if (tab === 'social') await loadMkeSocial();
+      else if (tab === 'emails') await loadMkeEmails();
+      else if (tab === 'promos') await loadMkePromos();
+      else if (tab === 'performance') await loadMkePerformance();
+      mkeDataLoaded[tab] = true;
+    } catch (err) {
+      console.error('[RetailIQ] Error loading marketing tab:', tab, err);
+    }
+    hideRefresh();
+  }
+
+  // Regenerate button
+  const regenBtn = $('#mkeRegenCalendar');
+  if (regenBtn) regenBtn.addEventListener('click', () => { mkeDataLoaded['calendar'] = false; loadMkeCalendar(); });
+  const schedBtn = $('#mkeScheduleAll');
+  if (schedBtn) schedBtn.addEventListener('click', () => { schedBtn.textContent = 'Coming Soon!'; setTimeout(() => schedBtn.textContent = 'Add to Schedule', 2000); });
+  const genMoreBtn = $('#mkeGenMore');
+  if (genMoreBtn) genMoreBtn.addEventListener('click', () => { genMoreBtn.textContent = 'Coming Soon!'; setTimeout(() => genMoreBtn.textContent = 'Generate More', 2000); });
+
+  const platformIcons = {
+    instagram: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>',
+    instagram_story: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>',
+    facebook: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>',
+    email: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+  };
+  const platformLabels = {
+    instagram: 'Instagram', instagram_story: 'IG Story', facebook: 'Facebook', email: 'Email',
+  };
+  const platformColors = {
+    instagram: '#E1306C', instagram_story: '#E1306C', facebook: '#1877F2', email: '#6366f1',
+  };
+
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text);
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }
+
+  // ── Content Calendar ──
+  async function loadMkeCalendar() {
+    const data = await api('/api/dashboard/marketing-engine/calendar');
+    if (!data) return;
+
+    const grid = $('#mkeCalendarGrid');
+    grid.innerHTML = data.days.map(day => {
+      const isToday = day.date === new Date().toISOString().split('T')[0];
+      return `
+        <div class="mke-cal-day ${isToday ? 'today' : ''}">
+          <div class="mke-cal-day-header">
+            <span class="mke-cal-day-name">${day.day}</span>
+            <span class="mke-cal-day-date">${day.date.slice(5)}</span>
+          </div>
+          <div class="mke-cal-posts">
+            ${day.posts.map(post => `
+              <div class="mke-cal-post">
+                <div class="mke-cal-post-meta">
+                  <span class="mke-platform-badge" style="color:${platformColors[post.platform] || '#6366f1'}">${platformIcons[post.platform] || ''} ${platformLabels[post.platform] || post.platform}</span>
+                  <span class="mke-cal-time">${post.time}</span>
+                </div>
+                <div class="mke-cal-post-content">${esc(post.content)}</div>
+                <button class="mke-copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Social Posts ──
+  async function loadMkeSocial(category) {
+    let url = '/api/dashboard/marketing-engine/social-posts';
+    if (category) url += `?category=${category}`;
+    const data = await api(url);
+    if (!data) return;
+
+    // Render category filters
+    const filters = $('#mkeSocialFilters');
+    if (data.categories) {
+      filters.innerHTML = `
+        <button class="mke-filter-btn ${!category ? 'active' : ''}" data-cat="">All (${data.total})</button>
+        ${data.categories.map(c => `<button class="mke-filter-btn ${category === c.id ? 'active' : ''}" data-cat="${c.id}">${c.emoji} ${c.label} (${c.count})</button>`).join('')}
+      `;
+      $$('.mke-filter-btn', filters).forEach(btn => {
+        btn.addEventListener('click', () => {
+          mkeDataLoaded['social'] = false;
+          loadMkeSocial(btn.dataset.cat || null);
+        });
+      });
+    }
+
+    const grid = $('#mkeSocialGrid');
+    grid.innerHTML = data.posts.map(post => `
+      <div class="mke-social-card">
+        <div class="mke-social-card-header">
+          <span class="mke-category-badge">${post.category.replace(/_/g, ' ')}</span>
+          <span class="mke-platform-badge" style="color:${platformColors[post.platform] || '#6366f1'}">${platformIcons[post.platform] || ''} ${platformLabels[post.platform] || post.platform}</span>
+        </div>
+        <div class="mke-social-caption">${esc(post.caption)}</div>
+        <div class="mke-social-meta">
+          <span class="mke-meta-item">Best time: <strong>${post.best_time}</strong></span>
+          ${post.product_name ? `<span class="mke-meta-item">Product: <strong>${esc(post.product_name)}</strong></span>` : ''}
+        </div>
+        <div class="mke-social-hashtags">${esc(post.hashtags)}</div>
+        <div class="mke-social-actions">
+          <button class="mke-copy-btn" onclick="navigator.clipboard.writeText(this.closest('.mke-social-card').querySelector('.mke-social-caption').textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Caption',2000)">Copy Caption</button>
+          <button class="mke-copy-btn secondary" onclick="navigator.clipboard.writeText(this.closest('.mke-social-card').querySelector('.mke-social-hashtags').textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Hashtags',2000)">Copy Hashtags</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Email Campaigns ──
+  async function loadMkeEmails() {
+    const data = await api('/api/dashboard/marketing-engine/email-campaigns');
+    if (!data) return;
+
+    const list = $('#mkeEmailList');
+    list.innerHTML = data.campaigns.map(camp => `
+      <div class="mke-email-card">
+        <div class="mke-email-header">
+          <div>
+            <div class="mke-email-name">${camp.emoji} ${esc(camp.name)}</div>
+            <div class="mke-email-target">${esc(camp.target_audience)}</div>
+          </div>
+          <div class="mke-email-stats">
+            <span class="mke-email-stat"><strong>${camp.target_count}</strong> recipients</span>
+            <span class="mke-email-stat"><strong>${camp.estimated_open_rate}</strong> est. open</span>
+            <span class="mke-email-stat"><strong>${camp.estimated_revenue}</strong> est. revenue</span>
+          </div>
+        </div>
+        <div class="mke-email-preview">
+          <div class="mke-email-subject-row">
+            <span class="mke-email-label">Subject:</span>
+            <span class="mke-email-subject">${esc(camp.subject)}</span>
+          </div>
+          <div class="mke-email-preview-text">
+            <span class="mke-email-label">Preview:</span>
+            <span>${esc(camp.preview_text)}</span>
+          </div>
+          <div class="mke-email-body-wrap">
+            <div class="mke-email-body">${esc(camp.body).replace(/\n/g, '<br>')}</div>
+          </div>
+        </div>
+        <div class="mke-email-actions">
+          <button class="mke-copy-btn" data-copy-type="body" data-camp-id="${camp.id}">Copy Text</button>
+          <button class="mke-copy-btn secondary" data-copy-type="all" data-camp-id="${camp.id}">Copy All</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Store campaign data for copy buttons
+    window.__mkeEmailData = {};
+    data.campaigns.forEach(c => { window.__mkeEmailData[c.id] = c; });
+
+    // Attach copy handlers
+    $$('.mke-email-actions .mke-copy-btn', list).forEach(btn => {
+      btn.addEventListener('click', () => {
+        const camp = window.__mkeEmailData[btn.dataset.campId];
+        if (!camp) return;
+        const text = btn.dataset.copyType === 'all'
+          ? 'Subject: ' + camp.subject + '\n\n' + camp.body
+          : camp.body;
+        navigator.clipboard.writeText(text);
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    });
+  }
+
+  // ── Promotions ──
+  async function loadMkePromos() {
+    const data = await api('/api/dashboard/marketing-engine/promotions');
+    if (!data) return;
+
+    const list = $('#mkePromoList');
+    list.innerHTML = data.promotions.map(promo => `
+      <div class="mke-promo-card">
+        <div class="mke-promo-header">
+          <div class="mke-promo-name">${promo.emoji} ${esc(promo.name)}</div>
+          <span class="opp-priority ${promo.priority}">${promo.priority === 'hot' ? 'Hot' : promo.priority === 'high' ? 'High Impact' : 'Recommended'}</span>
+        </div>
+        <div class="mke-promo-desc">${esc(promo.description)}</div>
+        <div class="mke-promo-details">
+          <div class="mke-promo-detail"><span class="mke-promo-detail-label">Target</span><span>${esc(promo.target_audience)}</span></div>
+          <div class="mke-promo-detail"><span class="mke-promo-detail-label">Est. Revenue</span><span>${esc(promo.estimated_revenue)}</span></div>
+          <div class="mke-promo-detail"><span class="mke-promo-detail-label">Duration</span><span>${esc(promo.duration)}</span></div>
+        </div>
+        <div class="mke-promo-steps">
+          <div class="mke-promo-steps-label">Execution Steps</div>
+          <ol class="mke-promo-steps-list">
+            ${promo.execution_steps.map(s => `<li>${esc(s)}</li>`).join('')}
+          </ol>
+        </div>
+        <div class="mke-promo-social">
+          <div class="mke-promo-social-label">Ready-to-Post Announcement</div>
+          <div class="mke-promo-social-text">${esc(promo.social_post)}</div>
+          <button class="mke-copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Post',2000)">Copy Post</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Performance ──
+  async function loadMkePerformance() {
+    const data = await api('/api/dashboard/marketing-engine/performance');
+    if (!data) return;
+
+    const content = $('#mkePerfContent');
+    const o = data.overview;
+    const mr = data.marketing_responses;
+    const ei = data.estimated_impact;
+    const eng = data.engagement;
+    const cta = data.connect_cta;
+
+    content.innerHTML = `
+      <div class="kpi-grid small">
+        <div class="kpi-card"><div class="kpi-label">Content Generated</div><div class="kpi-value">${fmtInt(eng.total_content_pieces)}</div><div class="kpi-sub">total pieces</div></div>
+        <div class="kpi-card"><div class="kpi-label">Pieces Used</div><div class="kpi-value">${fmtInt(eng.pieces_used)}</div><div class="kpi-sub">${eng.usage_rate}% usage rate</div></div>
+        <div class="kpi-card"><div class="kpi-label">Pieces Saved</div><div class="kpi-value">${fmtInt(eng.pieces_saved)}</div><div class="kpi-sub">for later use</div></div>
+        <div class="kpi-card"><div class="kpi-label">Est. Revenue Impact</div><div class="kpi-value">${fmt(ei.estimated_additional_revenue)}</div><div class="kpi-sub">${ei.marketing_boost_pct}% boost</div></div>
+      </div>
+
+      <div class="grid-2 mt">
+        <div class="card">
+          <div class="card-header"><h3>Content Breakdown</h3></div>
+          <div class="card-body">
+            <div class="mke-perf-breakdown">
+              <div class="mke-perf-row"><span>Calendar Posts (this week)</span><strong>${o.calendar_posts_this_week}</strong></div>
+              <div class="mke-perf-row"><span>Social Media Posts</span><strong>20+</strong></div>
+              <div class="mke-perf-row"><span>Email Campaigns Ready</span><strong>${o.email_campaigns_ready}</strong></div>
+              <div class="mke-perf-row"><span>Promotion Plans</span><strong>${o.promotions_active}</strong></div>
+              <div class="mke-perf-row"><span>Competitor Responses</span><strong>${mr.total}</strong></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Marketing Responses</h3></div>
+          <div class="card-body">
+            <div class="mke-perf-breakdown">
+              <div class="mke-perf-row"><span>New (unused)</span><strong class="mke-stat-new">${mr.new}</strong></div>
+              <div class="mke-perf-row"><span>Saved for Later</span><strong class="mke-stat-saved">${mr.saved}</strong></div>
+              <div class="mke-perf-row"><span>Used / Deployed</span><strong class="mke-stat-used">${mr.used}</strong></div>
+              <div class="mke-perf-row total"><span>Total Generated</span><strong>${mr.total}</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <div class="card-header"><h3>Revenue Impact Estimate</h3></div>
+        <div class="card-body">
+          <div class="mke-impact-card">
+            <div class="mke-impact-text">Based on industry averages, your marketing activity this month could drive an additional <strong>${fmt(ei.estimated_additional_revenue)}</strong> in revenue (${ei.marketing_boost_pct}% boost on ${fmt(ei.monthly_revenue)} monthly revenue).</div>
+            <div class="mke-impact-tip">Tip: Use more content pieces to increase this estimate. Each social post, email campaign, and promotion adds to your marketing presence.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <div class="card-body">
+          <div class="mke-cta-card">
+            <div class="mke-cta-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></div>
+            <div class="mke-cta-content">
+              <div class="mke-cta-title">${esc(cta.title)}</div>
+              <div class="mke-cta-desc">${esc(cta.description)}</div>
+            </div>
+            <button class="mke-btn primary" disabled>Coming Soon</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // END MARKETING CONTENT ENGINE
   // ══════════════════════════════════════════════════════════════════════════
 
   async function loadReviews() {

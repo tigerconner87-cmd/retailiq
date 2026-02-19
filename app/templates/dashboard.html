@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=5">
+  <link rel="stylesheet" href="/static/dashboard.css?v=6">
 </head>
 <body>
   <!-- Sidebar -->
@@ -48,6 +48,10 @@
       <a href="#" class="nav-item {{ 'active' if sec == 'goals' }}" data-section="goals">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
         Goals
+      </a>
+      <a href="#" class="nav-item {{ 'active' if sec == 'marketing' }}" data-section="marketing">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        Marketing
       </a>
       <a href="#" class="nav-item {{ 'active' if sec == 'reviews' }}" data-section="reviews">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -361,6 +365,88 @@
         </div>
       </section>
 
+      <!-- Marketing Content Engine -->
+      <section class="section {{ 'active' if sec == 'marketing' }}" id="sec-marketing">
+        <div class="mke-tabs" id="mkeTabs">
+          <button class="mke-tab active" data-tab="calendar">Content Calendar</button>
+          <button class="mke-tab" data-tab="social">Social Posts</button>
+          <button class="mke-tab" data-tab="emails">Email Campaigns</button>
+          <button class="mke-tab" data-tab="promos">Promotions</button>
+          <button class="mke-tab" data-tab="performance">Performance</button>
+        </div>
+
+        <!-- Tab: Content Calendar -->
+        <div class="mke-panel active" id="mkePanel-calendar">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Weekly Content Calendar</h3>
+              <p class="mke-panel-sub">AI-generated content plan based on your sales data, trending products, and competitor weaknesses</p>
+            </div>
+            <div class="mke-panel-actions">
+              <button class="mke-btn outline" id="mkeRegenCalendar">Regenerate</button>
+              <button class="mke-btn primary" id="mkeScheduleAll">Add to Schedule</button>
+            </div>
+          </div>
+          <div id="mkeCalendarGrid" class="mke-calendar-grid">
+            <div class="ai-loading">Generating your content calendar...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Social Posts -->
+        <div class="mke-panel" id="mkePanel-social">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Social Media Post Library</h3>
+              <p class="mke-panel-sub">Ready-to-use posts based on your actual products and customer data</p>
+            </div>
+            <button class="mke-btn primary" id="mkeGenMore">Generate More</button>
+          </div>
+          <div class="mke-social-filters" id="mkeSocialFilters"></div>
+          <div id="mkeSocialGrid" class="mke-social-grid">
+            <div class="ai-loading">Loading social posts...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Email Campaigns -->
+        <div class="mke-panel" id="mkePanel-emails">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Email Campaigns</h3>
+              <p class="mke-panel-sub">Ready-to-send campaigns with personalization placeholders</p>
+            </div>
+          </div>
+          <div id="mkeEmailList" class="mke-email-list">
+            <div class="ai-loading">Building email campaigns...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Promotions -->
+        <div class="mke-panel" id="mkePanel-promos">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Promotion Ideas</h3>
+              <p class="mke-panel-sub">Data-driven promotions with full execution plans</p>
+            </div>
+          </div>
+          <div id="mkePromoList" class="mke-promo-list">
+            <div class="ai-loading">Crafting promotions...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Performance -->
+        <div class="mke-panel" id="mkePanel-performance">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Marketing Performance</h3>
+              <p class="mke-panel-sub">Track your marketing content usage and estimated impact</p>
+            </div>
+          </div>
+          <div id="mkePerfContent">
+            <div class="ai-loading">Loading performance data...</div>
+          </div>
+        </div>
+      </section>
+
       <!-- Reviews Section -->
       <section class="section {{ 'active' if sec == 'reviews' }}" id="sec-reviews">
         <div class="kpi-grid small">
@@ -393,6 +479,6 @@
     window.__ACTIVE_SECTION = "{{ active_section|default('overview') }}";
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=5"></script>
+  <script src="/static/dashboard.js?v=6"></script>
 </body>
 </html>

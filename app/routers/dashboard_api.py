@@ -64,6 +64,13 @@ from app.services.goals import (
     get_goal_history,
     get_strategy_recommendations,
 )
+from app.services.marketing_engine import (
+    get_content_calendar,
+    get_social_posts,
+    get_email_campaigns,
+    get_promotions,
+    get_marketing_performance,
+)
 from app.services.competitor_intelligence import (
     get_competitor_overview,
     get_competitor_comparison,
@@ -312,6 +319,42 @@ def dashboard_goal_history(user: User = Depends(get_current_user), db: Session =
 def dashboard_goal_recommendations(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     shop = _get_shop(db, user)
     return get_strategy_recommendations(db, shop.id)
+
+
+# ── Marketing Content Engine ────────────────────────────────────────────────
+
+@router.get("/marketing-engine/calendar")
+def marketing_calendar(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_content_calendar(db, shop.id)
+
+
+@router.get("/marketing-engine/social-posts")
+def marketing_social_posts(
+    category: str = Query(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    return get_social_posts(db, shop.id, category)
+
+
+@router.get("/marketing-engine/email-campaigns")
+def marketing_email_campaigns(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_email_campaigns(db, shop.id)
+
+
+@router.get("/marketing-engine/promotions")
+def marketing_promotions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_promotions(db, shop.id)
+
+
+@router.get("/marketing-engine/performance")
+def marketing_performance(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_marketing_performance(db, shop.id)
 
 
 @router.get("/reviews", response_model=ReviewsResponse)

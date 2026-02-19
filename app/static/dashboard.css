@@ -379,6 +379,116 @@ a{color:inherit;text-decoration:none}
 .progress-mini-fill.underperforming{background:var(--danger)}
 .progress-over-label{font-size:10px;font-weight:600;color:var(--success);white-space:nowrap;margin-left:4px}
 
+/* ── Marketing Content Engine ── */
+.mke-tabs{display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
+.mke-tab{padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
+.mke-tab:hover{border-color:var(--primary);color:var(--primary-light)}
+.mke-tab.active{background:rgba(99,102,241,.15);border-color:var(--primary);color:var(--primary-light);box-shadow:0 0 8px rgba(99,102,241,.15)}
+.mke-panel{display:none}
+.mke-panel.active{display:block}
+.mke-panel-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.mke-panel-title{font-size:18px;font-weight:800;margin-bottom:4px}
+.mke-panel-sub{font-size:13px;color:var(--text3);max-width:600px}
+.mke-panel-actions{display:flex;gap:8px;flex-shrink:0}
+.mke-btn{padding:8px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;transition:.2s;border:1px solid var(--border)}
+.mke-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.mke-btn.primary:hover{background:var(--primary-dark)}
+.mke-btn.primary:disabled{opacity:.5;cursor:not-allowed}
+.mke-btn.outline{background:var(--surface);color:var(--text2)}
+.mke-btn.outline:hover{border-color:var(--primary);color:var(--primary-light)}
+
+/* Calendar */
+.mke-calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.mke-cal-day{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;min-height:180px}
+.mke-cal-day.today{border-color:var(--primary);box-shadow:0 0 12px rgba(99,102,241,.1)}
+.mke-cal-day-header{padding:10px 12px;background:var(--bg-2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.mke-cal-day-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.mke-cal-day.today .mke-cal-day-name{color:var(--primary-light)}
+.mke-cal-day-date{font-size:11px;color:var(--text3)}
+.mke-cal-posts{padding:8px;display:flex;flex-direction:column;gap:8px}
+.mke-cal-post{padding:10px;background:var(--bg-2);border-radius:var(--radius-sm);border:1px solid transparent;transition:.2s}
+.mke-cal-post:hover{border-color:var(--primary)}
+.mke-cal-post-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.mke-platform-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.mke-cal-time{font-size:10px;color:var(--text3);font-weight:600}
+.mke-cal-post-content{font-size:11px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.mke-copy-btn{padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:.2s;margin-top:6px}
+.mke-copy-btn:hover{border-color:var(--primary);color:var(--primary-light)}
+.mke-copy-btn.secondary{border-color:var(--border-light);color:var(--text3)}
+.mke-copy-btn.secondary:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Social Posts */
+.mke-social-filters{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.mke-filter-btn{padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.2s}
+.mke-filter-btn:hover{border-color:var(--primary);color:var(--primary-light)}
+.mke-filter-btn.active{background:rgba(99,102,241,.15);border-color:var(--primary);color:var(--primary-light)}
+.mke-social-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.mke-social-card{padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);transition:.2s}
+.mke-social-card:hover{border-color:var(--primary);transform:translateY(-2px)}
+.mke-social-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.mke-category-badge{padding:3px 10px;border-radius:50px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;background:rgba(99,102,241,.1);color:var(--primary-light)}
+.mke-social-caption{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:12px;white-space:pre-wrap}
+.mke-social-meta{display:flex;gap:16px;margin-bottom:8px}
+.mke-meta-item{font-size:11px;color:var(--text3)}
+.mke-meta-item strong{color:var(--text2)}
+.mke-social-hashtags{font-size:11px;color:var(--accent);margin-bottom:12px;line-height:1.6}
+.mke-social-actions{display:flex;gap:8px}
+
+/* Email Campaigns */
+.mke-email-list{display:flex;flex-direction:column;gap:20px}
+.mke-email-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:.2s}
+.mke-email-card:hover{border-color:var(--primary)}
+.mke-email-header{padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.mke-email-name{font-size:16px;font-weight:700;margin-bottom:4px}
+.mke-email-target{font-size:12px;color:var(--text3)}
+.mke-email-stats{display:flex;gap:16px;flex-shrink:0}
+.mke-email-stat{font-size:12px;color:var(--text3);display:flex;flex-direction:column;text-align:center}
+.mke-email-stat strong{font-size:14px;color:var(--text);font-weight:700}
+.mke-email-preview{padding:20px}
+.mke-email-subject-row{margin-bottom:8px;display:flex;gap:8px;align-items:flex-start}
+.mke-email-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;margin-top:2px}
+.mke-email-subject{font-size:14px;font-weight:600;color:var(--text)}
+.mke-email-preview-text{font-size:12px;color:var(--text3);margin-bottom:16px;display:flex;gap:8px}
+.mke-email-body-wrap{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:20px;max-height:300px;overflow-y:auto}
+.mke-email-body{font-size:13px;color:var(--text2);line-height:1.7;white-space:pre-wrap}
+.mke-email-actions{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+/* Promotions */
+.mke-promo-list{display:flex;flex-direction:column;gap:20px}
+.mke-promo-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:.2s}
+.mke-promo-card:hover{border-color:var(--primary)}
+.mke-promo-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.mke-promo-name{font-size:16px;font-weight:700}
+.mke-promo-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px;padding:12px 16px;background:var(--bg-2);border-radius:var(--radius-sm);border-left:3px solid var(--primary)}
+.mke-promo-details{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.mke-promo-detail{padding:12px;background:var(--bg-2);border-radius:var(--radius-sm);font-size:13px;color:var(--text2)}
+.mke-promo-detail-label{display:block;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.mke-promo-steps{margin-bottom:16px}
+.mke-promo-steps-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.mke-promo-steps-list{padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.mke-promo-steps-list li{font-size:12px;color:var(--text2);line-height:1.6}
+.mke-promo-social{padding:16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.mke-promo-social-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.mke-promo-social-text{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:8px}
+
+/* Performance */
+.mke-perf-breakdown{display:flex;flex-direction:column;gap:2px}
+.mke-perf-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:13px;color:var(--text2);border-radius:var(--radius-sm);transition:.15s}
+.mke-perf-row:hover{background:var(--bg-2)}
+.mke-perf-row.total{border-top:1px solid var(--border);margin-top:4px;padding-top:14px;font-weight:600;color:var(--text)}
+.mke-stat-new{color:var(--accent)}
+.mke-stat-saved{color:var(--primary-light)}
+.mke-stat-used{color:var(--success)}
+.mke-impact-card{padding:24px;background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(6,182,212,.04));border:1px solid rgba(99,102,241,.2);border-radius:var(--radius-sm)}
+.mke-impact-text{font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:12px}
+.mke-impact-text strong{color:var(--success);font-weight:700}
+.mke-impact-tip{font-size:12px;color:var(--text3);padding:10px 14px;background:var(--bg-2);border-radius:var(--radius-sm);line-height:1.5}
+.mke-cta-card{display:flex;align-items:center;gap:20px;padding:20px;background:linear-gradient(135deg,rgba(225,48,108,.06),rgba(99,102,241,.06));border:1px solid rgba(225,48,108,.2);border-radius:var(--radius-sm)}
+.mke-cta-icon{color:var(--danger);flex-shrink:0}
+.mke-cta-content{flex:1}
+.mke-cta-title{font-size:15px;font-weight:700;margin-bottom:4px}
+.mke-cta-desc{font-size:12px;color:var(--text3);line-height:1.5}
+
 /* ── Responsive ── */
 @media(max-width:1024px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
@@ -387,6 +497,10 @@ a{color:inherit;text-decoration:none}
   .opp-actions{grid-template-columns:1fr}
   .mkt-responses{grid-template-columns:1fr}
   .sentiment-grid{grid-template-columns:1fr}
+  .mke-calendar-grid{grid-template-columns:repeat(4,1fr)}
+  .mke-promo-details{grid-template-columns:1fr}
+  .mke-social-grid{grid-template-columns:1fr}
+  .mke-cta-card{flex-direction:column;text-align:center}
 }
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}
@@ -394,4 +508,6 @@ a{color:inherit;text-decoration:none}
   .main{margin-left:0}
   .mobile-toggle{display:flex}
   .kpi-grid.small{grid-template-columns:repeat(2,1fr)}
+  .mke-calendar-grid{grid-template-columns:1fr 1fr}
+  .mke-panel-header{flex-direction:column}
 }
