@@ -1217,6 +1217,7 @@ svg.spin{animation:spin .8s linear infinite}
 
 /* Google Modal */
 .dh-modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.dh-modal-overlay[hidden]{display:none!important}
 .dh-modal{background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:640px;max-height:80vh;display:flex;flex-direction:column}
 .dh-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
 .dh-modal-header h3{font-size:16px}

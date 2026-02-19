@@ -97,6 +97,7 @@
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
         body: JSON.stringify({email, password}),
       });
       const data = await res.json();
@@ -110,11 +111,10 @@
       submitBtn.disabled = true;
 
       try {
-        const data = await doLogin(
+        await doLogin(
           document.getElementById('email').value.trim(),
           document.getElementById('password').value,
         );
-        localStorage.setItem('retailiq_token', data.access_token);
         window.location.href = '/dashboard';
       } catch (err) {
         errorMsg.textContent = err.message || 'Network error. Please try again.';
@@ -129,8 +129,7 @@
       btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></span> Logging in...';
 
       try {
-        const data = await doLogin('demo@retailiq.com', 'demo1234');
-        localStorage.setItem('retailiq_token', data.access_token);
+        await doLogin('demo@retailiq.com', 'demo1234');
         window.location.href = '/dashboard';
       } catch (err) {
         errorMsg.textContent = 'Demo login failed. Please try manually.';

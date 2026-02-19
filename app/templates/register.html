@@ -205,10 +205,17 @@
         ok = false;
       }
 
-      if (pwInput.value && pwInput.value.length < 8) {
-        pwInput.classList.add('error');
-        document.getElementById('passwordError').textContent = 'Password must be at least 8 characters';
-        ok = false;
+      const pw = pwInput.value;
+      if (pw) {
+        const pwErrors = [];
+        if (pw.length < 8) pwErrors.push('at least 8 characters');
+        if (!/[A-Z]/.test(pw)) pwErrors.push('one uppercase letter');
+        if (!/[0-9]/.test(pw)) pwErrors.push('one digit');
+        if (pwErrors.length > 0) {
+          pwInput.classList.add('error');
+          document.getElementById('passwordError').textContent = 'Password must contain ' + pwErrors.join(', ');
+          ok = false;
+        }
       }
 
       return ok;
@@ -229,6 +236,7 @@
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
           body: JSON.stringify({
             email: document.getElementById('email').value.trim(),
             password: pwInput.value,
@@ -243,13 +251,17 @@
         const data = await res.json();
 
         if (!res.ok) {
-          document.getElementById('errorMsg').textContent = data.detail || 'Something went wrong';
+          // Parse Pydantic validation errors
+          let msg = data.detail || 'Something went wrong';
+          if (Array.isArray(data.detail)) {
+            msg = data.detail.map(d => d.msg || d).join('. ');
+          }
+          document.getElementById('errorMsg').textContent = msg;
           btn.disabled = false;
           btn.innerHTML = 'Start Free 14-Day Trial <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
           return;
         }
 
-        localStorage.setItem('retailiq_token', data.access_token);
         window.location.href = '/dashboard/onboarding';
       } catch (err) {
         document.getElementById('errorMsg').textContent = 'Network error. Please try again.';

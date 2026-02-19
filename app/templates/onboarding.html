@@ -261,6 +261,7 @@
         await fetch('/api/dashboard/onboarding/step1', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
           body: JSON.stringify(data.step1),
         });
       } catch (e) {}
@@ -311,6 +312,7 @@
         await fetch('/api/dashboard/onboarding/step2', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
           body: JSON.stringify({competitors: data.step2.competitors}),
         });
 
@@ -318,6 +320,7 @@
         const res = await fetch('/api/dashboard/onboarding/complete', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
           body: JSON.stringify(data.step3),
         });
 
