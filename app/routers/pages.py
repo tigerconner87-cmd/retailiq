@@ -99,112 +99,94 @@ def upgrade_page(
     })
 
 
-@router.get("/dashboard/goals", response_class=HTMLResponse)
-def goals_page(
-    request: Request,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user_optional),
-):
+def _dashboard_section(request, db, user, section):
+    """Helper to render dashboard.html with the given active section."""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
+    if not user.onboarding_completed and user.email != "demo@retailiq.com":
+        return RedirectResponse(url="/dashboard/onboarding", status_code=302)
+    if not is_trial_active(user):
+        return RedirectResponse(url="/dashboard/upgrade", status_code=302)
     shop = get_shop_for_user(db, user.id)
     trial_days = get_trial_days_remaining(user)
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "user": user,
         "shop": shop,
-        "active_section": "goals",
+        "active_section": section,
         "trial_days": trial_days,
         "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
     })
+
+
+@router.get("/dashboard/sales", response_class=HTMLResponse)
+def sales_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "sales")
+
+
+@router.get("/dashboard/products", response_class=HTMLResponse)
+def products_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "products")
+
+
+@router.get("/dashboard/customers", response_class=HTMLResponse)
+def customers_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "customers")
+
+
+@router.get("/dashboard/goals", response_class=HTMLResponse)
+def goals_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "goals")
 
 
 @router.get("/dashboard/marketing", response_class=HTMLResponse)
 def marketing_page(
-    request: Request,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user_optional),
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
 ):
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-    shop = get_shop_for_user(db, user.id)
-    trial_days = get_trial_days_remaining(user)
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user,
-        "shop": shop,
-        "active_section": "marketing",
-        "trial_days": trial_days,
-        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
-    })
+    return _dashboard_section(request, db, user, "marketing")
 
 
 @router.get("/dashboard/competitors", response_class=HTMLResponse)
 def competitors_page(
-    request: Request,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user_optional),
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
 ):
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-    shop = get_shop_for_user(db, user.id)
-    trial_days = get_trial_days_remaining(user)
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user,
-        "shop": shop,
-        "active_section": "competitors",
-        "trial_days": trial_days,
-        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
-    })
+    return _dashboard_section(request, db, user, "competitors")
+
+
+@router.get("/dashboard/reviews", response_class=HTMLResponse)
+def reviews_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "reviews")
+
+
+@router.get("/dashboard/alerts", response_class=HTMLResponse)
+def alerts_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "alerts")
 
 
 @router.get("/dashboard/briefing", response_class=HTMLResponse)
 def briefing_page(
-    request: Request,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user_optional),
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
 ):
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-    if not user.onboarding_completed and user.email != "demo@retailiq.com":
-        return RedirectResponse(url="/dashboard/onboarding", status_code=302)
-    if not is_trial_active(user):
-        return RedirectResponse(url="/dashboard/upgrade", status_code=302)
-    shop = get_shop_for_user(db, user.id)
-    trial_days = get_trial_days_remaining(user)
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user,
-        "shop": shop,
-        "active_section": "briefing",
-        "trial_days": trial_days,
-        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
-    })
+    return _dashboard_section(request, db, user, "briefing")
 
 
 @router.get("/dashboard/win-back", response_class=HTMLResponse)
 def winback_page(
-    request: Request,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user_optional),
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
 ):
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-    if not user.onboarding_completed and user.email != "demo@retailiq.com":
-        return RedirectResponse(url="/dashboard/onboarding", status_code=302)
-    if not is_trial_active(user):
-        return RedirectResponse(url="/dashboard/upgrade", status_code=302)
-    shop = get_shop_for_user(db, user.id)
-    trial_days = get_trial_days_remaining(user)
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user,
-        "shop": shop,
-        "active_section": "winback",
-        "trial_days": trial_days,
-        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
-    })
+    return _dashboard_section(request, db, user, "winback")
 
 
 @router.get("/dashboard/competitors/weekly-report", response_class=HTMLResponse)

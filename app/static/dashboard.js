@@ -161,15 +161,23 @@ document.addEventListener('DOMContentLoaded', () => {
     ]);
     hideRefresh();
 
-    // Detect empty shop (no sales data)
-    const isEmpty = summary && summary.revenue_today === 0 && summary.transactions_today === 0
-      && summary.revenue_this_month === 0;
+    // Detect empty shop (truly no data — no customers and no revenue at all)
+    const isEmpty = summary && !summary.has_data;
 
     if (summary) {
       $('#kpiRevenue').textContent = fmt(summary.revenue_today);
       $('#kpiTransactions').textContent = fmtInt(summary.transactions_today);
       $('#kpiAov').textContent = fmt(summary.avg_order_value);
       $('#kpiRepeat').textContent = summary.repeat_customer_rate + '%';
+
+      // Update KPI label if showing historical data
+      if (summary.data_is_stale && summary.has_data) {
+        const dateLabel = new Date(summary.effective_date + 'T00:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        const revLabel = $('#kpiRevenue')?.closest('.kpi-card')?.querySelector('.kpi-label');
+        if (revLabel) revLabel.textContent = 'REVENUE (' + dateLabel + ')';
+        const txLabel = $('#kpiTransactions')?.closest('.kpi-card')?.querySelector('.kpi-label');
+        if (txLabel) txLabel.textContent = 'TRANSACTIONS (' + dateLabel + ')';
+      }
 
       if (isEmpty) {
         $('#kpiRevenueDod').textContent = 'Connect your POS to see data';
@@ -1719,17 +1727,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const notifBellBtn = $('#notifBellBtn');
   const notifDropdown = $('#notifDropdown');
+  const notifBellWrap = $('#notifBellWrap');
 
   if (notifBellBtn && notifDropdown) {
     notifBellBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       const isOpen = notifDropdown.classList.contains('show');
-      notifDropdown.classList.toggle('show');
-      if (!isOpen) loadNotifications();
+      if (isOpen) {
+        notifDropdown.classList.remove('show');
+      } else {
+        notifDropdown.classList.add('show');
+        loadNotifications();
+      }
     });
 
     document.addEventListener('click', (e) => {
-      if (!notifDropdown.contains(e.target) && e.target !== notifBellBtn) {
+      // Close dropdown if clicking outside the entire bell area
+      if (notifBellWrap && !notifBellWrap.contains(e.target)) {
         notifDropdown.classList.remove('show');
       }
     });

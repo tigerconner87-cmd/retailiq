@@ -11,6 +11,16 @@ from app.models import (
 )
 
 
+def _effective_now(db: Session, shop_id: str) -> datetime:
+    """Return the latest transaction timestamp, or utcnow() if data is current."""
+    latest = db.query(func.max(Transaction.timestamp)).filter(
+        Transaction.shop_id == shop_id,
+    ).scalar()
+    if latest and (datetime.utcnow() - latest).days > 1:
+        return latest
+    return datetime.utcnow()
+
+
 def get_winback_overview(db: Session, shop_id: str):
     """Get customer status overview for win-back page."""
     total = db.query(func.count(Customer.id)).filter(Customer.shop_id == shop_id).scalar() or 0
@@ -26,7 +36,8 @@ def get_winback_overview(db: Session, shop_id: str):
 
     # "Won back" = customers who were at_risk/lost but came back recently
     # Approximate: customers with > 2 visits, last seen in past 14 days, avg gap > 30 days
-    two_weeks_ago = datetime.utcnow() - timedelta(days=14)
+    ref_now = _effective_now(db, shop_id)
+    two_weeks_ago = ref_now - timedelta(days=14)
     won_back = db.query(func.count(Customer.id)).filter(
         Customer.shop_id == shop_id,
         Customer.visit_count > 2,
@@ -60,7 +71,7 @@ def get_at_risk_customers(db: Session, shop_id: str, sort_by: str = "days_since"
         .all()
     )
 
-    now = datetime.utcnow()
+    now = _effective_now(db, shop_id)
     results = []
     for c in customers:
         days_since = (now - c.last_seen).days if c.last_seen else 999

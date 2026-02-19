@@ -32,7 +32,24 @@ def get_shop_for_user(db: Session, user_id: str) -> Shop | None:
 # ── Summary KPIs ──────────────────────────────────────────────────────────────
 
 def get_summary(db: Session, shop_id: str) -> dict:
-    today = _today()
+    actual_today = _today()
+
+    # Check if there's data for today; if not, use the most recent date with data
+    rev_check = db.query(func.coalesce(func.sum(Transaction.total), 0)).filter(
+        Transaction.shop_id == shop_id,
+        func.date(Transaction.timestamp) == actual_today,
+    ).scalar()
+
+    today = actual_today
+    data_is_stale = False
+    if float(rev_check) == 0:
+        latest_date = db.query(func.max(func.date(Transaction.timestamp))).filter(
+            Transaction.shop_id == shop_id,
+        ).scalar()
+        if latest_date:
+            today = latest_date
+            data_is_stale = True
+
     yesterday = today - timedelta(days=1)
     week_start = today - timedelta(days=today.weekday())
     last_week_start = week_start - timedelta(days=7)
@@ -123,6 +140,9 @@ def get_summary(db: Session, shop_id: str) -> dict:
         "new_customers_today": new_today,
         "estimated_profit_today": estimated_profit,
         "daily_foot_traffic_estimate": foot_traffic,
+        "has_data": total_customers > 0 or rev_today > 0,
+        "effective_date": today.isoformat(),
+        "data_is_stale": data_is_stale,
     }
 
 
@@ -130,6 +150,12 @@ def get_summary(db: Session, shop_id: str) -> dict:
 
 def get_sales_trends(db: Session, shop_id: str, days: int = 30) -> dict:
     end = _today()
+    # If no DailySnapshot data near today, use the latest available date
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < end - timedelta(days=1):
+        end = latest_snap
     start = end - timedelta(days=days)
 
     rows = (
@@ -184,6 +210,11 @@ def get_sales_trends(db: Session, shop_id: str, days: int = 30) -> dict:
 
 def get_sales_velocity(db: Session, shop_id: str) -> dict:
     today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
     start = today - timedelta(days=180)
 
     # Hourly averages
@@ -268,6 +299,11 @@ def _revenue_range(db: Session, shop_id: str, start: date, end: date) -> float:
 
 def get_forecast(db: Session, shop_id: str) -> dict:
     today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
     start = today - timedelta(days=90)
 
     rows = (
@@ -338,6 +374,11 @@ def get_forecast(db: Session, shop_id: str) -> dict:
 
 def get_goal_progress(db: Session, shop_id: str) -> dict | None:
     today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
     current_month = today.strftime("%Y-%m")
 
     goal = db.query(RevenueGoal).filter(
@@ -376,7 +417,14 @@ def get_goal_progress(db: Session, shop_id: str) -> dict | None:
 # ── Peak Hours Heatmap ────────────────────────────────────────────────────────
 
 def get_peak_hours(db: Session, shop_id: str, days: int = 30) -> list[dict]:
-    start = _today() - timedelta(days=days)
+    end = _today()
+    # If no HourlySnapshot data near today, use the latest available date
+    latest_snap = db.query(func.max(HourlySnapshot.date)).filter(
+        HourlySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < end - timedelta(days=1):
+        end = latest_snap
+    start = end - timedelta(days=days)
 
     rows = (
         db.query(
@@ -404,6 +452,12 @@ def get_peak_hours(db: Session, shop_id: str, days: int = 30) -> list[dict]:
 
 def get_product_rankings(db: Session, shop_id: str, days: int = 30) -> dict:
     today = _today()
+    # If no transaction data near today, use the latest available date
+    latest_tx = db.query(func.max(func.date(Transaction.timestamp))).filter(
+        Transaction.shop_id == shop_id,
+    ).scalar()
+    if latest_tx and latest_tx < today - timedelta(days=1):
+        today = latest_tx
     start = today - timedelta(days=days)
     prev_start = start - timedelta(days=days)
     start_dt = datetime.combine(start, datetime.min.time())
@@ -573,6 +627,11 @@ def _get_bundling_suggestions(db: Session, shop_id: str, since: datetime) -> lis
 
 def get_customer_metrics(db: Session, shop_id: str) -> dict:
     today = _today()
+    latest_tx = db.query(func.max(func.date(Transaction.timestamp))).filter(
+        Transaction.shop_id == shop_id,
+    ).scalar()
+    if latest_tx and latest_tx < today - timedelta(days=1):
+        today = latest_tx
     total = db.query(func.count(Customer.id)).filter(Customer.shop_id == shop_id).scalar() or 0
     repeat = db.query(func.count(Customer.id)).filter(
         Customer.shop_id == shop_id, Customer.visit_count > 1
@@ -760,7 +819,13 @@ def get_cohort_analysis(db: Session, shop_id: str) -> dict:
 
 def get_rfm_analysis(db: Session, shop_id: str) -> dict:
     """Recency, Frequency, Monetary scoring."""
-    today_dt = datetime.combine(_today(), datetime.min.time())
+    today = _today()
+    latest_tx = db.query(func.max(func.date(Transaction.timestamp))).filter(
+        Transaction.shop_id == shop_id,
+    ).scalar()
+    if latest_tx and latest_tx < today - timedelta(days=1):
+        today = latest_tx
+    today_dt = datetime.combine(today, datetime.min.time())
     customers = db.query(Customer).filter(
         Customer.shop_id == shop_id, Customer.visit_count > 0
     ).all()
@@ -897,7 +962,13 @@ def get_clv(db: Session, shop_id: str) -> dict:
 
 def get_churn_predictions(db: Session, shop_id: str) -> dict:
     """Flag customers likely to churn based on declining visit frequency."""
-    today_dt = datetime.combine(_today(), datetime.min.time())
+    today = _today()
+    latest_tx = db.query(func.max(func.date(Transaction.timestamp))).filter(
+        Transaction.shop_id == shop_id,
+    ).scalar()
+    if latest_tx and latest_tx < today - timedelta(days=1):
+        today = latest_tx
+    today_dt = datetime.combine(today, datetime.min.time())
 
     customers = db.query(Customer).filter(
         Customer.shop_id == shop_id,
@@ -961,6 +1032,11 @@ def get_churn_predictions(db: Session, shop_id: str) -> dict:
 def get_anomalies(db: Session, shop_id: str, days: int = 90) -> list[dict]:
     """Detect unusual revenue days (2+ standard deviations from mean)."""
     today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
     start = today - timedelta(days=days)
 
     rows = (
@@ -999,6 +1075,11 @@ def get_anomalies(db: Session, shop_id: str, days: int = 90) -> list[dict]:
 def get_moving_averages(db: Session, shop_id: str, days: int = 90) -> dict:
     """Calculate 7-day and 30-day moving averages."""
     today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
     start = today - timedelta(days=days + 30)  # Extra days for 30d MA warmup
 
     rows = (
@@ -1031,6 +1112,11 @@ def get_moving_averages(db: Session, shop_id: str, days: int = 90) -> dict:
 
 def get_financial_summary(db: Session, shop_id: str) -> dict:
     today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
     thirty_days_ago = today - timedelta(days=30)
 
     # Revenue last 30 days
@@ -1144,6 +1230,14 @@ def get_financial_summary(db: Session, shop_id: str) -> dict:
 def get_marketing_insights(db: Session, shop_id: str) -> dict:
     from app.models import MarketingCampaign
 
+    # Use effective "today" based on latest data
+    today = _today()
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap
+
     campaigns = db.query(MarketingCampaign).filter(MarketingCampaign.shop_id == shop_id).all()
 
     campaign_list = []
@@ -1171,7 +1265,7 @@ def get_marketing_insights(db: Session, shop_id: str) -> dict:
     # Customer acquisition cost
     new_30d = db.query(func.count(Customer.id)).filter(
         Customer.shop_id == shop_id,
-        func.date(Customer.first_seen) >= _today() - timedelta(days=30),
+        func.date(Customer.first_seen) >= today - timedelta(days=30),
     ).scalar() or 1
     cac = round(total_spend / new_30d, 2) if new_30d > 0 else 0
 
@@ -1181,7 +1275,7 @@ def get_marketing_insights(db: Session, shop_id: str) -> dict:
             HourlySnapshot.hour,
             func.avg(HourlySnapshot.transaction_count).label("avg_tx"),
         )
-        .filter(HourlySnapshot.shop_id == shop_id, HourlySnapshot.date >= _today() - timedelta(days=30))
+        .filter(HourlySnapshot.shop_id == shop_id, HourlySnapshot.date >= today - timedelta(days=30))
         .group_by(HourlySnapshot.hour)
         .order_by(func.avg(HourlySnapshot.transaction_count).desc())
         .limit(5)
@@ -1197,7 +1291,7 @@ def get_marketing_insights(db: Session, shop_id: str) -> dict:
         db.query(Product.name)
         .join(TransactionItem)
         .join(Transaction)
-        .filter(Product.shop_id == shop_id, Transaction.timestamp >= datetime.combine(_today() - timedelta(days=14), datetime.min.time()))
+        .filter(Product.shop_id == shop_id, Transaction.timestamp >= datetime.combine(today - timedelta(days=14), datetime.min.time()))
         .group_by(Product.name)
         .order_by(func.sum(TransactionItem.total).desc())
         .limit(3)
@@ -1278,6 +1372,11 @@ def get_ai_actions(db: Session, shop_id: str) -> list[dict]:
 def _generate_fallback_actions(db: Session, shop_id: str) -> list[dict]:
     """Generate basic actions if recommendation engine hasn't run yet."""
     today = _today()
+    latest_tx = db.query(func.max(func.date(Transaction.timestamp))).filter(
+        Transaction.shop_id == shop_id,
+    ).scalar()
+    if latest_tx and latest_tx < today - timedelta(days=1):
+        today = latest_tx
     actions = []
 
     # Lapsed customers

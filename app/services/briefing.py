@@ -15,6 +15,14 @@ from app.models import (
 def get_briefing(db: Session, shop_id: str, user_full_name: str):
     """Build the daily briefing data."""
     today = datetime.utcnow().date()
+
+    # If no recent snapshot data, use the latest available date as reference
+    latest_snap = db.query(func.max(DailySnapshot.date)).filter(
+        DailySnapshot.shop_id == shop_id,
+    ).scalar()
+    if latest_snap and latest_snap < today - timedelta(days=1):
+        today = latest_snap + timedelta(days=1)  # Pretend "today" is the day after last data
+
     yesterday = today - timedelta(days=1)
     same_day_last_week = today - timedelta(days=7)
     month_start = today.replace(day=1)
@@ -63,8 +71,8 @@ def get_briefing(db: Session, shop_id: str, user_full_name: str):
     )
     monthly_rev = float(monthly_rev) if monthly_rev else 0
 
-    # Monthly goal
-    current_month_str = today.strftime("%Y-%m")
+    # Monthly goal (use the month of the reference date)
+    current_month_str = yesterday.strftime("%Y-%m")
     rev_goal = (
         db.query(RevenueGoal)
         .filter(RevenueGoal.shop_id == shop_id, RevenueGoal.month == current_month_str)
@@ -85,7 +93,7 @@ def get_briefing(db: Session, shop_id: str, user_full_name: str):
     }
 
     # ── Top 3 Things To Do ──
-    todos = _generate_todos(db, shop_id, yesterday_snap, monthly_rev, goal_target)
+    todos = _generate_todos(db, shop_id, yesterday_snap, monthly_rev, goal_target, ref_today=today)
 
     # ── Competitor Watch ──
     competitors = db.query(Competitor).filter(Competitor.shop_id == shop_id).all()
@@ -169,12 +177,12 @@ def get_briefing(db: Session, shop_id: str, user_full_name: str):
     }
 
 
-def _generate_todos(db, shop_id, yesterday_snap, monthly_rev, goal_target):
+def _generate_todos(db, shop_id, yesterday_snap, monthly_rev, goal_target, ref_today=None):
     """Generate top 3 prioritized action items."""
     todos = []
 
     # Check if behind on goal
-    today = datetime.utcnow().date()
+    today = ref_today or datetime.utcnow().date()
     days_in_month = 30
     days_passed = today.day
     expected_pct = (days_passed / days_in_month) * 100
