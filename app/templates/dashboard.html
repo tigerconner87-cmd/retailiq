@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=19">
+  <link rel="stylesheet" href="/static/dashboard.css?v=20">
 </head>
 <body>
   <!-- Sidebar -->
@@ -538,11 +538,11 @@
           </div>
 
           <!-- Google Business Finder Modal -->
-          <div class="dh-modal-overlay" id="dhGoogleModal" hidden>
+          <div class="dh-modal-overlay" id="dhGoogleModal" hidden onclick="if(event.target===this)this.hidden=true">
             <div class="dh-modal">
               <div class="dh-modal-header">
                 <h3 id="dhGoogleModalTitle">Find Your Business on Google</h3>
-                <button class="dh-modal-close" id="dhGoogleModalClose">&times;</button>
+                <button class="dh-modal-close" id="dhGoogleModalClose" onclick="document.getElementById('dhGoogleModal').hidden=true">&times;</button>
               </div>
               <div class="dh-modal-body">
                 <div class="dh-modal-step" id="dhGoogleStep1">
@@ -1396,7 +1396,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=19"></script>
+  <script src="/static/dashboard.js?v=20"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>
