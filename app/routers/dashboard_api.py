@@ -510,7 +510,7 @@ def weekly_digest_preview(user: User = Depends(get_current_user), db: Session = 
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif">
 <div style="max-width:600px;margin:20px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
   <div style="background:linear-gradient(135deg,#6366f1,#06b6d4);padding:32px 24px;color:#fff;text-align:center">
-    <h1 style="margin:0;font-size:24px">RetailIQ Weekly Digest</h1>
+    <h1 style="margin:0;font-size:24px">Forge Weekly Digest</h1>
     <p style="margin:8px 0 0;opacity:.85;font-size:14px">{shop.name} — {period.get('start','')} to {period.get('end','')}</p>
   </div>
   <div style="padding:24px">
@@ -547,7 +547,7 @@ def weekly_digest_preview(user: User = Depends(get_current_user), db: Session = 
     </div>
   </div>
   <div style="padding:16px 24px;background:#f9fafb;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb">
-    Sent by RetailIQ — Your AI-Powered Retail Intelligence Platform
+    Sent by Forge — Your AI-Powered Retail Intelligence Platform
   </div>
 </div>
 </body></html>"""
@@ -1111,7 +1111,7 @@ def export_data(body: ExportRequest, user: User = Depends(get_current_user), db:
         raise HTTPException(status_code=400, detail="Invalid export type")
 
     output.seek(0)
-    filename = f"retailiq_{body.export_type}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    filename = f"forge_{body.export_type}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
     return StreamingResponse(
         output,
         media_type="text/csv",

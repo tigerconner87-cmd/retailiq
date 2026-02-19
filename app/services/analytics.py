@@ -1,4 +1,4 @@
-"""Advanced analytics engine for RetailIQ.
+"""Advanced analytics engine for Forge.
 
 Provides: summary KPIs, sales trends, peak hours, product rankings, customer metrics,
 forecasting, anomaly detection, cohort analysis, RFM scoring, CLV, churn prediction,

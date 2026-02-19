@@ -1,4 +1,4 @@
-# RetailIQ
+# Forge
 
 Sales intelligence dashboard for retail shop owners. Connects to your POS system (Square, Shopify, Clover) and delivers actionable insights on revenue trends, peak hours, customer retention, competitor activity, and Google reviews.
 
@@ -23,7 +23,7 @@ docker-compose exec web python -m scripts.generate_mock_data
 ```
 
 Demo credentials after running the script:
-- **Email:** demo@retailiq.com
+- **Email:** demo@forgeapp.com
 - **Password:** demo1234
 
 ## Run Migrations

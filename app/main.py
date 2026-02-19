@@ -12,7 +12,7 @@ from app.routers import ai, auth, dashboard_api, data_hub, pages
 log = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="RetailIQ",
+    title="Forge",
     description="Sales intelligence dashboard for retail shop owners",
     version="2.0.0",
 )

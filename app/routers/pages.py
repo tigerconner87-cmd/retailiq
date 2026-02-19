@@ -36,7 +36,7 @@ def dashboard_page(
         return RedirectResponse(url="/login", status_code=302)
 
     # If onboarding not completed, redirect to onboarding
-    if not user.onboarding_completed and user.email != "demo@retailiq.com":
+    if not user.onboarding_completed and user.email != "demo@forgeapp.com":
         return RedirectResponse(url="/dashboard/onboarding", status_code=302)
 
     # Check trial status
@@ -53,7 +53,7 @@ def dashboard_page(
         "user": user,
         "shop": shop,
         "trial_days": trial_days,
-        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
+        "show_trial_banner": user.email != "demo@forgeapp.com" and trial_days < 90,
         "welcome": welcome,
     })
 
@@ -103,7 +103,7 @@ def _dashboard_section(request, db, user, section):
     """Helper to render dashboard.html with the given active section."""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    if not user.onboarding_completed and user.email != "demo@retailiq.com":
+    if not user.onboarding_completed and user.email != "demo@forgeapp.com":
         return RedirectResponse(url="/dashboard/onboarding", status_code=302)
     if not is_trial_active(user):
         return RedirectResponse(url="/dashboard/upgrade", status_code=302)
@@ -115,7 +115,7 @@ def _dashboard_section(request, db, user, section):
         "shop": shop,
         "active_section": section,
         "trial_days": trial_days,
-        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
+        "show_trial_banner": user.email != "demo@forgeapp.com" and trial_days < 90,
     })
 
 
@@ -220,5 +220,5 @@ def weekly_report_page(
         "active_section": "competitors",
         "sub_section": "weekly-report",
         "trial_days": trial_days,
-        "show_trial_banner": user.email != "demo@retailiq.com" and trial_days < 90,
+        "show_trial_banner": user.email != "demo@forgeapp.com" and trial_days < 90,
     })

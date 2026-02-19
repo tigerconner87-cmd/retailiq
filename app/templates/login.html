@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Log In — RetailIQ</title>
+  <title>Log In — Forge</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -48,13 +48,14 @@
   <div class="login-container">
     <div class="logo-row">
       <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
-        <rect width="32" height="32" rx="8"/>
-        <path d="M9 22V12l4 4 4-6 4 8v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect width="32" height="32" rx="8" fill="url(#lg)"/>
+        <path d="M10 24h12M13 24v-4h6v4M11 20h10M9 14l3-2h8l3 2v3a1 1 0 01-1 1H10a1 1 0 01-1-1v-3z" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 12V9a2 2 0 014 0v3" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
       </svg>
-      <span class="logo-text">RetailIQ</span>
+      <span class="logo-text">Forge</span>
     </div>
-    <p class="tagline">Sales intelligence for retail shop owners</p>
+    <p class="tagline">Forge your business edge</p>
 
     <div class="login-card">
       <h1 class="card-title">Welcome back</h1>
@@ -85,7 +86,7 @@
     <p class="footer-links">
       Don't have an account? <a href="/register">Start free trial</a>
       <br><br>
-      <a href="/" style="color:var(--text3);font-weight:400">Back to RetailIQ home</a>
+      <a href="/" style="color:var(--text3);font-weight:400">Back to Forge home</a>
     </p>
   </div>
 
@@ -129,7 +130,7 @@
       btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></span> Logging in...';
 
       try {
-        await doLogin('demo@retailiq.com', 'demo1234');
+        await doLogin('demo@forgeapp.com', 'demo1234');
         window.location.href = '/dashboard';
       } catch (err) {
         errorMsg.textContent = 'Demo login failed. Please try manually.';

@@ -71,7 +71,7 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
 
 def is_trial_active(user: User) -> bool:
     """Check if user's trial is still active. Demo account never expires."""
-    if user.email == "demo@retailiq.com":
+    if user.email == "demo@forgeapp.com":
         return True
     if not user.trial_end_date:
         return True  # No trial set = legacy user, treat as active
@@ -80,7 +80,7 @@ def is_trial_active(user: User) -> bool:
 
 def get_trial_days_remaining(user: User) -> int:
     """Get number of days remaining in trial."""
-    if user.email == "demo@retailiq.com":
+    if user.email == "demo@forgeapp.com":
         return 99  # Demo never expires
     if not user.trial_end_date:
         return 99

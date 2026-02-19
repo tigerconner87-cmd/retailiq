@@ -96,14 +96,14 @@ def generate_onboarding_setup(
         title=f"Q{(today.month - 1) // 3 + 1} {today.year} Growth Strategy",
         objectives=["Increase monthly revenue", "Improve customer retention", "Expand marketing reach"],
         key_results=["Hit revenue target", "Boost repeat rate to 35%", "Post 3x per week on social"],
-        notes=f"Key challenges: {challenges_text}. Focus on data-driven decisions using RetailIQ insights.",
+        notes=f"Key challenges: {challenges_text}. Focus on data-driven decisions using Forge insights.",
         status="active",
     )
     db.add(sn)
 
     # --- Alerts (welcome) ---
     alerts_data = [
-        ("welcome", "success", "general", "Welcome to RetailIQ!",
+        ("welcome", "success", "general", "Welcome to Forge!",
          f"Your dashboard is ready for {shop.name}. Connect your POS system to start seeing real data!"),
         ("tip", "info", "revenue",
          "Connect your POS to import sales data",

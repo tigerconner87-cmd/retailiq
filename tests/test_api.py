@@ -7,7 +7,7 @@ def test_health(client):
 def test_landing_page(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "RetailIQ" in res.text
+    assert "Forge" in res.text
 
 
 def test_login_page(client):

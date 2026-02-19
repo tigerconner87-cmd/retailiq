@@ -1,5 +1,5 @@
 /* =============================================
-   RetailIQ — Landing Page Scripts (v7 Redesign)
+   Forge — Landing Page Scripts (v7 Redesign)
    ============================================= */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -7,13 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------- THEME TOGGLE ---------- */
   const html = document.documentElement;
   const themeToggle = document.getElementById('themeToggle');
-  const stored = localStorage.getItem('retailiq-theme');
+  const stored = localStorage.getItem('forge-theme');
   if (stored) html.setAttribute('data-theme', stored);
 
   themeToggle.addEventListener('click', () => {
     const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
-    localStorage.setItem('retailiq-theme', next);
+    localStorage.setItem('forge-theme', next);
   });
 
   /* ---------- NAVBAR SCROLL ---------- */

@@ -1,4 +1,4 @@
-"""Goals & Strategy service for RetailIQ.
+"""Goals & Strategy service for Forge.
 
 Tracks revenue goals, product targets, quarterly strategy,
 and generates AI strategy recommendations based on performance.

@@ -1,4 +1,4 @@
-"""Competitor Intelligence Engine for RetailIQ.
+"""Competitor Intelligence Engine for Forge.
 
 Analyzes competitor data to detect opportunities, generate marketing responses,
 build weekly reports, and provide actionable competitive intelligence.

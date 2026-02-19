@@ -1,4 +1,4 @@
-"""Generate 180 days of realistic mock data for RetailIQ demo.
+"""Generate 180 days of realistic mock data for Forge demo.
 
 Targets realistic small retail boutique doing $30K-$40K/month:
 - 500 customers with realistic visit/spend distributions
@@ -37,7 +37,7 @@ random.seed(42)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-DEMO_EMAIL = "demo@retailiq.com"
+DEMO_EMAIL = "demo@forgeapp.com"
 DEMO_PASSWORD = "demo1234"
 DEMO_NAME = "Alex Demo"
 SHOP_NAME = "Urban Threads Boutique"

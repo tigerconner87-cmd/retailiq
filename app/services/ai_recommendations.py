@@ -1,4 +1,4 @@
-"""AI Recommendations Engine for RetailIQ.
+"""AI Recommendations Engine for Forge.
 
 Analyzes all available data to generate 5-7 daily action items across categories:
 Revenue, Customers, Products, Marketing, Operations, Competitors.

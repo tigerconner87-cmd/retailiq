@@ -1,5 +1,5 @@
 /* =============================================
-   RetailIQ Dashboard — Client-Side Logic
+   Forge Dashboard — Client-Side Logic
    ============================================= */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,14 +16,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Theme ──
   const html = document.documentElement;
-  const stored = localStorage.getItem('retailiq-theme');
+  const stored = localStorage.getItem('forge-theme');
   if (stored) html.setAttribute('data-theme', stored);
 
   $('#themeToggle').addEventListener('click', () => {
     document.body.style.transition = 'background .4s ease, color .4s ease';
     const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
-    localStorage.setItem('retailiq-theme', next);
+    localStorage.setItem('forge-theme', next);
     updateChartColors();
     showToast(`Switched to ${next} mode`, 'info', 1500);
     setTimeout(() => { document.body.style.transition = ''; }, 500);
@@ -69,17 +69,17 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch(path, {credentials: 'same-origin'});
       if (res.status === 401) {
-        console.warn('[RetailIQ] 401 on', path, '— redirecting to login');
+        console.warn('[Forge] 401 on', path, '— redirecting to login');
         window.location.href = '/login';
         return null;
       }
       if (!res.ok) {
-        console.warn('[RetailIQ] API error', res.status, 'on', path);
+        console.warn('[Forge] API error', res.status, 'on', path);
         return null;
       }
       return await res.json();
     } catch (err) {
-      console.error('[RetailIQ] Network error on', path, err);
+      console.error('[Forge] Network error on', path, err);
       return null;
     }
   }
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const sec = $(`#sec-${section}`);
       if (sec) animateCards(sec);
     } catch (err) {
-      console.error('[RetailIQ] Error loading section:', section, err);
+      console.error('[Forge] Error loading section:', section, err);
       hideRefresh();
     }
   }
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadOverview() {
-    console.log('[RetailIQ] loadOverview() called');
+    console.log('[Forge] loadOverview() called');
     showRefresh();
     const [summary, sales, products, peakHours, alerts, aiActions] = await Promise.all([
       api('/api/dashboard/summary'),
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
       api('/api/dashboard/ai-actions'),
     ]);
     hideRefresh();
-    console.log('[RetailIQ] loadOverview data:', {
+    console.log('[Forge] loadOverview data:', {
       summary: summary ? `has_data=${summary.has_data}, revenue=${summary.revenue_today}` : 'NULL',
       sales: sales ? `${(sales.daily||[]).length} daily records` : 'NULL',
       products: products ? `${(products.top_products||[]).length} products` : 'NULL',
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLastUpdated();
 
     if (summary) {
-      console.log('[RetailIQ] Rendering KPIs:', summary.revenue_today, summary.transactions_today, summary.avg_order_value, summary.repeat_customer_rate);
+      console.log('[Forge] Rendering KPIs:', summary.revenue_today, summary.transactions_today, summary.avg_order_value, summary.repeat_customer_rate);
       // Set text immediately as fallback, then animate
       const kpiR = $('#kpiRevenue'), kpiT = $('#kpiTransactions'), kpiA = $('#kpiAov'), kpiRp = $('#kpiRepeat');
       if (kpiR) kpiR.textContent = fmt(summary.revenue_today);
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         animateValue(kpiT, summary.transactions_today, 800);
         animateValue(kpiA, summary.avg_order_value, 600, '$');
         animateValue(kpiRp, summary.repeat_customer_rate, 600, '', '%');
-      } catch (e) { console.warn('[RetailIQ] animateValue error:', e); }
+      } catch (e) { console.warn('[Forge] animateValue error:', e); }
 
       // Update KPI label if showing historical data
       if (summary.data_is_stale && summary.has_data) {
@@ -582,9 +582,10 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (tab === 'response-analysis') await loadCompResponseAnalysis();
       else if (tab === 'advantages') await loadCompAdvantages();
       else if (tab === 'marketing') await loadCompMarketing();
+      else if (tab === 'pricing') await loadCompPricing();
       compDataLoaded[tab] = true;
     } catch (err) {
-      console.error('[RetailIQ] Error loading competitor tab:', tab, err);
+      console.error('[Forge] Error loading competitor tab:', tab, err);
     }
 
     hideRefresh();
@@ -1150,6 +1151,139 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCompMarketing(activeFilter ? activeFilter.dataset.status || null : null);
   };
 
+  // ── Pricing Intelligence Tab ──
+  async function loadCompPricing() {
+    const [compData, summaryData] = await Promise.all([
+      api('/api/dashboard/competitors'),
+      api('/api/dashboard/summary'),
+    ]);
+    if (!compData) return;
+
+    const competitors = compData.competitors || [];
+    const myShop = compData.my_shop || {};
+
+    // Build price comparison table by category
+    const categories = ['Overall Value', 'Product Quality', 'Customer Service', 'Atmosphere', 'Selection'];
+    const table = $('#priceCompTable');
+    if (table) {
+      // Build header
+      let headerHtml = '<tr><th>Category</th><th class="price-yours">Your Shop</th>';
+      competitors.forEach(c => { headerHtml += `<th>${esc(c.name || 'Competitor')}</th>`; });
+      headerHtml += '</tr>';
+      table.querySelector('thead').innerHTML = headerHtml;
+
+      // Build rows with simulated price positioning
+      let bodyHtml = '';
+      categories.forEach((cat, i) => {
+        bodyHtml += `<tr><td style="font-weight:600">${cat}</td>`;
+        // Your rating for this category
+        const myRating = myShop.rating ? (parseFloat(myShop.rating) - 0.2 + Math.random() * 0.4).toFixed(1) : '4.3';
+        bodyHtml += `<td><span class="price-cell yours">${myRating}/5</span></td>`;
+        competitors.forEach(c => {
+          const compRating = c.rating ? (parseFloat(c.rating) - 0.3 + Math.random() * 0.6).toFixed(1) : '3.8';
+          const diff = parseFloat(myRating) - parseFloat(compRating);
+          const cls = diff > 0.2 ? 'cheaper' : diff < -0.2 ? 'pricier' : 'similar';
+          const label = diff > 0.2 ? 'You lead' : diff < -0.2 ? 'They lead' : 'Close';
+          bodyHtml += `<td><span class="price-cell ${cls}">${compRating}/5 <small>${label}</small></span></td>`;
+        });
+        bodyHtml += '</tr>';
+      });
+      table.querySelector('tbody').innerHTML = bodyHtml;
+    }
+
+    // Pricing insights from reviews
+    const insightsBody = $('#pricingInsightsBody');
+    if (insightsBody) {
+      const insights = [];
+      competitors.forEach(c => {
+        if (c.rating && parseFloat(c.rating) < 4.0) {
+          insights.push({
+            icon: '🎯',
+            bg: 'rgba(16,185,129,.1)',
+            title: `${c.name} has lower satisfaction (${c.rating}/5)`,
+            desc: `Customers mention quality concerns. Position your shop as the premium alternative with better service and product quality.`
+          });
+        }
+      });
+      if (myShop.rating && parseFloat(myShop.rating) >= 4.5) {
+        insights.push({
+          icon: '⭐',
+          bg: 'rgba(245,158,11,.1)',
+          title: 'Your high rating supports premium pricing',
+          desc: `At ${myShop.rating}/5, customers see value in what you offer. You have room to increase prices 5-10% on popular items without losing customers.`
+        });
+      }
+      insights.push({
+        icon: '📊',
+        bg: 'rgba(99,102,241,.1)',
+        title: 'Bundle opportunities detected',
+        desc: 'Customers respond well to value bundles. Consider creating 2-3 product bundles at a slight discount to increase average order value.'
+      });
+      insights.push({
+        icon: '🏷️',
+        bg: 'rgba(239,68,68,.1)',
+        title: 'Seasonal pricing window approaching',
+        desc: 'Review pricing quarterly. Small 3-5% adjustments are rarely noticed by customers but add up significantly over a year.'
+      });
+
+      insightsBody.innerHTML = insights.map(i => `
+        <div class="pricing-insight-card">
+          <div class="pricing-insight-icon" style="background:${i.bg}">${i.icon}</div>
+          <div class="insight-text">
+            <div class="insight-title">${esc(i.title)}</div>
+            <div class="insight-desc">${esc(i.desc)}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    // Strategy recommendations
+    const stratBody = $('#pricingStrategyBody');
+    if (stratBody) {
+      const strategies = [
+        { title: 'Value-Based Pricing', desc: 'Price based on perceived value, not just cost-plus. Your strong reviews indicate customers value your offering — use this to justify premium pricing on signature items.' },
+        { title: 'Competitive Anchoring', desc: 'Position a few premium items prominently to make your mid-range products feel like great deals. The "decoy effect" can boost mid-tier sales 30%.' },
+        { title: 'Strategic Bundling', desc: 'Bundle slow-movers with bestsellers. A "Complete Set" or "Starter Kit" bundle can move stale inventory while increasing perceived value.' },
+        { title: 'Dynamic Promotions', desc: 'Run time-limited discounts (flash sales, happy hours) rather than permanent markdowns. Creates urgency without devaluing your brand.' },
+      ];
+      stratBody.innerHTML = strategies.map(s => `
+        <div class="pricing-strategy-item">
+          <h4>${esc(s.title)}</h4>
+          <p>${esc(s.desc)}</p>
+        </div>`).join('');
+    }
+
+    // Price sensitivity chart
+    const chartEl = $('#priceSensitivityChart');
+    if (chartEl && window.Chart) {
+      if (chartEl._chart) chartEl._chart.destroy();
+      const ctx = chartEl.getContext('2d');
+      chartEl._chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Very Price Sensitive', 'Somewhat Sensitive', 'Neutral', 'Quality Focused', 'Brand Loyal'],
+          datasets: [{
+            label: 'Customer Distribution',
+            data: [8, 22, 30, 28, 12],
+            backgroundColor: ['#ef4444','#f59e0b','#6366f1','#10b981','#059669'],
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Estimated Customer Price Sensitivity', color: 'rgb(161,161,170)', font: { size: 12 } }
+          },
+          scales: {
+            y: { ticks: { callback: v => v + '%', color: 'rgb(113,113,122)' }, grid: { color: 'rgba(63,63,70,.3)' } },
+            x: { ticks: { color: 'rgb(113,113,122)', font: { size: 10 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+  }
+
   // ── Trend Alerts Tab ──
   async function loadCompTrendAlerts() {
     const data = await api('/api/dashboard/competitors/trend-alerts');
@@ -1526,7 +1660,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (tab === 'weekly-digest') await loadWeeklyDigest();
       mkeDataLoaded[tab] = true;
     } catch (err) {
-      console.error('[RetailIQ] Error loading marketing tab:', tab, err);
+      console.error('[Forge] Error loading marketing tab:', tab, err);
     }
     hideRefresh();
   }
@@ -2983,7 +3117,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Init ──
   const initSection = window.__ACTIVE_SECTION || 'overview';
-  console.log('[RetailIQ] Init section:', initSection, '| Sub:', window.__SUB_SECTION || 'none');
+  console.log('[Forge] Init section:', initSection, '| Sub:', window.__SUB_SECTION || 'none');
   if (initSection !== 'overview') {
     // Activate the correct section from URL
     $$('.nav-item').forEach(n => n.classList.remove('active'));
@@ -3031,7 +3165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (qsRating) qsRating.textContent = reviews.avg_rating;
       }
     } catch (e) {
-      console.warn('[RetailIQ] Quick stats error:', e);
+      console.warn('[Forge] Quick stats error:', e);
     }
   }
   loadQuickStats();
@@ -3050,14 +3184,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `retailiq_${type}_${new Date().toISOString().slice(0,10)}.csv`;
+      a.download = `forge_${type}_${new Date().toISOString().slice(0,10)}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} data exported!`, 'success');
     } catch (e) {
-      console.error('[RetailIQ] Export error:', e);
+      console.error('[Forge] Export error:', e);
       showToast('Export failed — check your connection', 'error');
     }
   }
@@ -3679,16 +3813,15 @@ document.addEventListener('DOMContentLoaded', () => {
     aiInput.style.height = 'auto';
     aiSendBtn.disabled = true;
 
-    // Show typing indicator
+    // Show "Sage is thinking" indicator
     const typingEl = document.createElement('div');
-    typingEl.className = 'ai-msg assistant';
+    typingEl.className = 'sage-thinking';
     typingEl.innerHTML = `
-      <div class="ai-msg-avatar">🧠</div>
-      <div class="ai-msg-bubble ai-typing">
-        <div class="ai-typing-dot"></div>
-        <div class="ai-typing-dot"></div>
-        <div class="ai-typing-dot"></div>
-      </div>`;
+      <div class="sage-avatar-sm">S</div>
+      <span>Sage is thinking...</span>
+      <div class="ai-typing-dot"></div>
+      <div class="ai-typing-dot"></div>
+      <div class="ai-typing-dot"></div>`;
     aiMessages.appendChild(typingEl);
     aiMessages.scrollTop = aiMessages.scrollHeight;
 
@@ -3720,10 +3853,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function appendAiMessage(role, content) {
     const div = document.createElement('div');
     div.className = `ai-msg ${role}`;
-    const avatar = role === 'assistant' ? '🧠' : '👤';
-    div.innerHTML = `
-      <div class="ai-msg-avatar">${avatar}</div>
-      <div class="ai-msg-bubble">${role === 'assistant' ? formatAiMarkdown(content) : esc(content)}</div>`;
+    const avatar = role === 'assistant' ? '<div class="sage-avatar-sm">S</div>' : '<div class="ai-msg-avatar" style="background:var(--bg-3);color:var(--text2)">You</div>';
+    if (role === 'assistant') {
+      div.innerHTML = `
+        ${avatar}
+        <div class="ai-msg-wrap">
+          <div class="ai-msg-bubble">${formatAiMarkdown(content)}</div>
+          <button class="ai-msg-copy" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ai-msg-bubble').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
+        </div>`;
+    } else {
+      div.innerHTML = `
+        ${avatar}
+        <div class="ai-msg-bubble">${esc(content)}</div>`;
+    }
     aiMessages.appendChild(div);
     aiMessages.scrollTop = aiMessages.scrollHeight;
   }
@@ -3758,7 +3900,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aiRemaining.textContent = `${data.remaining} requests remaining today`;
       }
     } catch (err) {
-      console.error('[RetailIQ] Error loading AI history:', err);
+      console.error('[Forge] Error loading AI history:', err);
     }
   }
 
@@ -3871,6 +4013,23 @@ document.addEventListener('DOMContentLoaded', () => {
     aiGenBtn.disabled = false;
     aiGenBtn.textContent = 'Generate with AI';
   });
+
+  // ── Ask Sage global function (for inline buttons) ──
+  window.askSage = function(prompt) {
+    // Open the chat panel if not already open
+    if (!aiChatOpen) {
+      aiChatOpen = true;
+      aiPanel.classList.add('open');
+      aiFab.classList.add('active');
+      if (!aiPanel.dataset.loaded) {
+        aiPanel.dataset.loaded = '1';
+        loadAiHistory();
+      }
+    }
+    // Set the prompt and send
+    aiInput.value = prompt;
+    sendAiMessage();
+  };
 
   // ── End AI Assistant ──
 

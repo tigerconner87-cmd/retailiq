@@ -1,4 +1,4 @@
-"""AI Marketing Content Engine for RetailIQ.
+"""AI Marketing Content Engine for Forge.
 
 Generates ready-to-use marketing content based on actual shop data:
 content calendar, social posts, email campaigns, promotions, and
@@ -878,7 +878,7 @@ def get_marketing_performance(db: Session, shop_id: str) -> dict:
         },
         "connect_cta": {
             "title": "Connect Your Instagram",
-            "description": "Link your Instagram account to track real post performance, engagement rates, and follower growth directly in RetailIQ.",
+            "description": "Link your Instagram account to track real post performance, engagement rates, and follower growth directly in Forge.",
             "status": "coming_soon",
         },
     }

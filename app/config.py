@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    ALERT_FROM_EMAIL: str = "alerts@retailiq.com"
+    ALERT_FROM_EMAIL: str = "alerts@forgeapp.com"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

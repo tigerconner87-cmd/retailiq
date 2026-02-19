@@ -113,7 +113,7 @@ def run_alert_checks(db: Session, shop: Shop) -> list[Alert]:
 def send_alert_email(alert: Alert, recipient_email: str) -> None:
     """Stub: send alert notification email. Replace with real SMTP."""
     log.info(
-        "EMAIL STUB — To: %s | Subject: [RetailIQ Alert] %s | Body: %s",
+        "EMAIL STUB — To: %s | Subject: [Forge Alert] %s | Body: %s",
         recipient_email,
         alert.title,
         alert.message,
