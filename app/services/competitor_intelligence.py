@@ -965,3 +965,367 @@ def generate_capitalize_response(db: Session, shop_id: str, review_id: str) -> d
         "priority": mr.priority,
         "status": mr.status,
     }
+
+
+# ── Trend Alerts ──────────────────────────────────────────────────────────
+
+
+def get_trend_alerts(db: Session, shop_id: str) -> dict:
+    """Generate real-time trend alerts for competitive changes."""
+    competitors = (
+        db.query(Competitor)
+        .filter(Competitor.shop_id == shop_id)
+        .all()
+    )
+    today = date.today()
+    seven_ago = today - timedelta(days=7)
+    fourteen_ago = today - timedelta(days=14)
+    thirty_ago = today - timedelta(days=30)
+    sixty_ago = today - timedelta(days=60)
+
+    alerts = []
+
+    for c in competitors:
+        comp_reviews = (
+            db.query(CompetitorReview)
+            .filter(CompetitorReview.competitor_id == c.id)
+            .order_by(CompetitorReview.review_date.desc())
+            .all()
+        )
+
+        # Alert 1: Negative review spike (3+ in 7 days)
+        recent_negative = [
+            r for r in comp_reviews
+            if r.review_date and r.review_date.date() >= seven_ago
+            and r.sentiment == "negative"
+        ]
+        if len(recent_negative) >= 3:
+            alerts.append({
+                "type": "negative_spike",
+                "severity": "critical",
+                "icon": "1F6A8",
+                "competitor": c.name,
+                "title": f"{c.name} received {len(recent_negative)} negative reviews this week",
+                "description": f"Customers are complaining — this is a prime opportunity to attract their dissatisfied base.",
+                "timestamp": max(r.review_date for r in recent_negative).isoformat() if recent_negative else None,
+                "data": {"count": len(recent_negative)},
+            })
+
+        # Alert 2: Rating drop > 0.2 in last month
+        old_snap = (
+            db.query(CompetitorSnapshot)
+            .filter(CompetitorSnapshot.competitor_id == c.id, CompetitorSnapshot.date <= thirty_ago)
+            .order_by(CompetitorSnapshot.date.desc())
+            .first()
+        )
+        if old_snap and old_snap.rating and c.rating:
+            drop = float(old_snap.rating) - float(c.rating)
+            if drop >= 0.2:
+                alerts.append({
+                    "type": "rating_drop",
+                    "severity": "warning",
+                    "icon": "1F4C9",
+                    "competitor": c.name,
+                    "title": f"{c.name} rating dropped {drop:.1f} stars (from {float(old_snap.rating):.1f} to {float(c.rating):.1f})",
+                    "description": f"A sustained decline in rating signals growing customer dissatisfaction.",
+                    "timestamp": today.isoformat(),
+                    "data": {"from_rating": float(old_snap.rating), "to_rating": float(c.rating), "drop": drop},
+                })
+
+        # Alert 3: Sentiment shift — compare last 14 days vs prior 14 days
+        recent_reviews = [
+            r for r in comp_reviews
+            if r.review_date and r.review_date.date() >= fourteen_ago
+        ]
+        older_reviews = [
+            r for r in comp_reviews
+            if r.review_date and fourteen_ago > r.review_date.date() >= sixty_ago
+        ]
+        if len(recent_reviews) >= 3 and len(older_reviews) >= 3:
+            recent_pos = sum(1 for r in recent_reviews if r.sentiment == "positive") / len(recent_reviews)
+            older_pos = sum(1 for r in older_reviews if r.sentiment == "positive") / len(older_reviews)
+            shift = round((recent_pos - older_pos) * 100, 1)
+            if shift <= -20:
+                alerts.append({
+                    "type": "sentiment_decline",
+                    "severity": "warning",
+                    "icon": "1F61F",
+                    "competitor": c.name,
+                    "title": f"{c.name} sentiment dropped {abs(shift)}% recently",
+                    "description": f"Positive sentiment fell from {round(older_pos * 100)}% to {round(recent_pos * 100)}%. Their customers are less happy.",
+                    "timestamp": today.isoformat(),
+                    "data": {"old_pct": round(older_pos * 100), "new_pct": round(recent_pos * 100)},
+                })
+            elif shift >= 20:
+                alerts.append({
+                    "type": "sentiment_rise",
+                    "severity": "info",
+                    "icon": "1F4C8",
+                    "competitor": c.name,
+                    "title": f"{c.name} sentiment improved {shift}% — watch out",
+                    "description": f"They're getting better feedback. Monitor closely and strengthen your own service.",
+                    "timestamp": today.isoformat(),
+                    "data": {"old_pct": round(older_pos * 100), "new_pct": round(recent_pos * 100)},
+                })
+
+        # Alert 4: Review volume surge (2x+ more reviews than usual)
+        recent_count = len([r for r in comp_reviews if r.review_date and r.review_date.date() >= seven_ago])
+        older_weekly = len([r for r in comp_reviews if r.review_date and fourteen_ago <= r.review_date.date() < seven_ago])
+        if recent_count >= 5 and older_weekly > 0 and recent_count >= older_weekly * 2:
+            alerts.append({
+                "type": "review_surge",
+                "severity": "info",
+                "icon": "1F4E2",
+                "competitor": c.name,
+                "title": f"{c.name} got {recent_count} reviews this week (up {round(recent_count / older_weekly, 1)}x)",
+                "description": f"They may be running a campaign or something happened. Keep an eye on what's driving it.",
+                "timestamp": today.isoformat(),
+                "data": {"this_week": recent_count, "last_week": older_weekly},
+            })
+
+        # Alert 5: Competitor went quiet (0 reviews in 14 days when usually active)
+        total_reviews = len(comp_reviews)
+        recent_any = len([r for r in comp_reviews if r.review_date and r.review_date.date() >= fourteen_ago])
+        if total_reviews >= 10 and recent_any == 0:
+            alerts.append({
+                "type": "gone_quiet",
+                "severity": "info",
+                "icon": "1F4A4",
+                "competitor": c.name,
+                "title": f"{c.name} has had zero new reviews in 2 weeks",
+                "description": f"They might be losing visibility. Fill the gap with your own marketing push.",
+                "timestamp": today.isoformat(),
+                "data": {"total_reviews": total_reviews},
+            })
+
+    # Sort by severity
+    severity_order = {"critical": 0, "warning": 1, "info": 2}
+    alerts.sort(key=lambda a: severity_order.get(a["severity"], 3))
+
+    return {"alerts": alerts, "total": len(alerts)}
+
+
+# ── Response Analysis ─────────────────────────────────────────────────────
+
+
+def get_response_analysis(db: Session, shop_id: str) -> dict:
+    """Analyze review response rates and times — your shop vs competitors."""
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    shop_name = shop.name if shop else SHOP_NAME_PLACEHOLDER
+
+    # Own shop response metrics
+    own_reviews = (
+        db.query(Review)
+        .filter(Review.shop_id == shop_id, Review.is_own_shop.is_(True))
+        .all()
+    )
+    own_total = len(own_reviews)
+    own_responded = sum(1 for r in own_reviews if r.response_text)
+    own_response_rate = round(own_responded / own_total * 100, 1) if own_total > 0 else 0
+
+    # Response rate by sentiment
+    own_neg = [r for r in own_reviews if r.sentiment == "negative"]
+    own_neg_responded = sum(1 for r in own_neg if r.response_text)
+    own_neg_response_rate = round(own_neg_responded / len(own_neg) * 100, 1) if own_neg else 0
+
+    own_pos = [r for r in own_reviews if r.sentiment == "positive"]
+    own_pos_responded = sum(1 for r in own_pos if r.response_text)
+    own_pos_response_rate = round(own_pos_responded / len(own_pos) * 100, 1) if own_pos else 0
+
+    # Competitor response metrics (estimated from review patterns)
+    competitors = (
+        db.query(Competitor)
+        .filter(Competitor.shop_id == shop_id)
+        .all()
+    )
+
+    comp_analysis = []
+    for c in competitors:
+        comp_reviews = (
+            db.query(CompetitorReview)
+            .filter(CompetitorReview.competitor_id == c.id)
+            .all()
+        )
+        total = len(comp_reviews)
+        # Estimate response rate from high-rated reviews (as a proxy)
+        high_rated = sum(1 for r in comp_reviews if r.rating and r.rating >= 4)
+        est_response_rate = round(high_rated / total * 100, 1) if total > 0 else 0
+
+        neg = [r for r in comp_reviews if r.sentiment == "negative"]
+        neg_count = len(neg)
+        avg_neg_rating = round(sum(r.rating for r in neg if r.rating) / neg_count, 1) if neg_count > 0 else 0
+
+        comp_analysis.append({
+            "name": c.name,
+            "total_reviews": total,
+            "estimated_response_rate": est_response_rate,
+            "negative_review_count": neg_count,
+            "avg_negative_rating": avg_neg_rating,
+        })
+
+    # Recommendations
+    tips = []
+    if own_neg_response_rate < 80:
+        tips.append({
+            "icon": "26A0",
+            "text": f"You've only responded to {own_neg_response_rate}% of negative reviews. Aim for 100% — every response shows you care.",
+            "priority": "high",
+        })
+    if own_response_rate < 50:
+        tips.append({
+            "icon": "1F4AC",
+            "text": f"Your overall response rate is {own_response_rate}%. Responding to reviews (even positive ones) boosts engagement and visibility.",
+            "priority": "medium",
+        })
+    if own_pos_response_rate < 30:
+        tips.append({
+            "icon": "2B50",
+            "text": "Thank your positive reviewers! A quick thank-you reply encourages repeat visits and more reviews.",
+            "priority": "low",
+        })
+    if not tips:
+        tips.append({
+            "icon": "1F389",
+            "text": "Great job! You're staying on top of your review responses. Keep it up!",
+            "priority": "low",
+        })
+
+    return {
+        "own": {
+            "name": shop_name,
+            "total_reviews": own_total,
+            "responded": own_responded,
+            "response_rate": own_response_rate,
+            "negative_response_rate": own_neg_response_rate,
+            "positive_response_rate": own_pos_response_rate,
+            "negative_count": len(own_neg),
+            "positive_count": len(own_pos),
+        },
+        "competitors": comp_analysis,
+        "tips": tips,
+    }
+
+
+# ── Competitive Advantages ────────────────────────────────────────────────
+
+
+def get_competitive_advantages(db: Session, shop_id: str) -> dict:
+    """Identify your specific advantages over each competitor."""
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    shop_name = shop.name if shop else SHOP_NAME_PLACEHOLDER
+
+    own_reviews = (
+        db.query(Review)
+        .filter(Review.shop_id == shop_id, Review.is_own_shop.is_(True))
+        .all()
+    )
+    own_avg = db.query(func.avg(Review.rating)).filter(
+        Review.shop_id == shop_id, Review.is_own_shop.is_(True)
+    ).scalar()
+    own_rating = round(float(own_avg), 1) if own_avg else 0
+    own_strengths, own_weaknesses = _extract_strengths_weaknesses(own_reviews)
+    own_sentiment = _sentiment_score([type("R", (), {"sentiment": r.sentiment})() for r in own_reviews])
+
+    competitors = (
+        db.query(Competitor)
+        .filter(Competitor.shop_id == shop_id)
+        .all()
+    )
+
+    advantages = []
+    for c in competitors:
+        comp_reviews = (
+            db.query(CompetitorReview)
+            .filter(CompetitorReview.competitor_id == c.id)
+            .all()
+        )
+        c_rating = float(c.rating) if c.rating else 0
+        c_strengths, c_weaknesses = _extract_strengths_weaknesses(comp_reviews)
+        c_sentiment = _sentiment_score(comp_reviews)
+
+        your_wins = []
+        their_wins = []
+
+        # Rating comparison
+        if own_rating > c_rating + 0.1:
+            your_wins.append({
+                "metric": "Rating",
+                "yours": f"{own_rating}/5",
+                "theirs": f"{c_rating}/5",
+                "gap": f"+{round(own_rating - c_rating, 1)} stars",
+            })
+        elif c_rating > own_rating + 0.1:
+            their_wins.append({
+                "metric": "Rating",
+                "yours": f"{own_rating}/5",
+                "theirs": f"{c_rating}/5",
+                "gap": f"-{round(c_rating - own_rating, 1)} stars",
+            })
+
+        # Sentiment comparison
+        if own_sentiment > c_sentiment + 5:
+            your_wins.append({
+                "metric": "Positive Sentiment",
+                "yours": f"{own_sentiment}%",
+                "theirs": f"{c_sentiment}%",
+                "gap": f"+{round(own_sentiment - c_sentiment, 1)}%",
+            })
+        elif c_sentiment > own_sentiment + 5:
+            their_wins.append({
+                "metric": "Positive Sentiment",
+                "yours": f"{own_sentiment}%",
+                "theirs": f"{c_sentiment}%",
+                "gap": f"-{round(c_sentiment - own_sentiment, 1)}%",
+            })
+
+        # Weakness exploitation — things they're bad at that you're good at
+        exploitable = []
+        for weakness in c_weaknesses:
+            if weakness != "No significant weaknesses" and weakness in own_strengths:
+                exploitable.append(weakness)
+
+        # Things they're strong at that you're weak at
+        threats = []
+        for strength in c_strengths:
+            if strength != "No clear strengths identified" and strength in own_weaknesses:
+                threats.append(strength)
+
+        # Action advice
+        advice = []
+        if your_wins:
+            advice.append(f"Promote your {your_wins[0]['metric'].lower()} advantage in local marketing.")
+        if exploitable:
+            advice.append(f"Highlight your {exploitable[0].lower()} — their customers want this.")
+        if threats:
+            advice.append(f"Improve your {threats[0].lower()} — {c.name} is beating you here.")
+        if not advice:
+            advice.append("Monitor this competitor and maintain your competitive position.")
+
+        advantages.append({
+            "competitor": c.name,
+            "competitor_rating": c_rating,
+            "your_wins": your_wins,
+            "their_wins": their_wins,
+            "exploitable_weaknesses": exploitable,
+            "threats": threats,
+            "your_strengths": own_strengths,
+            "their_weaknesses": c_weaknesses,
+            "advice": advice,
+            "overall_position": "ahead" if len(your_wins) > len(their_wins) else ("behind" if len(their_wins) > len(your_wins) else "even"),
+        })
+
+    # Summary stats
+    ahead_count = sum(1 for a in advantages if a["overall_position"] == "ahead")
+    behind_count = sum(1 for a in advantages if a["overall_position"] == "behind")
+
+    return {
+        "shop_name": shop_name,
+        "own_rating": own_rating,
+        "advantages": advantages,
+        "summary": {
+            "ahead_of": ahead_count,
+            "behind": behind_count,
+            "even_with": len(advantages) - ahead_count - behind_count,
+            "total_competitors": len(advantages),
+        },
+    }

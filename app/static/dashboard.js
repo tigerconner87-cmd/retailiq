@@ -376,6 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (tab === 'sentiment') await loadCompSentiment();
       else if (tab === 'market-map') await loadCompMarketMap();
       else if (tab === 'weekly-report') await loadCompWeeklyReport();
+      else if (tab === 'trend-alerts') await loadCompTrendAlerts();
+      else if (tab === 'response-analysis') await loadCompResponseAnalysis();
+      else if (tab === 'advantages') await loadCompAdvantages();
       else if (tab === 'marketing') await loadCompMarketing();
       compDataLoaded[tab] = true;
     } catch (err) {
@@ -944,6 +947,188 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeFilter = $('.mkt-filter-btn.active');
     loadCompMarketing(activeFilter ? activeFilter.dataset.status || null : null);
   };
+
+  // ── Trend Alerts Tab ──
+  async function loadCompTrendAlerts() {
+    const data = await api('/api/dashboard/competitors/trend-alerts');
+    if (!data) return;
+
+    const list = $('#trendAlertsList');
+    if (!data.alerts || data.alerts.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p>No trend alerts right now — your competitive landscape is stable. Check back soon!</p></div>';
+      return;
+    }
+
+    list.innerHTML = `
+      <div class="trend-alerts-summary">
+        <span class="ta-count">${data.total} alert${data.total !== 1 ? 's' : ''} detected</span>
+      </div>
+    ` + data.alerts.map(a => {
+      const sevClass = a.severity === 'critical' ? 'critical' : a.severity === 'warning' ? 'warning' : 'info';
+      const iconHex = a.icon || '1F514';
+      const emoji = String.fromCodePoint(parseInt(iconHex, 16));
+      return `
+        <div class="trend-alert-card ${sevClass}">
+          <div class="ta-icon">${emoji}</div>
+          <div class="ta-content">
+            <div class="ta-header">
+              <span class="ta-title">${esc(a.title)}</span>
+              <span class="ta-severity ${sevClass}">${a.severity}</span>
+            </div>
+            <div class="ta-desc">${esc(a.description)}</div>
+            <div class="ta-meta">
+              <span class="ta-competitor">${esc(a.competitor)}</span>
+              <span class="ta-type">${esc(a.type.replace(/_/g, ' '))}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Response Analysis Tab ──
+  async function loadCompResponseAnalysis() {
+    const data = await api('/api/dashboard/competitors/response-analysis');
+    if (!data) return;
+
+    const el = $('#responseAnalysis');
+    const own = data.own;
+
+    el.innerHTML = `
+      <div class="ra-own-card">
+        <h3>Your Response Performance</h3>
+        <div class="ra-metrics">
+          <div class="ra-metric">
+            <div class="ra-metric-value">${own.response_rate}%</div>
+            <div class="ra-metric-label">Overall Response Rate</div>
+            <div class="ra-metric-sub">${own.responded} of ${own.total_reviews} reviews</div>
+          </div>
+          <div class="ra-metric">
+            <div class="ra-metric-value ${own.negative_response_rate >= 80 ? 'good' : 'needs-work'}">${own.negative_response_rate}%</div>
+            <div class="ra-metric-label">Negative Review Response</div>
+            <div class="ra-metric-sub">${own.negative_count} negative reviews</div>
+          </div>
+          <div class="ra-metric">
+            <div class="ra-metric-value">${own.positive_response_rate}%</div>
+            <div class="ra-metric-label">Positive Review Response</div>
+            <div class="ra-metric-sub">${own.positive_count} positive reviews</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ra-comparison">
+        <h3>vs Competitors (Estimated)</h3>
+        <div class="ra-comp-list">
+          ${data.competitors.map(c => `
+            <div class="ra-comp-row">
+              <span class="ra-comp-name">${esc(c.name)}</span>
+              <div class="ra-comp-bar-wrap">
+                <div class="ra-comp-bar" style="width:${Math.min(c.estimated_response_rate, 100)}%"></div>
+              </div>
+              <span class="ra-comp-rate">${c.estimated_response_rate}%</span>
+            </div>
+          `).join('')}
+          <div class="ra-comp-row own">
+            <span class="ra-comp-name">${esc(own.name)} (You)</span>
+            <div class="ra-comp-bar-wrap">
+              <div class="ra-comp-bar own" style="width:${Math.min(own.response_rate, 100)}%"></div>
+            </div>
+            <span class="ra-comp-rate">${own.response_rate}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ra-tips">
+        <h3>Recommendations</h3>
+        ${data.tips.map(t => {
+          const emoji = String.fromCodePoint(parseInt(t.icon, 16));
+          return `
+            <div class="ra-tip ${t.priority}">
+              <span class="ra-tip-icon">${emoji}</span>
+              <span class="ra-tip-text">${esc(t.text)}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // ── Competitive Advantages Tab ──
+  async function loadCompAdvantages() {
+    const data = await api('/api/dashboard/competitors/advantages');
+    if (!data) return;
+
+    const el = $('#advantagesDashboard');
+    const s = data.summary;
+
+    el.innerHTML = `
+      <div class="adv-summary">
+        <div class="adv-summary-item ahead">
+          <div class="adv-summary-num">${s.ahead_of}</div>
+          <div class="adv-summary-label">Ahead Of</div>
+        </div>
+        <div class="adv-summary-item even">
+          <div class="adv-summary-num">${s.even_with}</div>
+          <div class="adv-summary-label">Even With</div>
+        </div>
+        <div class="adv-summary-item behind">
+          <div class="adv-summary-num">${s.behind}</div>
+          <div class="adv-summary-label">Behind</div>
+        </div>
+      </div>
+
+      <div class="adv-cards">
+        ${data.advantages.map(a => {
+          const posClass = a.overall_position;
+          return `
+            <div class="adv-card ${posClass}">
+              <div class="adv-card-header">
+                <span class="adv-comp-name">${esc(a.competitor)}</span>
+                <span class="adv-position ${posClass}">${posClass === 'ahead' ? 'You Lead' : posClass === 'behind' ? 'They Lead' : 'Even Match'}</span>
+              </div>
+
+              ${a.your_wins.length > 0 ? `
+                <div class="adv-section wins">
+                  <div class="adv-section-label">Your Advantages</div>
+                  ${a.your_wins.map(w => `
+                    <div class="adv-metric win">
+                      <span class="adv-metric-name">${esc(w.metric)}</span>
+                      <span class="adv-metric-gap">${esc(w.gap)}</span>
+                      <span class="adv-metric-detail">${esc(w.yours)} vs ${esc(w.theirs)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              ${a.their_wins.length > 0 ? `
+                <div class="adv-section losses">
+                  <div class="adv-section-label">Their Advantages</div>
+                  ${a.their_wins.map(w => `
+                    <div class="adv-metric loss">
+                      <span class="adv-metric-name">${esc(w.metric)}</span>
+                      <span class="adv-metric-gap">${esc(w.gap)}</span>
+                      <span class="adv-metric-detail">${esc(w.yours)} vs ${esc(w.theirs)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              ${a.exploitable_weaknesses.length > 0 ? `
+                <div class="adv-section exploit">
+                  <div class="adv-section-label">Exploitable Weaknesses</div>
+                  <div class="adv-tags">${a.exploitable_weaknesses.map(w => `<span class="tag strength">${esc(w)}</span>`).join('')}</div>
+                </div>
+              ` : ''}
+
+              <div class="adv-advice">
+                ${a.advice.map(ad => `<div class="adv-advice-item">${esc(ad)}</div>`).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // END COMPETITOR INTELLIGENCE

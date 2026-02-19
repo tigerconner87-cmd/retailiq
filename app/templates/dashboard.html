@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=12">
+  <link rel="stylesheet" href="/static/dashboard.css?v=13">
 </head>
 <body>
   <!-- Sidebar -->
@@ -431,6 +431,9 @@
           <button class="comp-tab" data-tab="sentiment">Sentiment</button>
           <button class="comp-tab" data-tab="market-map">Market Map</button>
           <button class="comp-tab" data-tab="weekly-report">Weekly Report</button>
+          <button class="comp-tab" data-tab="trend-alerts">Trend Alerts</button>
+          <button class="comp-tab" data-tab="response-analysis">Response</button>
+          <button class="comp-tab" data-tab="advantages">Advantages</button>
           <button class="comp-tab" data-tab="marketing">Marketing</button>
         </div>
 
@@ -491,6 +494,27 @@
         <!-- Tab: Weekly Report -->
         <div class="comp-panel" id="compPanel-weekly-report">
           <div class="weekly-report" id="weeklyReport"></div>
+        </div>
+
+        <!-- Tab: Trend Alerts -->
+        <div class="comp-panel" id="compPanel-trend-alerts">
+          <div class="trend-alerts-list" id="trendAlertsList">
+            <div class="ai-loading">Scanning for trend changes...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Response Analysis -->
+        <div class="comp-panel" id="compPanel-response-analysis">
+          <div class="response-analysis" id="responseAnalysis">
+            <div class="ai-loading">Analyzing response rates...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Competitive Advantages -->
+        <div class="comp-panel" id="compPanel-advantages">
+          <div class="advantages-dashboard" id="advantagesDashboard">
+            <div class="ai-loading">Finding your competitive edges...</div>
+          </div>
         </div>
 
         <!-- Tab: Marketing Responses -->
@@ -806,6 +830,6 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=12"></script>
+  <script src="/static/dashboard.js?v=13"></script>
 </body>
 </html>

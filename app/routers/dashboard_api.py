@@ -86,6 +86,9 @@ from app.services.competitor_intelligence import (
     get_marketing_responses,
     update_marketing_response_status,
     generate_capitalize_response,
+    get_trend_alerts,
+    get_response_analysis,
+    get_competitive_advantages,
 )
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -291,6 +294,24 @@ def capitalize_on_review(
     if not result:
         raise HTTPException(status_code=404, detail="Review not found")
     return result
+
+
+@router.get("/competitors/trend-alerts")
+def competitor_trend_alerts(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_trend_alerts(db, shop.id)
+
+
+@router.get("/competitors/response-analysis")
+def competitor_response_analysis(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_response_analysis(db, shop.id)
+
+
+@router.get("/competitors/advantages")
+def competitor_advantages(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_competitive_advantages(db, shop.id)
 
 
 # ── Goals & Strategy ──────────────────────────────────────────────────────
