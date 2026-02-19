@@ -2289,7 +2289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><input type="checkbox" class="wb-row-check" data-id="${c.id}"></td>
         <td>${esc(c.email)}</td>
         <td>${c.last_seen ? c.last_seen.split('T')[0] : '--'}</td>
-        <td><span style="color:${c.days_since_visit > 60 ? 'var(--danger)' : 'var(--warning)};font-weight:600">${c.days_since_visit}d</span></td>
+        <td><span style="color:${c.days_since_visit > 60 ? 'var(--danger)' : 'var(--warning)'};font-weight:600">${c.days_since_visit}d</span></td>
         <td>${fmt(c.total_spent)}</td>
         <td>${esc(c.favorite_product)}</td>
         <td>${fmtInt(c.visit_count)}</td>
