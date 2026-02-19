@@ -410,7 +410,7 @@ class OnboardingStep2(BaseModel):
 
 class OnboardingStep3(BaseModel):
     revenue_target: float = 25000
-    biggest_challenge: str = "all"
+    biggest_challenges: list[str] = ["new_customers", "retention", "marketing", "competitors"]
     competitors: list[str] = []
     monthly_revenue: str = "10k_25k"
 

@@ -43,19 +43,21 @@
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .form-hint{font-size:11px;color:var(--text3);margin-top:4px}
 
-    /* Radio group */
-    .radio-group{display:flex;flex-direction:column;gap:8px}
-    .radio-option{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);cursor:pointer;transition:.2s;font-size:14px}
-    .radio-option:hover{border-color:var(--border-light)}
-    .radio-option.selected{border-color:var(--primary);background:rgba(99,102,241,.04)}
-    .radio-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s}
-    .radio-option.selected .radio-dot{border-color:var(--primary)}
-    .radio-option.selected .radio-dot::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--primary)}
+    /* Checkbox group */
+    .checkbox-group{display:flex;flex-direction:column;gap:8px}
+    .checkbox-option{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);cursor:pointer;transition:.2s;font-size:14px}
+    .checkbox-option:hover{border-color:var(--border-light)}
+    .checkbox-option.selected{border-color:var(--primary);background:rgba(99,102,241,.04)}
+    .checkbox-box{width:18px;height:18px;border-radius:4px;border:2px solid var(--border-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s}
+    .checkbox-option.selected .checkbox-box{border-color:var(--primary);background:var(--primary)}
+    .checkbox-option.selected .checkbox-box::after{content:'';width:10px;height:10px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat}
 
     /* Competitor inputs */
     .comp-inputs{display:flex;flex-direction:column;gap:8px}
     .comp-input-row{display:flex;gap:8px;align-items:center}
-    .comp-input-row input{flex:1}
+    .comp-input-row input{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+    .comp-input-row input:focus{border-color:var(--primary)}
+    .comp-input-row input::placeholder{color:var(--text3)}
     .comp-num{width:24px;height:24px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text3);flex-shrink:0}
 
     /* Revenue input */
@@ -189,27 +191,23 @@
         </div>
 
         <div class="form-group">
-          <label>What's your biggest challenge?</label>
-          <div class="radio-group" id="challengeGroup">
-            <div class="radio-option" data-value="new_customers">
-              <div class="radio-dot"></div>
+          <label>What are your biggest challenges? (select all that apply)</label>
+          <div class="checkbox-group" id="challengeGroup">
+            <div class="checkbox-option selected" data-value="new_customers">
+              <div class="checkbox-box"></div>
               <span>Getting new customers</span>
             </div>
-            <div class="radio-option" data-value="retention">
-              <div class="radio-dot"></div>
+            <div class="checkbox-option selected" data-value="retention">
+              <div class="checkbox-box"></div>
               <span>Keeping customers coming back</span>
             </div>
-            <div class="radio-option" data-value="marketing">
-              <div class="radio-dot"></div>
+            <div class="checkbox-option selected" data-value="marketing">
+              <div class="checkbox-box"></div>
               <span>Marketing my shop</span>
             </div>
-            <div class="radio-option" data-value="competitors">
-              <div class="radio-dot"></div>
+            <div class="checkbox-option selected" data-value="competitors">
+              <div class="checkbox-box"></div>
               <span>Understanding my competitors</span>
-            </div>
-            <div class="radio-option selected" data-value="all">
-              <div class="radio-dot"></div>
-              <span>All of the above</span>
             </div>
           </div>
         </div>
@@ -226,7 +224,6 @@
 
   <script>
     let currentStep = 1;
-    let selectedChallenge = 'all';
     const data = {step1: {}, step2: {competitors: []}, step3: {}};
 
     function showStep(n) {
@@ -242,12 +239,10 @@
       }
     }
 
-    // Radio group
-    document.querySelectorAll('.radio-option').forEach(opt => {
+    // Checkbox group (multi-select)
+    document.querySelectorAll('.checkbox-option').forEach(opt => {
       opt.addEventListener('click', () => {
-        document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
-        opt.classList.add('selected');
-        selectedChallenge = opt.dataset.value;
+        opt.classList.toggle('selected');
       });
     });
 
@@ -301,9 +296,12 @@
       btn.disabled = true;
       btn.innerHTML = '<span style="display:inline-block;width:18px;height:18px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></span> Setting up your dashboard...';
 
+      const selectedChallenges = Array.from(document.querySelectorAll('.checkbox-option.selected'))
+        .map(el => el.dataset.value);
+
       data.step3 = {
         revenue_target: parseFloat(document.getElementById('s3Target').value) || 25000,
-        biggest_challenge: selectedChallenge,
+        biggest_challenges: selectedChallenges.length > 0 ? selectedChallenges : ['new_customers'],
         competitors: data.step2.competitors || [],
         monthly_revenue: (data.step1.monthly_revenue) || '10k_25k',
       };

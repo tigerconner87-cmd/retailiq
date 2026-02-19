@@ -617,23 +617,23 @@ def onboarding_step2(body: OnboardingStep2, user: User = Depends(get_current_use
 
 @router.post("/onboarding/complete")
 def onboarding_complete(body: OnboardingStep3, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    from app.services.onboarding_data import generate_starter_data
+    from app.services.onboarding_data import generate_onboarding_setup
 
     shop = db.query(Shop).filter(Shop.user_id == user.id).first()
     if not shop:
         raise HTTPException(status_code=400, detail="No shop found for user")
 
-    # Check if data was already generated (idempotency)
-    from app.models import Transaction
-    existing = db.query(Transaction).filter(Transaction.shop_id == shop.id).first()
+    # Check if setup was already done (idempotency)
+    from app.models import Goal
+    existing = db.query(Goal).filter(Goal.shop_id == shop.id).first()
     if not existing:
-        generate_starter_data(
+        generate_onboarding_setup(
             db=db,
             shop=shop,
             monthly_revenue=body.monthly_revenue,
             revenue_target=body.revenue_target,
             competitor_names=body.competitors,
-            biggest_challenge=body.biggest_challenge,
+            biggest_challenges=body.biggest_challenges,
         )
 
     user.onboarding_step = 3

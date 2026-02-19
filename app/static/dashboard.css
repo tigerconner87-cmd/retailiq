@@ -528,3 +528,15 @@ a{color:inherit;text-decoration:none}
 .welcome-dismiss{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:.2s}
 .welcome-dismiss:hover{color:var(--text);background:var(--bg-2)}
 @keyframes welcomeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Empty States ── */
+.empty-state-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:48px 32px;text-align:center}
+.empty-state-card .empty-icon{margin:0 auto 16px;width:56px;height:56px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;color:var(--text3)}
+.empty-state-card .empty-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.empty-state-card .empty-desc{font-size:14px;color:var(--text2);max-width:440px;margin:0 auto;line-height:1.6}
+.empty-state-card .empty-action{margin-top:16px}
+.empty-state-card .empty-action a{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-size:13px;font-weight:700;text-decoration:none;transition:.2s}
+.empty-state-card .empty-action a:hover{box-shadow:0 2px 12px rgba(99,102,241,.4);transform:translateY(-1px)}
+.empty-state-inline{padding:24px;text-align:center;color:var(--text3);font-size:14px}
+.comp-gathering{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--warning)}
+.comp-gathering svg{flex-shrink:0}

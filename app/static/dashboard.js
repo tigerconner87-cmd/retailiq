@@ -139,6 +139,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function emptyCard(icon, title, desc) {
+    return `<div class="empty-state-card">
+      <div class="empty-icon">${icon}</div>
+      <div class="empty-title">${title}</div>
+      <div class="empty-desc">${desc}</div>
+    </div>`;
+  }
+
   async function loadOverview() {
     showRefresh();
     const [summary, sales, products, peakHours, alerts, aiActions] = await Promise.all([
@@ -151,26 +159,55 @@ document.addEventListener('DOMContentLoaded', () => {
     ]);
     hideRefresh();
 
+    // Detect empty shop (no sales data)
+    const isEmpty = summary && summary.revenue_today === 0 && summary.transactions_today === 0
+      && summary.revenue_this_month === 0;
+
     if (summary) {
       $('#kpiRevenue').textContent = fmt(summary.revenue_today);
       $('#kpiTransactions').textContent = fmtInt(summary.transactions_today);
       $('#kpiAov').textContent = fmt(summary.avg_order_value);
       $('#kpiRepeat').textContent = summary.repeat_customer_rate + '%';
 
-      const dod = summary.revenue_change_dod;
-      const dodEl = $('#kpiRevenueDod');
-      dodEl.textContent = (dod >= 0 ? '+' : '') + dod + '% vs yesterday';
-      dodEl.className = 'kpi-change ' + (dod >= 0 ? 'up' : 'down');
+      if (isEmpty) {
+        $('#kpiRevenueDod').textContent = 'Connect your POS to see data';
+        $('#kpiRevenueDod').className = 'kpi-change';
+      } else {
+        const dod = summary.revenue_change_dod;
+        const dodEl = $('#kpiRevenueDod');
+        dodEl.textContent = (dod >= 0 ? '+' : '') + dod + '% vs yesterday';
+        dodEl.className = 'kpi-change ' + (dod >= 0 ? 'up' : 'down');
+      }
     }
 
-    if (sales && sales.daily) renderRevenueChart(sales.daily);
-    if (peakHours) renderHeatmap(peakHours);
+    if (isEmpty) {
+      // Empty state for AI actions
+      const aiBody = $('#aiActionsBody');
+      aiBody.innerHTML = '<div class="ai-action"><div class="ai-action-emoji">&#9989;</div><div class="ai-action-content"><div class="ai-action-title">Complete your setup to get personalized recommendations</div><div class="ai-action-desc">Connect your POS system (Shopify, Square, or Clover) to start receiving AI-powered insights tailored to your business.</div></div></div>';
 
-    if (products && products.top_products) {
-      const tbody = $('#productsTableOverview tbody');
-      tbody.innerHTML = products.top_products.slice(0, 5).map(p =>
-        `<tr><td>${esc(p.name)}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td></tr>`
-      ).join('');
+      // Empty chart area
+      const chartRow = $('#revenueChart');
+      if (chartRow) {
+        chartRow.parentElement.innerHTML = '<div class="empty-state-inline">Connect your POS or add your first sale to see revenue data here.</div>';
+      }
+      const heatmapEl = $('#heatmap');
+      if (heatmapEl) heatmapEl.innerHTML = '<div class="empty-state-inline">Peak hours data will appear once sales come in.</div>';
+
+      // Empty products table
+      const prodTbody = $('#productsTableOverview tbody');
+      prodTbody.innerHTML = '<tr><td colspan="3" class="empty-state-inline">No products yet</td></tr>';
+    } else {
+      if (sales && sales.daily) renderRevenueChart(sales.daily);
+      if (peakHours) renderHeatmap(peakHours);
+
+      if (products && products.top_products) {
+        const tbody = $('#productsTableOverview tbody');
+        tbody.innerHTML = products.top_products.slice(0, 5).map(p =>
+          `<tr><td>${esc(p.name)}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td></tr>`
+        ).join('');
+      }
+
+      renderAiActions(aiActions);
     }
 
     if (alerts) {
@@ -183,8 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
         badge.hidden = true;
       }
     }
-
-    renderAiActions(aiActions);
   }
 
   async function loadSales() {
@@ -192,6 +227,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = await api('/api/dashboard/sales?days=60');
     hideRefresh();
     if (!data) return;
+
+    const hasData = data.daily && data.daily.length > 0 && data.daily.some(d => d.revenue > 0);
+    if (!hasData) {
+      const sec = $('#sec-sales');
+      sec.innerHTML = emptyCard(
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+        'No sales data yet',
+        'Connect Shopify, Square, or Clover to import your sales automatically. Your sales trends, weekly summaries, and monthly totals will appear here.'
+      );
+      return;
+    }
 
     renderSalesChartFull(data.daily);
 
@@ -212,6 +258,16 @@ document.addEventListener('DOMContentLoaded', () => {
     hideRefresh();
     if (!data) return;
 
+    if (!data.top_products || data.top_products.length === 0) {
+      const sec = $('#sec-products');
+      sec.innerHTML = emptyCard(
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+        'No products yet',
+        'Products will appear once you connect your POS system. Your product performance rankings, category breakdowns, and best sellers will show up here.'
+      );
+      return;
+    }
+
     const tbody = $('#productsTableFull tbody');
     tbody.innerHTML = data.top_products.map((p, i) =>
       `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.category || '-')}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td><td>${fmt(p.avg_price)}</td><td>${p.margin != null ? p.margin + '%' : '-'}</td></tr>`
@@ -223,6 +279,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = await api('/api/dashboard/customers');
     hideRefresh();
     if (!data) return;
+
+    if (data.total_customers === 0) {
+      const sec = $('#sec-customers');
+      sec.innerHTML = emptyCard(
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+        'No customer data yet',
+        'Customer insights will appear as sales come in. You\'ll see segments, repeat rates, top customers, and churn predictions here.'
+      );
+      return;
+    }
 
     $('#custTotal').textContent = fmtInt(data.total_customers);
     $('#custRepeat').textContent = data.repeat_rate + '%';
@@ -288,6 +354,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!data) return;
 
     const grid = $('#compCardsGrid');
+
+    // Check if competitors have no review data yet (new user)
+    const allZeroReviews = data.cards && data.cards.length > 0 &&
+      data.cards.filter(c => !c.is_own).every(c => c.review_count === 0);
+    if (allZeroReviews && data.cards.filter(c => !c.is_own).length > 0) {
+      grid.innerHTML = `<div class="comp-gathering">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>We're gathering data on your competitors. Check back in 24 hours for full insights.</span>
+      </div>` + data.cards.filter(c => !c.is_own).map(c => `
+        <div class="comp-card">
+          <div class="comp-card-header"><div class="comp-card-name">${esc(c.name)}</div></div>
+          <div class="comp-card-stats">
+            <div class="comp-stat"><div class="comp-stat-label">Status</div><div class="comp-stat-value">Gathering data...</div></div>
+          </div>
+        </div>
+      `).join('');
+      return;
+    }
     grid.innerHTML = data.cards.map(c => {
       const starsHtml = c.rating ? '&#9733;'.repeat(Math.round(c.rating)) + '&#9734;'.repeat(5 - Math.round(c.rating)) : '';
       const trendIcon = c.rating_trend === 'improving' ? '<span class="trend-arrow up">&#9650;</span>'
@@ -1049,7 +1133,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Content Calendar ──
   async function loadMkeCalendar() {
     const data = await api('/api/dashboard/marketing-engine/calendar');
-    if (!data) return;
+    if (!data || !data.days || data.days.length === 0) {
+      const grid = $('#mkeCalendarGrid');
+      grid.innerHTML = `<div class="empty-state-card" style="grid-column:1/-1">
+        <div class="empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+        <div class="empty-title">Marketing templates coming soon</div>
+        <div class="empty-desc">Connect your POS to get AI-generated content based on your actual products and sales data. In the meantime, start posting about your shop on social media!</div>
+      </div>`;
+      return;
+    }
 
     const grid = $('#mkeCalendarGrid');
     grid.innerHTML = data.days.map(day => {
@@ -1292,6 +1384,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = await api('/api/dashboard/reviews');
     hideRefresh();
     if (!data) return;
+
+    if (data.total_reviews === 0) {
+      const sec = $('#sec-reviews');
+      sec.innerHTML = emptyCard(
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+        'No reviews yet',
+        'Connect your Google Business Profile to monitor reviews. You\'ll see ratings, sentiment analysis, response suggestions, and review velocity here.'
+      );
+      return;
+    }
 
     $('#revAvg').textContent = data.avg_rating ? data.avg_rating + ' / 5' : '--';
     $('#revTotal').textContent = fmtInt(data.total_reviews);
