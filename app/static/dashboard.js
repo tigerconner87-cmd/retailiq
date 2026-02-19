@@ -20,10 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (stored) html.setAttribute('data-theme', stored);
 
   $('#themeToggle').addEventListener('click', () => {
+    document.body.style.transition = 'background .4s ease, color .4s ease';
     const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
     localStorage.setItem('retailiq-theme', next);
     updateChartColors();
+    showToast(`Switched to ${next} mode`, 'info', 1500);
+    setTimeout(() => { document.body.style.transition = ''; }, 500);
   });
 
   // ── Mobile sidebar ──
@@ -39,7 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
       $$('.nav-item').forEach(n => n.classList.remove('active'));
       item.classList.add('active');
       $$('.section').forEach(s => s.classList.remove('active'));
-      $(`#sec-${section}`).classList.add('active');
+      const target = $(`#sec-${section}`);
+      target.classList.add('active');
+      target.style.animation = 'none';
+      void target.offsetWidth;
+      target.style.animation = 'sectionFadeIn .3s ease';
       const title = item.textContent.trim();
       $('#pageTitle').textContent = title;
       // Update breadcrumb
@@ -80,6 +87,55 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
     }
   }
+
+  // ── Toast Notification System ──
+  function showToast(message, type = 'info', duration = 3000) {
+    let container = $('#toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icons = {success: '&#10003;', error: '&#10007;', info: '&#8505;', warning: '&#9888;'};
+    toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${message}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      toast.addEventListener('transitionend', () => toast.remove());
+    }, duration);
+  }
+
+  // ── Stagger card entrance ──
+  function animateCards(container) {
+    const cards = (container || document).querySelectorAll('.card:not(.card-animated)');
+    cards.forEach((card, i) => {
+      card.classList.add('card-animated');
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(12px)';
+      setTimeout(() => {
+        card.style.transition = 'opacity .35s ease, transform .35s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, i * 60);
+    });
+  }
+
+  // ── Copy to clipboard with micro-interaction ──
+  window.copyToClipboard = function(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Copied to clipboard!', 'success', 2000);
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '&#10003; Copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 1500);
+      }
+    }).catch(() => showToast('Failed to copy', 'error'));
+  };
 
   async function apiPost(path) {
     const token = localStorage.getItem('retailiq_token');
@@ -140,6 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (section === 'winback') await loadWinback();
       else if (section === 'reviews') await loadReviews();
       else if (section === 'alerts') await loadAlerts();
+      // Stagger card entrance animation
+      const sec = $(`#sec-${section}`);
+      if (sec) animateCards(sec);
     } catch (err) {
       console.error('[RetailIQ] Error loading section:', section, err);
       hideRefresh();
@@ -2816,7 +2875,7 @@ document.addEventListener('DOMContentLoaded', () => {
         credentials: 'same-origin',
         body: JSON.stringify({export_type: type}),
       });
-      if (!res.ok) return;
+      if (!res.ok) { showToast('Export failed — please try again', 'error'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2826,8 +2885,10 @@ document.addEventListener('DOMContentLoaded', () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} data exported!`, 'success');
     } catch (e) {
       console.error('[RetailIQ] Export error:', e);
+      showToast('Export failed — check your connection', 'error');
     }
   }
 
