@@ -40,8 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
       item.classList.add('active');
       $$('.section').forEach(s => s.classList.remove('active'));
       $(`#sec-${section}`).classList.add('active');
-      $('#pageTitle').textContent = item.textContent.trim();
+      const title = item.textContent.trim();
+      $('#pageTitle').textContent = title;
+      // Update breadcrumb
+      const bc = $('#breadcrumbPage');
+      if (bc) bc.textContent = title;
       $('#sidebar').classList.remove('open');
+      if (sidebarOverlay) sidebarOverlay.classList.remove('show');
       loadSection(section);
     });
   });
@@ -164,11 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Detect empty shop (truly no data — no customers and no revenue at all)
     const isEmpty = summary && summary.has_data === false;
 
+    lastUpdateTime = Date.now();
+    updateLastUpdated();
+
     if (summary) {
-      $('#kpiRevenue').textContent = fmt(summary.revenue_today);
-      $('#kpiTransactions').textContent = fmtInt(summary.transactions_today);
-      $('#kpiAov').textContent = fmt(summary.avg_order_value);
-      $('#kpiRepeat').textContent = summary.repeat_customer_rate + '%';
+      animateValue($('#kpiRevenue'), summary.revenue_today, 800, '$');
+      animateValue($('#kpiTransactions'), summary.transactions_today, 800);
+      animateValue($('#kpiAov'), summary.avg_order_value, 600, '$');
+      animateValue($('#kpiRepeat'), summary.repeat_customer_rate, 600, '', '%');
 
       // Update KPI label if showing historical data
       if (summary.data_is_stale && summary.has_data) {
@@ -218,7 +226,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       renderAiActions(aiActions);
+
+      // Load sparkline for revenue card
+      const sparkData = await api('/api/dashboard/sparkline?days=7');
+      if (sparkData && sparkData.length > 1) {
+        const revCard = $('#kpiRevenue')?.closest('.kpi-card');
+        if (revCard) {
+          let sparkEl = revCard.querySelector('.sparkline-wrap');
+          if (!sparkEl) {
+            sparkEl = document.createElement('div');
+            sparkEl.className = 'sparkline-wrap';
+            sparkEl.style.marginTop = '8px';
+            revCard.appendChild(sparkEl);
+          }
+          sparkEl.innerHTML = renderSparkline(sparkData, 100, 24);
+        }
+      }
     }
+
+    // Load insights strip
+    loadInsightStrip();
 
     if (alerts) {
       renderAlertList($('#alertListOverview'), alerts.alerts.slice(0, 5));
@@ -2022,6 +2049,214 @@ document.addEventListener('DOMContentLoaded', () => {
   function showRefresh() { $('#refreshIndicator').classList.add('spinning'); }
   function hideRefresh() { $('#refreshIndicator').classList.remove('spinning'); }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // SEARCH FUNCTIONALITY
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const searchInput = $('#searchInput');
+  const searchResults = $('#searchResults');
+  let searchTimeout = null;
+
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      const q = searchInput.value.trim();
+      if (q.length < 2) {
+        searchResults.hidden = true;
+        return;
+      }
+      searchTimeout = setTimeout(async () => {
+        const data = await api('/api/dashboard/search?q=' + encodeURIComponent(q));
+        if (!data) return;
+        if (data.results.length === 0) {
+          searchResults.innerHTML = '<div class="search-empty">No results found</div>';
+        } else {
+          searchResults.innerHTML = data.results.map(r => `
+            <div class="search-result-item" data-section="${esc(r.section)}">
+              <div class="search-result-icon">${r.icon}</div>
+              <div class="search-result-text">
+                <div class="search-result-title">${esc(r.title)}</div>
+                <div class="search-result-sub">${esc(r.subtitle)}</div>
+              </div>
+            </div>
+          `).join('');
+          // Click handler for results
+          $$('.search-result-item', searchResults).forEach(item => {
+            item.addEventListener('click', () => {
+              const section = item.dataset.section;
+              const navItem = $(`.nav-item[data-section="${section}"]`);
+              if (navItem) navItem.click();
+              searchInput.value = '';
+              searchResults.hidden = true;
+            });
+          });
+        }
+        searchResults.hidden = false;
+      }, 250);
+    });
+
+    searchInput.addEventListener('blur', () => {
+      setTimeout(() => { searchResults.hidden = true; }, 200);
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        searchInput.blur();
+        searchResults.hidden = true;
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // KEYBOARD SHORTCUTS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const shortcutMap = {
+    'b': 'briefing', 'o': 'overview', 's': 'sales', 'p': 'products',
+    'u': 'customers', 'c': 'competitors', 'g': 'goals', 'm': 'marketing', 'w': 'winback',
+  };
+
+  document.addEventListener('keydown', (e) => {
+    // Don't trigger shortcuts when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    if (e.key === '/') {
+      e.preventDefault();
+      if (searchInput) searchInput.focus();
+      return;
+    }
+
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      e.preventDefault();
+      const modal = $('#shortcutsModal');
+      if (modal) modal.classList.toggle('show');
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      const modal = $('#shortcutsModal');
+      if (modal) modal.classList.remove('show');
+      if (searchResults) searchResults.hidden = true;
+      return;
+    }
+
+    const section = shortcutMap[e.key.toLowerCase()];
+    if (section) {
+      const navItem = $(`.nav-item[data-section="${section}"]`);
+      if (navItem) navItem.click();
+    }
+  });
+
+  // Close shortcuts modal
+  const shortcutsClose = $('#shortcutsClose');
+  if (shortcutsClose) {
+    shortcutsClose.addEventListener('click', () => {
+      $('#shortcutsModal').classList.remove('show');
+    });
+  }
+  const shortcutsModal = $('#shortcutsModal');
+  if (shortcutsModal) {
+    shortcutsModal.addEventListener('click', (e) => {
+      if (e.target === shortcutsModal) shortcutsModal.classList.remove('show');
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // MOBILE SIDEBAR
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const sidebarOverlay = $('#sidebarOverlay');
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => {
+      $('#sidebar').classList.remove('open');
+      sidebarOverlay.classList.remove('show');
+    });
+  }
+
+  // Override the mobile toggle to also show/hide overlay
+  const mobileToggleBtn = $('#mobileToggle');
+  if (mobileToggleBtn) {
+    mobileToggleBtn.addEventListener('click', () => {
+      const sidebar = $('#sidebar');
+      const isOpen = sidebar.classList.contains('open');
+      if (sidebarOverlay) {
+        if (isOpen) sidebarOverlay.classList.remove('show');
+        else sidebarOverlay.classList.add('show');
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // LAST UPDATED TIMER
+  // ══════════════════════════════════════════════════════════════════════════
+
+  let lastUpdateTime = Date.now();
+  function updateLastUpdated() {
+    const el = $('#lastUpdated');
+    if (!el) return;
+    const diff = Math.floor((Date.now() - lastUpdateTime) / 1000);
+    if (diff < 10) el.textContent = 'Updated just now';
+    else if (diff < 60) el.textContent = `Updated ${diff}s ago`;
+    else el.textContent = `Updated ${Math.floor(diff / 60)}m ago`;
+  }
+  setInterval(updateLastUpdated, 10000);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // NUMBER COUNT-UP ANIMATION
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function animateValue(el, end, duration = 600, prefix = '', suffix = '') {
+    if (!el) return;
+    const start = 0;
+    const startTime = performance.now();
+    function tick(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = start + (end - start) * eased;
+      if (prefix === '$') {
+        el.textContent = '$' + Number(current).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      } else {
+        el.textContent = prefix + Math.round(current).toLocaleString('en-US') + suffix;
+      }
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SPARKLINE RENDERER
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function renderSparkline(data, width = 60, height = 20, color = '#6366f1') {
+    if (!data || data.length < 2) return '';
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const points = data.map((v, i) => {
+      const x = (i / (data.length - 1)) * width;
+      const y = height - ((v - min) / range) * (height - 2) - 1;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<span class="sparkline"><svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // INSIGHTS STRIP
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async function loadInsightStrip() {
+    const strip = $('#insightStrip');
+    if (!strip) return;
+    const insights = await api('/api/dashboard/insights');
+    if (!insights || insights.length === 0) { strip.hidden = true; return; }
+    strip.innerHTML = insights.slice(0, 6).map(i => {
+      const emoji = String.fromCodePoint(parseInt(i.icon, 16));
+      return `<div class="insight-chip"><span class="insight-chip-icon">${emoji}</span><span class="insight-chip-text">${esc(i.text)}</span></div>`;
+    }).join('');
+  }
+
   // ── Init ──
   const initSection = window.__ACTIVE_SECTION || 'overview';
   console.log('[RetailIQ] Init section:', initSection, '| Sub:', window.__SUB_SECTION || 'none');
@@ -2076,6 +2311,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   loadQuickStats();
+
+  // ── Export helper ──
+  async function exportCSV(type) {
+    const token = localStorage.getItem('retailiq_token');
+    const headers = {'Content-Type': 'application/json'};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const res = await fetch('/api/dashboard/export', {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        body: JSON.stringify({export_type: type}),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `retailiq_${type}_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('[RetailIQ] Export error:', e);
+    }
+  }
+
+  // Attach export buttons (they use onclick="exportCSV('type')")
+  window.exportCSV = exportCSV;
 
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {

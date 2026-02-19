@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=11">
+  <link rel="stylesheet" href="/static/dashboard.css?v=12">
 </head>
 <body>
   <!-- Sidebar -->
@@ -98,10 +98,23 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div class="topbar-left">
+        <div class="breadcrumb" id="breadcrumb">
+          <span>Dashboard</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          <span id="breadcrumbPage">Overview</span>
+        </div>
         <h1 id="pageTitle">Overview</h1>
-        <span class="topbar-shop">{{ shop.name if shop else 'No shop' }}</span>
+      </div>
+      <div class="topbar-center">
+        <div class="search-wrap" id="searchWrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search products, customers... (press /)" autocomplete="off">
+          <kbd class="search-kbd">/</kbd>
+          <div class="search-results" id="searchResults" hidden></div>
+        </div>
       </div>
       <div class="topbar-right">
+        <span class="last-updated" id="lastUpdated" title="Last data refresh">Updated just now</span>
         <span class="refresh-indicator" id="refreshIndicator" title="Auto-refreshes every 60s">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         </span>
@@ -261,6 +274,9 @@
 
       <!-- Overview Section -->
       <section class="section {{ 'active' if sec == 'overview' }}" id="sec-overview">
+        <!-- Insights Strip -->
+        <div class="insight-strip" id="insightStrip"></div>
+
         <!-- AI Action Items -->
         <div class="ai-actions-card" id="aiActionsCard">
           <div class="ai-actions-header">
@@ -276,22 +292,22 @@
         </div>
 
         <div class="kpi-grid" id="kpiGrid">
-          <div class="kpi-card">
+          <div class="kpi-card" data-tooltip="Total revenue earned today (or latest data date)">
             <div class="kpi-label">Revenue Today</div>
             <div class="kpi-value" id="kpiRevenue">--</div>
             <div class="kpi-change" id="kpiRevenueDod">--</div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card" data-tooltip="Number of completed sales transactions today">
             <div class="kpi-label">Transactions</div>
             <div class="kpi-value" id="kpiTransactions">--</div>
             <div class="kpi-sub">today</div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card" data-tooltip="Average revenue per transaction (revenue / transactions)">
             <div class="kpi-label">Avg Order Value</div>
             <div class="kpi-value" id="kpiAov">--</div>
             <div class="kpi-sub">per transaction</div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card" data-tooltip="Percentage of customers who have visited more than once">
             <div class="kpi-label">Repeat Customers</div>
             <div class="kpi-value" id="kpiRepeat">--</div>
             <div class="kpi-sub">return rate</div>
@@ -338,6 +354,12 @@
 
       <!-- Sales Section -->
       <section class="section {{ 'active' if sec == 'sales' }}" id="sec-sales">
+        <div class="section-toolbar">
+          <button class="export-btn" onclick="exportCSV('sales')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
         <div class="card">
           <div class="card-header"><h3>Sales Trend</h3></div>
           <div class="card-body"><canvas id="salesChartFull"></canvas></div>
@@ -356,6 +378,12 @@
 
       <!-- Products Section -->
       <section class="section {{ 'active' if sec == 'products' }}" id="sec-products">
+        <div class="section-toolbar">
+          <button class="export-btn" onclick="exportCSV('products')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
         <div class="card">
           <div class="card-header"><h3>Product Performance Rankings</h3></div>
           <div class="card-body">
@@ -369,6 +397,12 @@
 
       <!-- Customers Section -->
       <section class="section {{ 'active' if sec == 'customers' }}" id="sec-customers">
+        <div class="section-toolbar">
+          <button class="export-btn" onclick="exportCSV('customers')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
         <div class="kpi-grid small">
           <div class="kpi-card"><div class="kpi-label">Total Customers</div><div class="kpi-value" id="custTotal">--</div></div>
           <div class="kpi-card"><div class="kpi-label">Repeat Rate</div><div class="kpi-value" id="custRepeat">--</div></div>
@@ -740,35 +774,38 @@
     </div>
   </main>
 
+  <!-- Mobile sidebar overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div class="modal-overlay" id="shortcutsModal">
+    <div class="shortcuts-modal">
+      <div class="shortcuts-header">
+        <h2>Keyboard Shortcuts</h2>
+        <button class="shortcuts-close" id="shortcutsClose">&times;</button>
+      </div>
+      <div class="shortcuts-body">
+        <div class="shortcut-row"><kbd>B</kbd><span>Daily Briefing</span></div>
+        <div class="shortcut-row"><kbd>O</kbd><span>Overview</span></div>
+        <div class="shortcut-row"><kbd>S</kbd><span>Sales</span></div>
+        <div class="shortcut-row"><kbd>P</kbd><span>Products</span></div>
+        <div class="shortcut-row"><kbd>U</kbd><span>Customers</span></div>
+        <div class="shortcut-row"><kbd>C</kbd><span>Competitors</span></div>
+        <div class="shortcut-row"><kbd>G</kbd><span>Goals</span></div>
+        <div class="shortcut-row"><kbd>M</kbd><span>Marketing</span></div>
+        <div class="shortcut-row"><kbd>W</kbd><span>Win-Back</span></div>
+        <div class="shortcut-row"><kbd>/</kbd><span>Focus search</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span>Show this help</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span>Close modals</span></div>
+      </div>
+    </div>
+  </div>
+
   <script>
     window.__ACTIVE_SECTION = "{{ active_section|default('overview') }}";
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=11"></script>
-  <script>
-    // Inline fallback: ensure notification bell works even if dashboard.js has issues
-    (function() {
-      var bellBtn = document.getElementById('notifBellBtn');
-      var dropdown = document.getElementById('notifDropdown');
-      if (!bellBtn || !dropdown) return;
-      // Check if handler is already attached by dashboard.js (it adds .show toggling)
-      // We add a second handler that will be harmless if dashboard.js already set it up
-      bellBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (dropdown.classList.contains('show')) {
-          dropdown.classList.remove('show');
-        } else {
-          dropdown.classList.add('show');
-        }
-      });
-      document.addEventListener('click', function(e) {
-        var wrap = document.getElementById('notifBellWrap');
-        if (wrap && !wrap.contains(e.target)) {
-          dropdown.classList.remove('show');
-        }
-      });
-    })();
-  </script>
+  <script src="/static/dashboard.js?v=12"></script>
 </body>
 </html>
