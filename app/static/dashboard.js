@@ -60,19 +60,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Logout ──
   $('#logoutBtn').addEventListener('click', async () => {
-    await fetch('/api/auth/logout', {method: 'POST'});
-    localStorage.removeItem('retailiq_token');
+    await fetch('/api/auth/logout', {method: 'POST', credentials: 'same-origin'});
     window.location.href = '/login';
   });
 
-  // ── API helper ──
+  // ── API helper (auth via httpOnly cookie, sent automatically) ──
   async function api(path) {
-    const token = localStorage.getItem('retailiq_token');
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    console.log('[RetailIQ] API call:', path, '| token:', token ? 'yes (' + token.slice(0, 20) + '...)' : 'NO TOKEN');
     try {
-      const res = await fetch(path, {headers, credentials: 'same-origin'});
+      const res = await fetch(path, {credentials: 'same-origin'});
       if (res.status === 401) {
         console.warn('[RetailIQ] 401 on', path, '— redirecting to login');
         window.location.href = '/login';
@@ -82,9 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[RetailIQ] API error', res.status, 'on', path);
         return null;
       }
-      const data = await res.json();
-      console.log('[RetailIQ] API response:', path, '→', typeof data === 'object' ? JSON.stringify(data).slice(0, 200) : data);
-      return data;
+      return await res.json();
     } catch (err) {
       console.error('[RetailIQ] Network error on', path, err);
       return null;
@@ -141,19 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   async function apiPost(path) {
-    const token = localStorage.getItem('retailiq_token');
-    const headers = {'Content-Type': 'application/json'};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(path, {method: 'POST', headers, credentials: 'same-origin'});
+    const res = await fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'same-origin'});
     if (!res.ok) return null;
     return res.json();
   }
 
   async function apiPatch(path) {
-    const token = localStorage.getItem('retailiq_token');
-    const headers = {'Content-Type': 'application/json'};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(path, {method: 'PATCH', headers, credentials: 'same-origin'});
+    const res = await fetch(path, {method: 'PATCH', headers: {'Content-Type': 'application/json'}, credentials: 'same-origin'});
     if (!res.ok) return null;
     return res.json();
   }
@@ -1999,10 +1986,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!wrap) return;
     wrap.innerHTML = '<div class="ai-loading">Loading digest preview...</div>';
     try {
-      const token = localStorage.getItem('retailiq_token');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch('/api/dashboard/weekly-digest-preview', {headers, credentials: 'same-origin'});
+      const res = await fetch('/api/dashboard/weekly-digest-preview', {credentials: 'same-origin'});
       if (!res.ok) { wrap.innerHTML = '<p class="text-muted">Could not load digest preview.</p>'; return; }
       const html = await res.text();
       wrap.innerHTML = `
@@ -2894,9 +2878,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', async () => {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Saving...';
-      const token = localStorage.getItem('retailiq_token');
       const headers = {'Content-Type': 'application/json'};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
       const body = {
         shop_name: $('#setShopName')?.value || null,
         address: $('#setAddress')?.value || null,
@@ -3017,13 +2999,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Export helper ──
   async function exportCSV(type) {
-    const token = localStorage.getItem('retailiq_token');
-    const headers = {'Content-Type': 'application/json'};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
     try {
       const res = await fetch('/api/dashboard/export', {
         method: 'POST',
-        headers,
+        headers: {'Content-Type': 'application/json'},
         credentials: 'same-origin',
         body: JSON.stringify({export_type: type}),
       });

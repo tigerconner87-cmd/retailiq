@@ -365,12 +365,9 @@
       btn.textContent = 'Submitting...';
 
       try {
-        const token = localStorage.getItem('retailiq_token');
-        const headers = {'Content-Type': 'application/json'};
-        if (token) headers['Authorization'] = 'Bearer ' + token;
         await fetch('/api/dashboard/plan-interest', {
           method: 'POST',
-          headers,
+          headers: {'Content-Type': 'application/json'},
           credentials: 'same-origin',
           body: JSON.stringify({email, plan: selectedPlan, billing_cycle: billingCycle}),
         });

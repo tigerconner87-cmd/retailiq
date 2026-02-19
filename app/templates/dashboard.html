@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=17">
+  <link rel="stylesheet" href="/static/dashboard.css?v=18">
 </head>
 <body>
   <!-- Sidebar -->
@@ -1078,7 +1078,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=17"></script>
+  <script src="/static/dashboard.js?v=18"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>
@@ -1095,13 +1095,10 @@
 
     function loadNotifications() {
       var body = document.getElementById('notifDropdownBody');
-      var token = localStorage.getItem('retailiq_token');
-      var headers = {};
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      fetch('/api/dashboard/alerts', {headers: headers, credentials: 'same-origin'})
+      fetch('/api/dashboard/notifications', {credentials: 'same-origin'})
         .then(function(res) { return res.json(); })
         .then(function(data) {
-          if (!data || !data.alerts || data.alerts.length === 0) {
+          if (!data || !data.notifications || data.notifications.length === 0) {
             body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No notifications</div>';
             return;
           }
@@ -1109,11 +1106,13 @@
           if (data.unread_count > 0) {
             badge.textContent = data.unread_count;
             badge.hidden = false;
+          } else {
+            badge.hidden = true;
           }
-          body.innerHTML = data.alerts.slice(0, 8).map(function(a) {
+          body.innerHTML = data.notifications.map(function(a) {
             return '<div class="notif-item' + (a.is_read ? '' : ' unread') + '" style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">' +
-              '<div style="font-weight:' + (a.is_read ? '400' : '600') + '">' + (a.title || a.message || 'Alert') + '</div>' +
-              '<div style="font-size:11px;color:var(--text3);margin-top:2px">' + (a.category || 'general') + '</div>' +
+              '<div style="font-weight:' + (a.is_read ? '400' : '600') + '">' + (a.severity_icon || '') + ' ' + (a.title || a.message || 'Alert') + '</div>' +
+              '<div style="font-size:11px;color:var(--text3);margin-top:2px">' + (a.icon || '') + ' ' + (a.category || 'general') + ' &middot; ' + (a.time_ago || '') + '</div>' +
             '</div>';
           }).join('');
         })
@@ -1124,10 +1123,7 @@
 
     function markAllNotificationsRead(e) {
       e.stopPropagation();
-      var token = localStorage.getItem('retailiq_token');
-      var headers = {'Content-Type': 'application/json'};
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      fetch('/api/dashboard/alerts/read-all', {method: 'POST', headers: headers, credentials: 'same-origin'})
+      fetch('/api/dashboard/notifications/read-all', {method: 'POST', credentials: 'same-origin'})
         .then(function() {
           var badge = document.getElementById('notifBadge');
           badge.hidden = true;
@@ -1152,6 +1148,21 @@
         dropdown.classList.remove('show');
       }
     });
+
+    // Load notification badge count on page load
+    (function() {
+      fetch('/api/dashboard/notifications', {credentials: 'same-origin'})
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data && data.unread_count > 0) {
+            var badge = document.getElementById('notifBadge');
+            var alertBadge = document.getElementById('alertBadge');
+            if (badge) { badge.textContent = data.unread_count; badge.hidden = false; }
+            if (alertBadge) { alertBadge.textContent = data.unread_count; alertBadge.hidden = false; }
+          }
+        })
+        .catch(function() {});
+    })();
   </script>
 </body>
 </html>
