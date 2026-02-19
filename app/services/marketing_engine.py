@@ -878,3 +878,534 @@ def get_marketing_performance(db: Session, shop_id: str) -> dict:
             "status": "coming_soon",
         },
     }
+
+
+# ── Content Performance Predictor ────────────────────────────────────────
+
+
+def predict_content_performance(db: Session, shop_id: str, content_text: str, platform: str = "instagram") -> dict:
+    """Predict how well a social media post might perform based on heuristics."""
+    shop_name = _get_shop_name(db, shop_id)
+    top_products = _get_top_products(db, shop_id, days=14, limit=5)
+    top_names = [p["name"].lower() for p in top_products]
+    text = content_text.lower()
+
+    score = 50  # baseline
+    factors = []
+
+    # Length analysis
+    char_count = len(content_text)
+    if 100 <= char_count <= 200:
+        score += 10
+        factors.append({"factor": "Optimal length (100-200 chars)", "impact": "+10", "type": "positive"})
+    elif char_count < 50:
+        score -= 10
+        factors.append({"factor": "Too short — add more detail", "impact": "-10", "type": "negative"})
+    elif char_count > 300:
+        score -= 5
+        factors.append({"factor": "A bit long — consider trimming", "impact": "-5", "type": "negative"})
+
+    # Emoji usage
+    import re
+    emoji_pattern = re.compile(
+        "[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
+        "\U0001F1E0-\U0001F1FF\U00002702-\U000027B0\U0001f926-\U0001f937"
+        "\U00010000-\U0010ffff\u200d\u2640-\u2642\u2600-\u2B55\u23cf"
+        "\u23e9\u231a\ufe0f\u3030]+", flags=re.UNICODE)
+    emoji_count = len(emoji_pattern.findall(content_text))
+    if 1 <= emoji_count <= 5:
+        score += 8
+        factors.append({"factor": f"Good emoji usage ({emoji_count} emojis)", "impact": "+8", "type": "positive"})
+    elif emoji_count == 0:
+        score -= 5
+        factors.append({"factor": "No emojis — add 2-3 for better engagement", "impact": "-5", "type": "negative"})
+    elif emoji_count > 8:
+        score -= 3
+        factors.append({"factor": "Too many emojis — looks spammy", "impact": "-3", "type": "negative"})
+
+    # Hashtag analysis
+    hashtags = re.findall(r'#\w+', content_text)
+    if 3 <= len(hashtags) <= 8:
+        score += 8
+        factors.append({"factor": f"Good hashtag count ({len(hashtags)})", "impact": "+8", "type": "positive"})
+    elif len(hashtags) == 0:
+        score -= 10
+        factors.append({"factor": "No hashtags — add 5-8 relevant ones", "impact": "-10", "type": "negative"})
+    elif len(hashtags) > 15:
+        score -= 5
+        factors.append({"factor": "Too many hashtags — keep under 10", "impact": "-5", "type": "negative"})
+
+    # Call to action
+    cta_phrases = ["come", "visit", "shop", "grab", "get yours", "stop by", "check out", "don't miss", "link in bio", "dm us"]
+    has_cta = any(phrase in text for phrase in cta_phrases)
+    if has_cta:
+        score += 10
+        factors.append({"factor": "Has a call to action", "impact": "+10", "type": "positive"})
+    else:
+        score -= 8
+        factors.append({"factor": "Missing call to action", "impact": "-8", "type": "negative"})
+
+    # Mentions trending products
+    mentions_product = any(name in text for name in top_names)
+    if mentions_product:
+        score += 7
+        factors.append({"factor": "References a trending product", "impact": "+7", "type": "positive"})
+
+    # Shop name mentioned
+    if shop_name.lower() in text:
+        score += 5
+        factors.append({"factor": "Mentions your shop name", "impact": "+5", "type": "positive"})
+
+    # Urgency words
+    urgency_words = ["limited", "last chance", "today only", "this week", "don't miss", "hurry", "while supplies last", "ending soon"]
+    has_urgency = any(w in text for w in urgency_words)
+    if has_urgency:
+        score += 8
+        factors.append({"factor": "Creates urgency", "impact": "+8", "type": "positive"})
+
+    # Question/engagement prompt
+    if "?" in content_text:
+        score += 5
+        factors.append({"factor": "Asks a question — drives comments", "impact": "+5", "type": "positive"})
+
+    # Platform-specific adjustments
+    if platform == "instagram" and "#ShopLocal" in content_text:
+        score += 3
+        factors.append({"factor": "#ShopLocal boosts discovery on Instagram", "impact": "+3", "type": "positive"})
+
+    score = max(10, min(100, score))
+
+    # Rating
+    if score >= 80:
+        rating = "Excellent"
+        color = "success"
+    elif score >= 60:
+        rating = "Good"
+        color = "primary"
+    elif score >= 40:
+        rating = "Average"
+        color = "warning"
+    else:
+        rating = "Needs Work"
+        color = "danger"
+
+    # Suggestions
+    suggestions = []
+    if not has_cta:
+        suggestions.append("Add a call to action like 'Visit us today!' or 'Link in bio'")
+    if emoji_count == 0:
+        suggestions.append("Add 2-3 emojis to grab attention")
+    if len(hashtags) < 3:
+        suggestions.append("Add 5-8 relevant hashtags for discovery")
+    if not has_urgency:
+        suggestions.append("Add urgency words like 'this week only' or 'limited time'")
+    if not mentions_product:
+        suggestions.append(f"Mention a trending product like {top_products[0]['name']}" if top_products else "Mention a specific product")
+
+    return {
+        "score": score,
+        "rating": rating,
+        "color": color,
+        "factors": factors,
+        "suggestions": suggestions,
+        "platform": platform,
+        "char_count": char_count,
+        "hashtag_count": len(hashtags),
+        "emoji_count": emoji_count,
+    }
+
+
+# ── Hashtag Generator ────────────────────────────────────────────────────
+
+
+def generate_hashtags(db: Session, shop_id: str, topic: str = "") -> dict:
+    """Generate optimized Instagram hashtags based on shop data and topic."""
+    shop_name = _get_shop_name(db, shop_id)
+    top_products = _get_top_products(db, shop_id, days=30, limit=5)
+    season = _get_season()
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    city = shop.city or "local"
+    category = shop.category or "retail"
+
+    clean_name = shop_name.replace(" ", "")
+
+    # Build hashtag sets by category
+    brand_tags = [
+        f"#{clean_name}",
+        f"#{clean_name}Shop",
+        f"#ShopAt{clean_name}",
+    ]
+
+    local_tags = [
+        "#ShopLocal",
+        "#SupportLocal",
+        "#SmallBusiness",
+        "#ShopSmall",
+        f"#{city.replace(' ', '')}Shopping" if city != "local" else "#LocalFinds",
+        f"#{city.replace(' ', '')}Shops" if city != "local" else "#NearMe",
+    ]
+
+    category_map = {
+        "retail": ["#RetailTherapy", "#ShoppingTime", "#NewFinds", "#MustHave"],
+        "clothing": ["#Fashion", "#StyleInspo", "#OOTD", "#WardrobeEssentials"],
+        "accessories": ["#Accessories", "#JewelryLovers", "#StyleStatement", "#TreatYourself"],
+        "home": ["#HomeDecor", "#HomeStyling", "#InteriorInspo", "#HomefindsILove"],
+        "boutique": ["#BoutiqueFinds", "#UniqueFinds", "#CuratedCollection", "#BoutiqueLife"],
+        "gift": ["#GiftIdeas", "#PerfectGift", "#GiftGuide", "#ThoughtfulGifts"],
+    }
+    category_tags = category_map.get(category.lower(), category_map["retail"])
+
+    season_map = {
+        "spring": ["#SpringStyle", "#SpringFinds", "#FreshLooks", "#SpringVibes"],
+        "summer": ["#SummerStyle", "#SummerEssentials", "#SunnyDays", "#SummerVibes"],
+        "fall": ["#FallFashion", "#AutumnVibes", "#CozyUp", "#FallFinds"],
+        "winter": ["#WinterStyle", "#CozyVibes", "#HolidayShopping", "#WinterWarmth"],
+    }
+    seasonal_tags = season_map.get(season, season_map["winter"])
+
+    engagement_tags = [
+        "#CustomerFavorite", "#BestSeller", "#TopRated", "#TrendingNow",
+        "#NewArrivals", "#JustDropped", "#LimitedEdition", "#StaffPick",
+    ]
+
+    product_tags = []
+    for p in top_products[:3]:
+        clean = p["name"].replace(" ", "").replace("-", "")
+        cat_clean = (p["category"] or "").replace(" ", "")
+        product_tags.append(f"#{clean}")
+        if cat_clean:
+            product_tags.append(f"#{cat_clean}")
+
+    # Topic-specific tags
+    topic_tags = []
+    if topic:
+        topic_lower = topic.lower()
+        if "sale" in topic_lower or "discount" in topic_lower:
+            topic_tags = ["#Sale", "#Deals", "#Discount", "#SaveBig", "#FlashSale"]
+        elif "new" in topic_lower or "arrival" in topic_lower:
+            topic_tags = ["#NewArrivals", "#JustDropped", "#FreshFinds", "#NewInStore"]
+        elif "vip" in topic_lower or "loyalty" in topic_lower:
+            topic_tags = ["#VIP", "#LoyaltyRewards", "#ExclusiveOffer", "#MembersOnly"]
+        elif "review" in topic_lower or "rating" in topic_lower:
+            topic_tags = ["#5Stars", "#CustomerReview", "#HappyCustomers", "#Testimonial"]
+        elif "behind" in topic_lower or "bts" in topic_lower:
+            topic_tags = ["#BTS", "#BehindTheScenes", "#ShopOwnerLife", "#DayInTheLife"]
+
+    # Combine and deduplicate
+    all_tags = brand_tags + local_tags + category_tags + seasonal_tags + engagement_tags + product_tags + topic_tags
+    seen = set()
+    unique_tags = []
+    for t in all_tags:
+        lower = t.lower()
+        if lower not in seen:
+            seen.add(lower)
+            unique_tags.append(t)
+
+    # Split into sets for easy copying
+    sets = {
+        "brand": brand_tags[:3],
+        "local": local_tags[:5],
+        "category": category_tags[:4],
+        "seasonal": seasonal_tags[:4],
+        "engagement": engagement_tags[:5],
+        "product": product_tags[:4],
+    }
+    if topic_tags:
+        sets["topic"] = topic_tags[:5]
+
+    # Recommended set (mix of high and low competition)
+    recommended = brand_tags[:2] + local_tags[:2] + category_tags[:2] + seasonal_tags[:1] + engagement_tags[:2]
+    if product_tags:
+        recommended.append(product_tags[0])
+
+    return {
+        "recommended": recommended[:10],
+        "all_tags": unique_tags,
+        "sets": sets,
+        "total": len(unique_tags),
+        "copy_all": " ".join(recommended[:10]),
+        "tip": "Use 8-12 hashtags per post. Mix branded, local, and category tags for best reach.",
+    }
+
+
+# ── Weekly Marketing Report ──────────────────────────────────────────────
+
+
+def get_weekly_marketing_report(db: Session, shop_id: str) -> dict:
+    """Generate a comprehensive weekly marketing report."""
+    shop_name = _get_shop_name(db, shop_id)
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    last_week_start = week_start - timedelta(days=7)
+
+    # Revenue data
+    this_week_rev = float(
+        db.query(func.coalesce(func.sum(DailySnapshot.total_revenue), 0))
+        .filter(DailySnapshot.shop_id == shop_id, DailySnapshot.date >= week_start, DailySnapshot.date <= today)
+        .scalar() or 0
+    )
+    last_week_rev = float(
+        db.query(func.coalesce(func.sum(DailySnapshot.total_revenue), 0))
+        .filter(DailySnapshot.shop_id == shop_id, DailySnapshot.date >= last_week_start, DailySnapshot.date < week_start)
+        .scalar() or 0
+    )
+    rev_change = round((this_week_rev - last_week_rev) / last_week_rev * 100, 1) if last_week_rev > 0 else 0
+
+    # Transaction data
+    this_week_tx = (
+        db.query(func.coalesce(func.sum(DailySnapshot.transaction_count), 0))
+        .filter(DailySnapshot.shop_id == shop_id, DailySnapshot.date >= week_start, DailySnapshot.date <= today)
+        .scalar() or 0
+    )
+
+    # Top products this week
+    top = _get_top_products(db, shop_id, days=7, limit=5)
+
+    # Customer segments
+    segments = _get_customer_segments(db, shop_id)
+
+    # Competitor weaknesses
+    weaknesses = _get_competitor_weaknesses(db, shop_id)
+
+    # Marketing responses used
+    responses = (
+        db.query(MarketingResponse)
+        .filter(MarketingResponse.shop_id == shop_id)
+        .all()
+    )
+    used_count = sum(1 for r in responses if r.status == "used")
+
+    # Content performance estimate
+    content_score = min(95, 45 + used_count * 8 + len(top) * 3)
+
+    # Recommendations
+    recs = []
+    if rev_change < -5:
+        recs.append({
+            "icon": "1F4C9",
+            "text": f"Revenue is down {abs(rev_change)}% this week. Push a flash sale or featured product campaign.",
+            "priority": "high",
+        })
+    if segments["at_risk"] > 10:
+        recs.append({
+            "icon": "26A0",
+            "text": f"You have {segments['at_risk']} at-risk customers. Send a win-back email with a 15% off code.",
+            "priority": "high",
+        })
+    if used_count == 0:
+        recs.append({
+            "icon": "1F4DD",
+            "text": "You haven't used any generated marketing content yet. Try posting one of our AI-generated social posts!",
+            "priority": "medium",
+        })
+    if weaknesses:
+        w = weaknesses[0]
+        recs.append({
+            "icon": "1F3AF",
+            "text": f"{w['name']} has {w['neg_count']} recent negative reviews. Run a targeted campaign highlighting your strengths.",
+            "priority": "medium",
+        })
+    recs.append({
+        "icon": "1F4F1",
+        "text": "Post at least 3 times this week on Instagram. Consistency is key for small business growth.",
+        "priority": "low",
+    })
+
+    return {
+        "period": {"start": week_start.isoformat(), "end": week_end.isoformat()},
+        "shop_name": shop_name,
+        "revenue": {
+            "this_week": this_week_rev,
+            "last_week": last_week_rev,
+            "change_pct": rev_change,
+            "transactions": int(this_week_tx),
+        },
+        "top_products": top[:5],
+        "customers": segments,
+        "content": {
+            "score": content_score,
+            "pieces_generated": 20 + len(responses),
+            "pieces_used": used_count,
+            "calendar_posts": 10,
+        },
+        "competitor_opportunities": len(weaknesses),
+        "recommendations": recs,
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ── Email Template Builder ───────────────────────────────────────────────
+
+
+def build_email_template(db: Session, shop_id: str, template_type: str, custom_params: dict = None) -> dict:
+    """Build a custom email template based on type and shop data."""
+    shop_name = _get_shop_name(db, shop_id)
+    top_products = _get_top_products(db, shop_id, days=30, limit=5)
+    segments = _get_customer_segments(db, shop_id)
+    season = _get_season()
+
+    p = custom_params or {}
+    discount = p.get("discount", "15")
+    product_name = p.get("product_name", top_products[0]["name"] if top_products else "our featured item")
+    event_name = p.get("event_name", f"{season.capitalize()} Collection Launch")
+    event_date = p.get("event_date", "this Saturday")
+
+    templates = {
+        "welcome": {
+            "name": "Welcome Email",
+            "subject": f"Welcome to {shop_name}! Here's a special gift for you 🎁",
+            "preview": f"Your first-time discount is waiting...",
+            "body": f"""Hi {{{{first_name}}}},
+
+Welcome to the {shop_name} family! 🎉
+
+We're thrilled to have you as a new customer. Here at {shop_name}, we believe shopping should be a joy — and we're committed to making every visit special.
+
+🎁 YOUR WELCOME GIFT:
+Use code WELCOME{discount} for {discount}% off your next purchase!
+
+Here's what makes {shop_name} special:
+- ✨ Handpicked, quality-checked products
+- 💛 Personalized service from our friendly team
+- 🆕 New arrivals every week
+- 🏆 Top-rated by our community
+
+Our current bestsellers:
+{chr(10).join(f'- {p["name"]} (${p["price"]:.0f})' for p in top_products[:3])}
+
+We can't wait to see you again!
+
+Warm regards,
+The {shop_name} Team""",
+            "target": "New customers",
+            "est_open_rate": "45-55%",
+        },
+        "flash_sale": {
+            "name": "Flash Sale Alert",
+            "subject": f"FLASH SALE: {discount}% off EVERYTHING at {shop_name}! Today only ⚡",
+            "preview": f"Our biggest flash sale is here — don't miss it!",
+            "body": f"""{{{{first_name}}}}, this is NOT a drill! ⚡
+
+🔥 FLASH SALE — {discount}% OFF EVERYTHING
+
+For the next 24 hours only, enjoy {discount}% off your entire purchase at {shop_name}!
+
+🛍️ HOT PICKS:
+{chr(10).join(f'- {p["name"]} — NOW ${p["price"] * (1 - int(discount)/100):.0f} (was ${p["price"]:.0f})' for p in top_products[:4])}
+
+⏰ This offer expires TONIGHT at midnight!
+
+Use code: FLASH{discount}
+
+📍 Visit us in store or DM us to hold items
+No exclusions. No minimum purchase. Just amazing deals!
+
+Don't wait — when it's gone, it's gone!
+
+{shop_name} Team""",
+            "target": "All customers",
+            "est_open_rate": "38-45%",
+        },
+        "event_invite": {
+            "name": "Event Invitation",
+            "subject": f"You're invited! {event_name} at {shop_name} 🎪",
+            "preview": f"Join us for an exclusive event...",
+            "body": f"""{{{{first_name}}}}, you're invited! 🎪
+
+📅 {event_name.upper()}
+
+Join us {event_date} at {shop_name} for an exclusive event:
+
+🎉 WHAT TO EXPECT:
+- First look at our new {season} collection
+- Refreshments and treats
+- Exclusive event-only discounts ({discount}% off)
+- Meet our team and fellow {shop_name} fans
+- Raffle prizes (gift cards up to $100!)
+
+📍 Where: {shop_name}
+📅 When: {event_date}
+⏰ Time: 10 AM - 4 PM
+
+🎟️ RSVP by replying to this email or DM us on Instagram
+
+Space is limited — let us know you're coming!
+
+See you there,
+The {shop_name} Team""",
+            "target": "VIP + Regular customers",
+            "est_open_rate": "35-42%",
+        },
+        "product_launch": {
+            "name": "New Product Launch",
+            "subject": f"Just dropped: {product_name} is here! 🚀",
+            "preview": f"Be the first to get our newest arrival",
+            "body": f"""{{{{first_name}}}}, we're SO excited about this one! 🚀
+
+Introducing: {product_name.upper()}
+
+After weeks of curating, testing, and perfecting — it's finally here.
+
+✨ WHY YOU'LL LOVE IT:
+- Handpicked quality you can trust
+- Unique design you won't find elsewhere
+- Perfect for the {season} season
+- Already generating buzz from our testers!
+
+🏷️ Launch Week Special: Get {discount}% off with code LAUNCH{discount}
+
+Limited initial stock — first come, first served!
+
+📍 Available in-store now
+📱 DM us to hold one
+
+{shop_name} — Where great finds find you.
+
+The {shop_name} Team""",
+            "target": "All subscribers",
+            "est_open_rate": "30-38%",
+        },
+        "thank_you": {
+            "name": "Post-Purchase Thank You",
+            "subject": f"Thank you for shopping at {shop_name}! 💛",
+            "preview": f"A personal thank you + a special surprise...",
+            "body": f"""Hi {{{{first_name}}}},
+
+Just wanted to say THANK YOU for your recent purchase at {shop_name}! 💛
+
+Your support means everything to us as a small business. Every purchase helps us keep doing what we love — curating amazing products for amazing customers like you.
+
+🎁 AS A THANK YOU:
+Here's {discount}% off your next visit: THANKS{discount}
+(Valid for 30 days)
+
+📸 Love your purchase? We'd love to see it!
+Tag us on Instagram for a chance to be featured.
+
+⭐ Got 30 seconds? A Google review helps us reach more customers like you and keeps our small business thriving.
+
+Thank you for being part of the {shop_name} community!
+
+With gratitude,
+The {shop_name} Team""",
+            "target": "Recent purchasers",
+            "est_open_rate": "40-50%",
+        },
+    }
+
+    template = templates.get(template_type, templates["welcome"])
+
+    return {
+        "template": template,
+        "template_type": template_type,
+        "available_types": [
+            {"id": "welcome", "name": "Welcome Email", "emoji": "🎁"},
+            {"id": "flash_sale", "name": "Flash Sale Alert", "emoji": "⚡"},
+            {"id": "event_invite", "name": "Event Invitation", "emoji": "🎪"},
+            {"id": "product_launch", "name": "Product Launch", "emoji": "🚀"},
+            {"id": "thank_you", "name": "Post-Purchase Thank You", "emoji": "💛"},
+        ],
+        "variables": ["{{first_name}}"],
+        "shop_name": shop_name,
+    }

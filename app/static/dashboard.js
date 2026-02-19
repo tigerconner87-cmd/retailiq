@@ -1317,6 +1317,10 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (tab === 'emails') await loadMkeEmails();
       else if (tab === 'promos') await loadMkePromos();
       else if (tab === 'performance') await loadMkePerformance();
+      else if (tab === 'predictor') await loadMkePredictor();
+      else if (tab === 'hashtags') await loadMkeHashtags();
+      else if (tab === 'mke-report') await loadMkeWeeklyReport();
+      else if (tab === 'email-builder') await loadMkeEmailBuilder();
       mkeDataLoaded[tab] = true;
     } catch (err) {
       console.error('[RetailIQ] Error loading marketing tab:', tab, err);
@@ -1592,6 +1596,213 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <button class="mke-btn primary" disabled>Coming Soon</button>
           </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Content Predictor Tab ──
+  async function loadMkePredictor() {
+    // Just wire up the analyze button — results load on demand
+    const btn = $('#predictorAnalyze');
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', async () => {
+      const text = $('#predictorInput').value.trim();
+      if (!text) return;
+      const platform = $('#predictorPlatform').value;
+      btn.textContent = 'Analyzing...';
+      btn.disabled = true;
+      const data = await apiPost(`/api/dashboard/marketing-engine/predict?content=${encodeURIComponent(text)}&platform=${platform}`);
+      btn.textContent = 'Analyze Post';
+      btn.disabled = false;
+      if (!data) return;
+
+      const el = $('#predictorResults');
+      el.hidden = false;
+      const scoreColor = data.color === 'success' ? 'var(--success)' : data.color === 'primary' ? 'var(--primary-light)' : data.color === 'warning' ? 'var(--warning)' : 'var(--danger)';
+
+      el.innerHTML = `
+        <div class="pred-score-wrap">
+          <div class="pred-score-circle" style="border-color:${scoreColor}">
+            <span class="pred-score-num" style="color:${scoreColor}">${data.score}</span>
+            <span class="pred-score-label">${esc(data.rating)}</span>
+          </div>
+          <div class="pred-stats">
+            <div class="pred-stat"><span>Characters</span><strong>${data.char_count}</strong></div>
+            <div class="pred-stat"><span>Hashtags</span><strong>${data.hashtag_count}</strong></div>
+            <div class="pred-stat"><span>Emojis</span><strong>${data.emoji_count}</strong></div>
+            <div class="pred-stat"><span>Platform</span><strong>${esc(data.platform)}</strong></div>
+          </div>
+        </div>
+        <div class="pred-factors">
+          <h4>Score Breakdown</h4>
+          ${data.factors.map(f => `
+            <div class="pred-factor ${f.type}">
+              <span class="pred-factor-impact">${esc(f.impact)}</span>
+              <span>${esc(f.factor)}</span>
+            </div>
+          `).join('')}
+        </div>
+        ${data.suggestions.length > 0 ? `
+          <div class="pred-suggestions">
+            <h4>Suggestions to Improve</h4>
+            ${data.suggestions.map(s => `<div class="pred-suggestion">${esc(s)}</div>`).join('')}
+          </div>
+        ` : ''}
+      `;
+    });
+  }
+
+  // ── Hashtag Generator Tab ──
+  async function loadMkeHashtags(topic) {
+    const topicVal = topic || $('#hashtagTopic')?.value || '';
+    const data = await api(`/api/dashboard/marketing-engine/hashtags?topic=${encodeURIComponent(topicVal)}`);
+    if (!data) return;
+
+    const el = $('#hashtagResults');
+    el.innerHTML = `
+      <div class="ht-recommended">
+        <h4>Recommended Set (Copy All)</h4>
+        <div class="ht-copy-row">
+          <div class="ht-tags">${data.recommended.map(t => `<span class="ht-tag">${esc(t)}</span>`).join('')}</div>
+          <button class="mke-btn outline ht-copy-btn" onclick="navigator.clipboard.writeText('${esc(data.copy_all)}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy All',2000)">Copy All</button>
+        </div>
+      </div>
+      <div class="ht-sets">
+        ${Object.entries(data.sets).map(([key, tags]) => `
+          <div class="ht-set">
+            <div class="ht-set-header">
+              <span class="ht-set-name">${key.charAt(0).toUpperCase() + key.slice(1)}</span>
+              <button class="ht-set-copy" onclick="navigator.clipboard.writeText('${esc(tags.join(' '))}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+            </div>
+            <div class="ht-tags">${tags.map(t => `<span class="ht-tag">${esc(t)}</span>`).join('')}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="ht-tip">${esc(data.tip)}</div>
+    `;
+
+    // Wire up generate button
+    const genBtn = $('#hashtagGenerate');
+    if (genBtn && !genBtn.dataset.wired) {
+      genBtn.dataset.wired = '1';
+      genBtn.addEventListener('click', () => {
+        mkeDataLoaded['hashtags'] = false;
+        loadMkeHashtags($('#hashtagTopic').value);
+      });
+    }
+  }
+
+  // ── Weekly Marketing Report Tab ──
+  async function loadMkeWeeklyReport() {
+    const data = await api('/api/dashboard/marketing-engine/weekly-report');
+    if (!data) return;
+
+    const el = $('#mkeWeeklyReport');
+    const revDir = data.revenue.change_pct >= 0 ? 'up' : 'down';
+
+    el.innerHTML = `
+      <div class="mwr-header">
+        <h2>Weekly Marketing Report</h2>
+        <div class="mwr-period">${data.period.start} to ${data.period.end}</div>
+      </div>
+
+      <div class="mwr-kpis">
+        <div class="mwr-kpi">
+          <div class="mwr-kpi-value">$${data.revenue.this_week.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+          <div class="mwr-kpi-label">Revenue This Week</div>
+          <div class="mwr-kpi-change ${revDir}">${revDir === 'up' ? '+' : ''}${data.revenue.change_pct}% vs last week</div>
+        </div>
+        <div class="mwr-kpi">
+          <div class="mwr-kpi-value">${data.revenue.transactions}</div>
+          <div class="mwr-kpi-label">Transactions</div>
+        </div>
+        <div class="mwr-kpi">
+          <div class="mwr-kpi-value">${data.content.score}/100</div>
+          <div class="mwr-kpi-label">Content Score</div>
+        </div>
+        <div class="mwr-kpi">
+          <div class="mwr-kpi-value">${data.competitor_opportunities}</div>
+          <div class="mwr-kpi-label">Competitor Opps</div>
+        </div>
+      </div>
+
+      ${data.top_products.length > 0 ? `
+        <div class="mwr-section">
+          <h3>Top Products to Promote</h3>
+          <div class="mwr-products">
+            ${data.top_products.map((p, i) => `
+              <div class="mwr-product-row">
+                <span class="mwr-rank">#${i + 1}</span>
+                <span class="mwr-product-name">${esc(p.name)}</span>
+                <span class="mwr-product-units">${p.units} sold</span>
+                <span class="mwr-product-rev">$${p.revenue.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="mwr-section">
+        <h3>This Week's Recommendations</h3>
+        ${data.recommendations.map(r => {
+          const emoji = String.fromCodePoint(parseInt(r.icon, 16));
+          return `
+            <div class="mwr-rec ${r.priority}">
+              <span class="mwr-rec-icon">${emoji}</span>
+              <span class="mwr-rec-text">${esc(r.text)}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // ── Email Template Builder Tab ──
+  async function loadMkeEmailBuilder() {
+    const btn = $('#ebBuild');
+    if (!btn || btn.dataset.wired) {
+      // Just load default template
+      await _buildEmailTemplate();
+      return;
+    }
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => _buildEmailTemplate());
+    await _buildEmailTemplate();
+  }
+
+  async function _buildEmailTemplate() {
+    const type = $('#ebTemplateType').value;
+    const discount = $('#ebDiscount').value || '15';
+    const data = await api(`/api/dashboard/marketing-engine/email-template?template_type=${type}&discount=${discount}`);
+    if (!data) return;
+
+    const el = $('#ebResult');
+    const t = data.template;
+
+    el.innerHTML = `
+      <div class="eb-template">
+        <div class="eb-template-header">
+          <h4>${esc(t.name)}</h4>
+          <div class="eb-meta">
+            <span class="eb-meta-item">Target: ${esc(t.target)}</span>
+            <span class="eb-meta-item">Est. Open Rate: ${esc(t.est_open_rate)}</span>
+          </div>
+        </div>
+        <div class="eb-field">
+          <label>Subject Line</label>
+          <div class="eb-field-value" id="ebSubject">${esc(t.subject)}</div>
+          <button class="eb-copy" onclick="navigator.clipboard.writeText(document.getElementById('ebSubject').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+        </div>
+        <div class="eb-field">
+          <label>Preview Text</label>
+          <div class="eb-field-value">${esc(t.preview)}</div>
+        </div>
+        <div class="eb-field">
+          <label>Email Body</label>
+          <div class="eb-field-value eb-body" id="ebBody">${esc(t.body)}</div>
+          <button class="eb-copy" onclick="navigator.clipboard.writeText(document.getElementById('ebBody').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
         </div>
       </div>
     `;

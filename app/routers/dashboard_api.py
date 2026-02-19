@@ -74,6 +74,10 @@ from app.services.marketing_engine import (
     get_email_campaigns,
     get_promotions,
     get_marketing_performance,
+    predict_content_performance,
+    generate_hashtags,
+    get_weekly_marketing_report,
+    build_email_template,
 )
 from app.services.competitor_intelligence import (
     get_competitor_overview,
@@ -380,6 +384,44 @@ def marketing_promotions(user: User = Depends(get_current_user), db: Session = D
 def marketing_performance(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     shop = _get_shop(db, user)
     return get_marketing_performance(db, shop.id)
+
+
+@router.post("/marketing-engine/predict")
+def marketing_predict(
+    content: str = Query(...),
+    platform: str = Query("instagram"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    return predict_content_performance(db, shop.id, content, platform)
+
+
+@router.get("/marketing-engine/hashtags")
+def marketing_hashtags(
+    topic: str = Query(""),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    return generate_hashtags(db, shop.id, topic)
+
+
+@router.get("/marketing-engine/weekly-report")
+def marketing_weekly_report(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    shop = _get_shop(db, user)
+    return get_weekly_marketing_report(db, shop.id)
+
+
+@router.get("/marketing-engine/email-template")
+def marketing_email_template(
+    template_type: str = Query("welcome"),
+    discount: str = Query("15"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    return build_email_template(db, shop.id, template_type, {"discount": discount})
 
 
 @router.get("/reviews", response_model=ReviewsResponse)

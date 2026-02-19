@@ -591,6 +591,10 @@
           <button class="mke-tab" data-tab="emails">Email Campaigns</button>
           <button class="mke-tab" data-tab="promos">Promotions</button>
           <button class="mke-tab" data-tab="performance">Performance</button>
+          <button class="mke-tab" data-tab="predictor">Predictor</button>
+          <button class="mke-tab" data-tab="hashtags">Hashtags</button>
+          <button class="mke-tab" data-tab="mke-report">Report</button>
+          <button class="mke-tab" data-tab="email-builder">Email Builder</button>
         </div>
 
         <!-- Tab: Content Calendar -->
@@ -661,6 +665,82 @@
           </div>
           <div id="mkePerfContent">
             <div class="ai-loading">Loading performance data...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Content Predictor -->
+        <div class="mke-panel" id="mkePanel-predictor">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Content Performance Predictor</h3>
+              <p class="mke-panel-sub">Paste your post content and get an AI score with improvement suggestions</p>
+            </div>
+          </div>
+          <div class="predictor-wrap">
+            <div class="predictor-input-area">
+              <textarea id="predictorInput" class="predictor-textarea" placeholder="Paste your social media post here... (e.g., 'Check out our new arrivals! #ShopLocal')"></textarea>
+              <div class="predictor-controls">
+                <select id="predictorPlatform">
+                  <option value="instagram">Instagram</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="twitter">Twitter/X</option>
+                </select>
+                <button class="mke-btn primary" id="predictorAnalyze">Analyze Post</button>
+              </div>
+            </div>
+            <div class="predictor-results" id="predictorResults" hidden></div>
+          </div>
+        </div>
+
+        <!-- Tab: Hashtag Generator -->
+        <div class="mke-panel" id="mkePanel-hashtags">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Instagram Hashtag Generator</h3>
+              <p class="mke-panel-sub">Optimized hashtags based on your shop, products, and location</p>
+            </div>
+          </div>
+          <div class="hashtag-wrap">
+            <div class="hashtag-topic-row">
+              <input type="text" id="hashtagTopic" class="hashtag-input" placeholder="Optional: enter a topic (e.g., 'sale', 'new arrivals', 'VIP')">
+              <button class="mke-btn primary" id="hashtagGenerate">Generate</button>
+            </div>
+            <div id="hashtagResults">
+              <div class="ai-loading">Generating hashtags...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Weekly Marketing Report -->
+        <div class="mke-panel" id="mkePanel-mke-report">
+          <div id="mkeWeeklyReport">
+            <div class="ai-loading">Building your weekly report...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Email Template Builder -->
+        <div class="mke-panel" id="mkePanel-email-builder">
+          <div class="mke-panel-header">
+            <div>
+              <h3 class="mke-panel-title">Email Template Builder</h3>
+              <p class="mke-panel-sub">Build custom email templates with your shop data pre-filled</p>
+            </div>
+          </div>
+          <div class="email-builder-wrap">
+            <div class="eb-controls">
+              <select id="ebTemplateType">
+                <option value="welcome">Welcome Email</option>
+                <option value="flash_sale">Flash Sale Alert</option>
+                <option value="event_invite">Event Invitation</option>
+                <option value="product_launch">Product Launch</option>
+                <option value="thank_you">Post-Purchase Thank You</option>
+              </select>
+              <input type="text" id="ebDiscount" class="eb-input" placeholder="Discount %" value="15">
+              <button class="mke-btn primary" id="ebBuild">Build Template</button>
+            </div>
+            <div id="ebResult">
+              <div class="ai-loading">Select a template type and click Build...</div>
+            </div>
           </div>
         </div>
       </section>
