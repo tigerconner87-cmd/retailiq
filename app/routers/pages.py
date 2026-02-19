@@ -119,6 +119,13 @@ def _dashboard_section(request, db, user, section):
     })
 
 
+@router.get("/dashboard/data-hub", response_class=HTMLResponse)
+def data_hub_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "datahub")
+
+
 @router.get("/dashboard/sales", response_class=HTMLResponse)
 def sales_page(
     request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),

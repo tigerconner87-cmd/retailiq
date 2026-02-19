@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=18">
+  <link rel="stylesheet" href="/static/dashboard.css?v=19">
 </head>
 <body>
   <!-- Sidebar -->
@@ -28,6 +28,10 @@
       <a href="/dashboard/briefing" class="nav-item {{ 'active' if sec == 'briefing' }}" data-section="briefing">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
         Daily Briefing
+      </a>
+      <a href="/dashboard/data-hub" class="nav-item {{ 'active' if sec == 'datahub' }}" data-section="datahub">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        Data Hub
       </a>
       <a href="/dashboard" class="nav-item {{ 'active' if sec == 'overview' }}" data-section="overview">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -276,6 +280,299 @@
         </div>
       </section>
 
+      <!-- Data Hub Section -->
+      <section class="section {{ 'active' if sec == 'datahub' }}" id="sec-datahub">
+        <div class="dh-tabs" id="dhTabs">
+          <button class="dh-tab active" data-tab="quick-entry">Quick Entry</button>
+          <button class="dh-tab" data-tab="csv-upload">CSV Upload</button>
+          <button class="dh-tab" data-tab="dh-products">Products</button>
+          <button class="dh-tab" data-tab="dh-customers">Customers</button>
+          <button class="dh-tab" data-tab="connections">Connections</button>
+        </div>
+
+        <!-- Tab: Quick Entry -->
+        <div class="dh-panel active" id="dhPanel-quick-entry">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h3>Log Today's Sales</h3><span class="ai-tag">2 min</span></div>
+              <div class="card-body">
+                <div class="dh-form" id="dhDailyForm">
+                  <div class="dh-field">
+                    <label class="dh-label">Date</label>
+                    <input type="date" class="dh-input" id="dhDate">
+                  </div>
+                  <div class="dh-field-row">
+                    <div class="dh-field">
+                      <label class="dh-label">Total Revenue ($)</label>
+                      <input type="number" class="dh-input" id="dhRevenue" placeholder="e.g. 1247.50" step="0.01">
+                    </div>
+                    <div class="dh-field">
+                      <label class="dh-label">Transactions</label>
+                      <input type="number" class="dh-input" id="dhTransactions" placeholder="e.g. 23">
+                    </div>
+                  </div>
+                  <div class="dh-field">
+                    <label class="dh-label">Walk-in Customers</label>
+                    <input type="number" class="dh-input" id="dhCustomers" placeholder="e.g. 35">
+                  </div>
+                  <div class="dh-field">
+                    <label class="dh-label">Notes (optional)</label>
+                    <input type="text" class="dh-input" id="dhNotes" placeholder='e.g. "Ran a 20% off sale today"'>
+                  </div>
+                  <details class="dh-details">
+                    <summary class="dh-summary">Add Individual Sales (optional)</summary>
+                    <div class="dh-items-list" id="dhItemsList">
+                      <div class="dh-item-row">
+                        <input type="text" class="dh-input dh-input-sm" placeholder="Product name" list="dhProductList">
+                        <input type="number" class="dh-input dh-input-xs" placeholder="Qty" min="1" value="1">
+                        <input type="number" class="dh-input dh-input-sm" placeholder="Price" step="0.01">
+                        <button class="dh-remove-btn" onclick="this.parentElement.remove()" title="Remove">&times;</button>
+                      </div>
+                    </div>
+                    <datalist id="dhProductList"></datalist>
+                    <button class="dh-add-item-btn" id="dhAddItem">+ Add Another Product</button>
+                  </details>
+                  <button class="btn-primary dh-save-btn" id="dhSaveDaily">Save Today's Data</button>
+                </div>
+                <div class="dh-result" id="dhDailyResult" hidden></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3>Entry Calendar</h3></div>
+              <div class="card-body">
+                <div class="dh-streak" id="dhStreak"></div>
+                <div class="dh-calendar" id="dhCalendar">
+                  <div class="ai-loading">Loading calendar...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: CSV Upload -->
+        <div class="dh-panel" id="dhPanel-csv-upload">
+          <div class="card">
+            <div class="card-header"><h3>Upload Sales Data</h3></div>
+            <div class="card-body">
+              <div class="dh-upload-zone" id="dhUploadZone">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <div class="dh-upload-text">Drag &amp; drop your CSV file here, or <label class="dh-upload-link">browse<input type="file" id="dhFileInput" accept=".csv" hidden></label></div>
+                <div class="dh-upload-sub">We accept CSV exports from: Shopify, Square, Clover, Lightspeed, Toast, Vend, or any custom format</div>
+              </div>
+              <div class="dh-csv-preview" id="dhCsvPreview" hidden>
+                <h4 class="dh-preview-title" id="dhPreviewTitle"></h4>
+                <div class="dh-preview-table-wrap">
+                  <table class="data-table" id="dhPreviewTable"><thead></thead><tbody></tbody></table>
+                </div>
+                <div class="dh-mapping">
+                  <h4>Map Your Columns</h4>
+                  <div class="dh-mapping-grid" id="dhMappingGrid">
+                    <div class="dh-map-field"><label>Date Column <span class="required">*</span></label><select class="dh-input" id="dhMapDate"></select></div>
+                    <div class="dh-map-field"><label>Revenue/Total Column <span class="required">*</span></label><select class="dh-input" id="dhMapRevenue"></select></div>
+                    <div class="dh-map-field"><label>Product Name (optional)</label><select class="dh-input" id="dhMapProduct"></select></div>
+                    <div class="dh-map-field"><label>Quantity (optional)</label><select class="dh-input" id="dhMapQuantity"></select></div>
+                    <div class="dh-map-field"><label>Customer Email (optional)</label><select class="dh-input" id="dhMapCustomer"></select></div>
+                  </div>
+                </div>
+                <div class="dh-import-actions">
+                  <button class="btn-primary" id="dhImportBtn">Import Data</button>
+                  <button class="dh-cancel-btn" id="dhCancelImport">Cancel</button>
+                </div>
+                <div class="dh-import-result" id="dhImportResult" hidden></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Products -->
+        <div class="dh-panel" id="dhPanel-dh-products">
+          <div class="card">
+            <div class="card-header">
+              <h3>Product Catalog</h3>
+              <div class="dh-header-actions">
+                <label class="dh-upload-mini-btn">Import CSV<input type="file" id="dhProductCsvInput" accept=".csv" hidden></label>
+                <button class="btn-primary" id="dhAddProductBtn">+ Add Product</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <p class="dh-hint">Products power your analytics — the more products you add, the better your insights.</p>
+              <div class="dh-product-form" id="dhProductForm" hidden>
+                <div class="dh-field-row">
+                  <div class="dh-field"><label class="dh-label">Product Name *</label><input type="text" class="dh-input" id="dhProdName"></div>
+                  <div class="dh-field"><label class="dh-label">Category</label><select class="dh-input" id="dhProdCategory"><option value="">Select...</option><option>Clothing</option><option>Accessories</option><option>Food & Beverage</option><option>Electronics</option><option>Home & Garden</option><option>Beauty</option><option>Health</option><option>Books</option><option>Gifts</option><option>Other</option></select></div>
+                </div>
+                <div class="dh-field-row">
+                  <div class="dh-field"><label class="dh-label">Selling Price ($) *</label><input type="number" class="dh-input" id="dhProdPrice" step="0.01"></div>
+                  <div class="dh-field"><label class="dh-label">Cost Price ($)</label><input type="number" class="dh-input" id="dhProdCost" step="0.01"></div>
+                  <div class="dh-field"><label class="dh-label">SKU</label><input type="text" class="dh-input" id="dhProdSku"></div>
+                </div>
+                <div class="dh-form-actions">
+                  <button class="btn-primary" id="dhSaveProduct">Save Product</button>
+                  <button class="dh-cancel-btn" id="dhCancelProduct">Cancel</button>
+                </div>
+                <input type="hidden" id="dhProdEditId">
+              </div>
+              <table class="data-table" id="dhProductsTable">
+                <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Cost</th><th>SKU</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Customers -->
+        <div class="dh-panel" id="dhPanel-dh-customers">
+          <div class="card">
+            <div class="card-header">
+              <h3>Customer Database</h3>
+              <div class="dh-header-actions">
+                <label class="dh-upload-mini-btn">Import CSV<input type="file" id="dhCustomerCsvInput" accept=".csv" hidden></label>
+                <button class="btn-primary" id="dhAddCustomerBtn">+ Add Customer</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <p class="dh-hint">Customers power your win-back campaigns — add emails to enable automated outreach.</p>
+              <div class="dh-product-form" id="dhCustomerForm" hidden>
+                <div class="dh-field-row">
+                  <div class="dh-field"><label class="dh-label">Email</label><input type="email" class="dh-input" id="dhCustEmail"></div>
+                  <div class="dh-field"><label class="dh-label">Segment</label><select class="dh-input" id="dhCustSegment"><option value="regular">Regular</option><option value="vip">VIP</option><option value="at_risk">At Risk</option><option value="lost">Lost</option></select></div>
+                </div>
+                <div class="dh-form-actions">
+                  <button class="btn-primary" id="dhSaveCustomer">Save Customer</button>
+                  <button class="dh-cancel-btn" id="dhCancelCustomer">Cancel</button>
+                </div>
+                <input type="hidden" id="dhCustEditId">
+              </div>
+              <div class="dh-search-bar">
+                <input type="text" class="dh-input" id="dhCustSearch" placeholder="Search by email...">
+              </div>
+              <table class="data-table" id="dhCustomersTable">
+                <thead><tr><th>Email</th><th>Segment</th><th>Visits</th><th>Total Spent</th><th>Last Seen</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <div class="dh-pagination" id="dhCustPagination"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Connections -->
+        <div class="dh-panel" id="dhPanel-connections">
+          <div class="dh-connections-grid">
+            <!-- Google Business Profile -->
+            <div class="dh-connection-card connected-ready" id="dhGoogleCard">
+              <div class="dh-conn-icon" style="background:linear-gradient(135deg,#4285f4,#34a853)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <div class="dh-conn-info">
+                <div class="dh-conn-name">Google Business Profile</div>
+                <div class="dh-conn-desc">Import your Google reviews and monitor competitor reviews in real-time</div>
+                <div class="dh-conn-status" id="dhGoogleStatus">Not connected</div>
+              </div>
+              <button class="btn-primary dh-conn-btn" id="dhGoogleConnectBtn">Connect</button>
+            </div>
+
+            <!-- Shopify -->
+            <div class="dh-connection-card coming-soon-card">
+              <div class="dh-conn-icon" style="background:linear-gradient(135deg,#96bf48,#5e8e3e)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              </div>
+              <div class="dh-conn-info">
+                <div class="dh-conn-name">Shopify</div>
+                <div class="dh-conn-desc">Auto-sync products, orders, and customers from your Shopify store</div>
+                <span class="coming-soon-badge">Coming Soon</span>
+              </div>
+              <div class="dh-notify-wrap"><input type="email" class="dh-input dh-notify-email" placeholder="Your email"><button class="dh-notify-btn" data-integration="shopify">Notify Me</button></div>
+            </div>
+
+            <!-- Square -->
+            <div class="dh-connection-card coming-soon-card">
+              <div class="dh-conn-icon" style="background:linear-gradient(135deg,#006aff,#0051cc)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="8" y="8" width="8" height="8"/></svg>
+              </div>
+              <div class="dh-conn-info">
+                <div class="dh-conn-name">Square</div>
+                <div class="dh-conn-desc">Import transactions and inventory from your Square POS</div>
+                <span class="coming-soon-badge">Coming Soon</span>
+              </div>
+              <div class="dh-notify-wrap"><input type="email" class="dh-input dh-notify-email" placeholder="Your email"><button class="dh-notify-btn" data-integration="square">Notify Me</button></div>
+            </div>
+
+            <!-- Clover -->
+            <div class="dh-connection-card coming-soon-card">
+              <div class="dh-conn-icon" style="background:linear-gradient(135deg,#43b02a,#2d8a1e)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><circle cx="8" cy="14" r="4"/><circle cx="16" cy="14" r="4"/></svg>
+              </div>
+              <div class="dh-conn-info">
+                <div class="dh-conn-name">Clover</div>
+                <div class="dh-conn-desc">Sync sales, inventory, and customer data from Clover POS</div>
+                <span class="coming-soon-badge">Coming Soon</span>
+              </div>
+              <div class="dh-notify-wrap"><input type="email" class="dh-input dh-notify-email" placeholder="Your email"><button class="dh-notify-btn" data-integration="clover">Notify Me</button></div>
+            </div>
+
+            <!-- Instagram -->
+            <div class="dh-connection-card coming-soon-card">
+              <div class="dh-conn-icon" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+              </div>
+              <div class="dh-conn-info">
+                <div class="dh-conn-name">Instagram</div>
+                <div class="dh-conn-desc">Track follower growth, post engagement, and social mentions</div>
+                <span class="coming-soon-badge">Coming Soon</span>
+              </div>
+              <div class="dh-notify-wrap"><input type="email" class="dh-input dh-notify-email" placeholder="Your email"><button class="dh-notify-btn" data-integration="instagram">Notify Me</button></div>
+            </div>
+
+            <!-- QuickBooks -->
+            <div class="dh-connection-card coming-soon-card">
+              <div class="dh-conn-icon" style="background:linear-gradient(135deg,#2ca01c,#108a00)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <div class="dh-conn-info">
+                <div class="dh-conn-name">QuickBooks</div>
+                <div class="dh-conn-desc">Sync expenses, revenue, and financial data for accurate profit tracking</div>
+                <span class="coming-soon-badge">Coming Soon</span>
+              </div>
+              <div class="dh-notify-wrap"><input type="email" class="dh-input dh-notify-email" placeholder="Your email"><button class="dh-notify-btn" data-integration="quickbooks">Notify Me</button></div>
+            </div>
+          </div>
+
+          <!-- Google Business Finder Modal -->
+          <div class="dh-modal-overlay" id="dhGoogleModal" hidden>
+            <div class="dh-modal">
+              <div class="dh-modal-header">
+                <h3 id="dhGoogleModalTitle">Find Your Business on Google</h3>
+                <button class="dh-modal-close" id="dhGoogleModalClose">&times;</button>
+              </div>
+              <div class="dh-modal-body">
+                <div class="dh-modal-step" id="dhGoogleStep1">
+                  <div class="dh-field-row">
+                    <div class="dh-field" style="flex:2"><input type="text" class="dh-input" id="dhGoogleSearch" placeholder="Your business name + city"></div>
+                    <button class="btn-primary" id="dhGoogleSearchBtn">Search</button>
+                  </div>
+                  <div class="dh-google-results" id="dhGoogleResults">
+                    <div class="dh-hint" style="text-align:center;padding:30px">Search for your business to get started</div>
+                  </div>
+                </div>
+                <div class="dh-modal-step" id="dhGoogleStep2" hidden>
+                  <p class="dh-hint">Now let's find your competitors. We found similar businesses near you:</p>
+                  <div class="dh-google-results" id="dhCompetitorResults">
+                    <div class="ai-loading">Searching for nearby businesses...</div>
+                  </div>
+                  <div class="dh-field-row" style="margin-top:16px">
+                    <div class="dh-field" style="flex:2"><input type="text" class="dh-input" id="dhCompSearch" placeholder="Search for a specific competitor"></div>
+                    <button class="btn-primary" id="dhCompSearchBtn">Search</button>
+                  </div>
+                  <div class="dh-modal-footer">
+                    <button class="btn-primary" id="dhFinishCompetitors">Done — Save Competitors</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Overview Section -->
       <section class="section {{ 'active' if sec == 'overview' }}" id="sec-overview">
         <!-- Insights Strip -->
@@ -479,6 +776,16 @@
 
       <!-- Competitors Section (Full Intelligence Dashboard) -->
       <section class="section {{ 'active' if sec == 'competitors' }}" id="sec-competitors">
+        <!-- Competitor header with sync button -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="comp-sync-status" id="compSyncStatus" style="font-size:12px;color:var(--text-secondary)"></span>
+          </div>
+          <button class="btn-primary" id="compRefreshReviews" style="font-size:13px;padding:6px 14px;display:flex;align-items:center;gap:6px" title="Sync competitor reviews from Google">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Refresh Reviews
+          </button>
+        </div>
         <!-- Sub-navigation tabs -->
         <div class="comp-tabs" id="compTabs">
           <button class="comp-tab active" data-tab="overview">Overview</button>
@@ -1015,6 +1322,16 @@
             </div>
           </div>
           <div class="settings-group">
+            <h3 class="settings-group-title">Integrations</h3>
+            <div class="settings-grid">
+              <div class="settings-field" style="grid-column:1/-1">
+                <label class="settings-label">Google Places API Key</label>
+                <input type="password" class="settings-input" id="setGoogleApiKey" placeholder="Enter your Google Places API key (optional — mock data used if blank)">
+                <small style="color:var(--text-secondary);margin-top:4px;display:block">Used for business search, competitor discovery, and review syncing. Get a key at <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent)">Google Cloud Console</a>.</small>
+              </div>
+            </div>
+          </div>
+          <div class="settings-group">
             <h3 class="settings-group-title">Notifications & Alerts</h3>
             <div class="settings-grid">
               <div class="settings-field">
@@ -1058,6 +1375,7 @@
       </div>
       <div class="shortcuts-body">
         <div class="shortcut-row"><kbd>B</kbd><span>Daily Briefing</span></div>
+        <div class="shortcut-row"><kbd>D</kbd><span>Data Hub</span></div>
         <div class="shortcut-row"><kbd>O</kbd><span>Overview</span></div>
         <div class="shortcut-row"><kbd>S</kbd><span>Sales</span></div>
         <div class="shortcut-row"><kbd>P</kbd><span>Products</span></div>
@@ -1078,7 +1396,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=18"></script>
+  <script src="/static/dashboard.js?v=19"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

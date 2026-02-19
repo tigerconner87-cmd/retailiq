@@ -401,6 +401,7 @@ class ShopSettingsUpdate(BaseModel):
     alert_reviews: Optional[bool] = None
     alert_competitors: Optional[bool] = None
     business_hours: Optional[dict] = None
+    google_api_key: Optional[str] = None
 
 
 # ── Onboarding ────────────────────────────────────────────────────────────────

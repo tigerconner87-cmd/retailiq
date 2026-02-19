@@ -187,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (section === 'reviews') await loadReviews();
       else if (section === 'alerts') await loadAlerts();
       else if (section === 'settings') await loadSettings();
+      else if (section === 'datahub') await loadDataHub();
       // Stagger card entrance animation
       const sec = $(`#sec-${section}`);
       if (sec) animateCards(sec);
@@ -533,6 +534,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabName = activeTab ? activeTab.dataset.tab : 'overview';
     compDataLoaded = {};
     await loadCompetitorTab(tabName);
+  }
+
+  // Refresh Reviews button in competitors section
+  const compRefreshBtn = $('#compRefreshReviews');
+  if (compRefreshBtn) {
+    compRefreshBtn.addEventListener('click', async () => {
+      compRefreshBtn.disabled = true;
+      compRefreshBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Syncing...';
+      try {
+        const data = await api('/api/dashboard/competitors');
+        if (data && data.competitors) {
+          let syncedTotal = 0;
+          for (const comp of data.competitors) {
+            if (comp.google_place_id) {
+              const res = await apiPost('/api/data/google/sync-reviews', { place_id: comp.google_place_id });
+              if (res) syncedTotal += res.synced || 0;
+            }
+          }
+          const statusEl = $('#compSyncStatus');
+          if (statusEl) statusEl.textContent = `Last synced: just now (${syncedTotal} new reviews)`;
+          showToast(`Review sync complete — ${syncedTotal} new reviews`, 'success');
+          compDataLoaded = {};
+          await loadCompetitorTab('overview');
+        }
+      } catch (e) {
+        showToast('Failed to sync reviews', 'error');
+      }
+      compRefreshBtn.disabled = false;
+      compRefreshBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Refresh Reviews';
+    });
   }
 
   async function loadCompetitorTab(tab) {
@@ -2582,7 +2613,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ══════════════════════════════════════════════════════════════════════════
 
   const shortcutMap = {
-    'b': 'briefing', 'o': 'overview', 's': 'sales', 'p': 'products',
+    'b': 'briefing', 'd': 'datahub', 'o': 'overview', 's': 'sales', 'p': 'products',
     'u': 'customers', 'c': 'competitors', 'g': 'goals', 'm': 'marketing', 'w': 'winback',
   };
 
@@ -2870,6 +2901,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (s('#setAlertCustomers')) s('#setAlertCustomers').checked = data.alert_customers !== false;
     if (s('#setAlertReviews')) s('#setAlertReviews').checked = data.alert_reviews !== false;
     if (s('#setAlertCompetitors')) s('#setAlertCompetitors').checked = data.alert_competitors !== false;
+    if (s('#setGoogleApiKey')) s('#setGoogleApiKey').value = data.google_api_key || '';
   }
 
   // Save settings handler
@@ -2894,6 +2926,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert_customers: $('#setAlertCustomers')?.checked,
         alert_reviews: $('#setAlertReviews')?.checked,
         alert_competitors: $('#setAlertCompetitors')?.checked,
+        google_api_key: $('#setGoogleApiKey')?.value || null,
       };
       try {
         const res = await fetch('/api/dashboard/settings', {
@@ -3025,6 +3058,545 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Attach export buttons (they use onclick="exportCSV('type')")
   window.exportCSV = exportCSV;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DATA HUB
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async function loadDataHub() {
+    // Tab switching
+    $$('#dhTabs .dh-tab').forEach(tab => {
+      tab.onclick = () => {
+        $$('#dhTabs .dh-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        $$('#sec-datahub .dh-panel').forEach(p => p.classList.remove('active'));
+        const panel = $(`#dhPanel-${tab.dataset.tab}`);
+        if (panel) panel.classList.add('active');
+        if (tab.dataset.tab === 'quick-entry') loadDhQuickEntry();
+        else if (tab.dataset.tab === 'dh-products') loadDhProducts();
+        else if (tab.dataset.tab === 'dh-customers') loadDhCustomers();
+        else if (tab.dataset.tab === 'connections') loadDhConnections();
+      };
+    });
+    loadDhQuickEntry();
+    setupDhCsvUpload();
+    setupDhProductsTab();
+    setupDhCustomersTab();
+    setupDhConnections();
+  }
+
+  // ── Quick Entry ──
+  async function loadDhQuickEntry() {
+    const dateInput = $('#dhDate');
+    if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+
+    // Populate product datalist
+    const prodData = await api('/api/data/products');
+    if (prodData && prodData.products) {
+      const dl = $('#dhProductList');
+      if (dl) dl.innerHTML = prodData.products.map(p => `<option value="${esc(p.name)}">`).join('');
+    }
+
+    // Load calendar
+    const history = await api('/api/data/entry-history?days=90');
+    if (history) renderDhCalendar(history);
+
+    // Save handler
+    const saveBtn = $('#dhSaveDaily');
+    if (saveBtn && !saveBtn._bound) {
+      saveBtn._bound = true;
+      saveBtn.onclick = async () => {
+        const date = $('#dhDate').value;
+        const revenue = parseFloat($('#dhRevenue').value) || 0;
+        const transactions = parseInt($('#dhTransactions').value) || 0;
+        const customers = parseInt($('#dhCustomers').value) || 0;
+        const notes = $('#dhNotes').value || '';
+        if (!date || revenue <= 0) { showToast('Please enter date and revenue', 'error'); return; }
+        const items = [];
+        $$('#dhItemsList .dh-item-row').forEach(row => {
+          const inputs = row.querySelectorAll('input');
+          const name = inputs[0]?.value?.trim();
+          const qty = parseInt(inputs[1]?.value) || 1;
+          const price = parseFloat(inputs[2]?.value) || 0;
+          if (name && price > 0) items.push({product_name: name, quantity: qty, unit_price: price});
+        });
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        try {
+          const res = await fetch('/api/data/daily-entry', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({date, revenue, transactions, walk_in_customers: customers, notes, items})
+          });
+          const data = await res.json();
+          const resultEl = $('#dhDailyResult');
+          if (res.ok) {
+            resultEl.className = 'dh-result';
+            resultEl.innerHTML = `<strong>Got it!</strong> ${data.message || 'Data saved successfully.'}`;
+            resultEl.hidden = false;
+            showToast('Daily data saved!', 'success');
+            const hist = await api('/api/data/entry-history?days=90');
+            if (hist) renderDhCalendar(hist);
+          } else {
+            resultEl.className = 'dh-result error';
+            resultEl.innerHTML = data.detail || 'Error saving data';
+            resultEl.hidden = false;
+            showToast('Error saving data', 'error');
+          }
+        } catch (e) {
+          showToast('Network error', 'error');
+        }
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Today\'s Data';
+      };
+    }
+
+    // Add item row
+    const addBtn = $('#dhAddItem');
+    if (addBtn && !addBtn._bound) {
+      addBtn._bound = true;
+      addBtn.onclick = () => {
+        const list = $('#dhItemsList');
+        const row = document.createElement('div');
+        row.className = 'dh-item-row';
+        row.innerHTML = '<input type="text" class="dh-input dh-input-sm" placeholder="Product name" list="dhProductList"><input type="number" class="dh-input dh-input-xs" placeholder="Qty" min="1" value="1"><input type="number" class="dh-input dh-input-sm" placeholder="Price" step="0.01"><button class="dh-remove-btn" title="Remove">&times;</button>';
+        row.querySelector('.dh-remove-btn').onclick = () => row.remove();
+        list.appendChild(row);
+      };
+    }
+  }
+
+  function renderDhCalendar(data) {
+    const cal = $('#dhCalendar');
+    const streak = $('#dhStreak');
+    if (!cal) return;
+    const loggedDates = new Set(data.logged_dates || []);
+    if (streak) {
+      streak.innerHTML = `You've logged <strong>${data.total_logged || 0}</strong> of the last 90 days. ${data.streak > 0 ? `Current streak: <strong>${data.streak} day${data.streak > 1 ? 's' : ''}</strong>` : ''}`;
+    }
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - 89);
+    start.setDate(start.getDate() - start.getDay()); // align to Sunday
+    let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="dh-cal-header">${d}</div>`).join('');
+    const d = new Date(start);
+    const todayStr = today.toISOString().slice(0, 10);
+    while (d <= today || d.getDay() !== 0) {
+      const ds = d.toISOString().slice(0, 10);
+      const isToday = ds === todayStr;
+      const isLogged = loggedDates.has(ds);
+      const isFuture = d > today;
+      html += `<div class="dh-cal-day${isLogged ? ' logged' : ''}${isToday ? ' today' : ''}${isFuture ? ' empty' : ''}">${isFuture ? '' : d.getDate()}</div>`;
+      d.setDate(d.getDate() + 1);
+      if (d > today && d.getDay() === 0) break;
+    }
+    cal.innerHTML = html;
+  }
+
+  // ── CSV Upload ──
+  function setupDhCsvUpload() {
+    const zone = $('#dhUploadZone');
+    const fileInput = $('#dhFileInput');
+    if (!zone || zone._bound) return;
+    zone._bound = true;
+    let csvRows = [];
+    let csvColumns = [];
+
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+    zone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    async function handleFile(file) {
+      if (!file || !file.name.endsWith('.csv')) { showToast('Please upload a CSV file', 'error'); return; }
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/data/csv-upload', {method: 'POST', credentials: 'same-origin', body: formData});
+        const data = await res.json();
+        if (!res.ok) { showToast(data.detail || 'Upload error', 'error'); return; }
+        csvColumns = data.columns;
+        csvRows = data.preview_data || [];
+        renderCsvPreview(data, file.name);
+      } catch (e) { showToast('Upload failed', 'error'); }
+    }
+
+    function renderCsvPreview(data, fileName) {
+      const preview = $('#dhCsvPreview');
+      $('#dhPreviewTitle').textContent = `${fileName} — ${data.row_count} rows detected`;
+      const thead = $('#dhPreviewTable thead');
+      const tbody = $('#dhPreviewTable tbody');
+      thead.innerHTML = '<tr>' + data.columns.map(c => `<th>${esc(c)}</th>`).join('') + '</tr>';
+      tbody.innerHTML = (data.preview || []).map(row => '<tr>' + data.columns.map(c => `<td>${esc(String(row[c] || ''))}</td>`).join('') + '</tr>').join('');
+      // Populate mapping dropdowns
+      const dateKeywords = ['date','time','timestamp','day','created','order_date'];
+      const revenueKeywords = ['total','amount','revenue','price','sum','sales','subtotal'];
+      const productKeywords = ['product','item','name','description','sku'];
+      const qtyKeywords = ['quantity','qty','count','units','amount'];
+      const custKeywords = ['email','customer','client','buyer'];
+      [['dhMapDate', dateKeywords], ['dhMapRevenue', revenueKeywords], ['dhMapProduct', productKeywords],
+       ['dhMapQuantity', qtyKeywords], ['dhMapCustomer', custKeywords]].forEach(([id, kws]) => {
+        const sel = $(`#${id}`);
+        sel.innerHTML = '<option value="">-- skip --</option>' + data.columns.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        const match = data.columns.find(c => kws.some(k => c.toLowerCase().includes(k)));
+        if (match) sel.value = match;
+      });
+      preview.hidden = false;
+      zone.style.display = 'none';
+    }
+
+    const cancelBtn = $('#dhCancelImport');
+    if (cancelBtn) cancelBtn.onclick = () => { $('#dhCsvPreview').hidden = true; zone.style.display = ''; };
+
+    const importBtn = $('#dhImportBtn');
+    if (importBtn) importBtn.onclick = async () => {
+      const mapping = {
+        date_col: $('#dhMapDate').value,
+        revenue_col: $('#dhMapRevenue').value,
+        product_col: $('#dhMapProduct').value || null,
+        quantity_col: $('#dhMapQuantity').value || null,
+        customer_col: $('#dhMapCustomer').value || null,
+      };
+      if (!mapping.date_col || !mapping.revenue_col) { showToast('Date and Revenue columns are required', 'error'); return; }
+      importBtn.disabled = true;
+      importBtn.textContent = 'Importing...';
+      try {
+        const res = await fetch('/api/data/csv-import', {
+          method: 'POST', credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({data: csvRows, mapping, file_name: 'upload'})
+        });
+        const result = await res.json();
+        const el = $('#dhImportResult');
+        if (res.ok) {
+          el.className = 'dh-import-result' + (result.errors?.length ? ' has-errors' : '');
+          el.innerHTML = `<strong>Imported ${result.imported} transactions.</strong>${result.skipped ? ` ${result.skipped} rows skipped.` : ''}${result.errors?.length ? `<br><small>${result.errors.slice(0,5).join('<br>')}</small>` : ''}`;
+          showToast(`Imported ${result.imported} records`, 'success');
+        } else {
+          el.className = 'dh-import-result has-errors';
+          el.innerHTML = result.detail || 'Import failed';
+        }
+        el.hidden = false;
+      } catch (e) { showToast('Import failed', 'error'); }
+      importBtn.disabled = false;
+      importBtn.textContent = 'Import Data';
+    };
+  }
+
+  // ── Products Tab ──
+  async function loadDhProducts() {
+    const data = await api('/api/data/products');
+    if (!data) return;
+    const tbody = $('#dhProductsTable tbody');
+    if (!data.products || data.products.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No products yet. Add your first product above.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.products.map(p => `<tr>
+      <td>${esc(p.name)}</td><td>${esc(p.category || '-')}</td><td>${fmt(p.price)}</td>
+      <td>${p.cost ? fmt(p.cost) : '-'}</td><td>${esc(p.sku || '-')}</td>
+      <td><span class="badge-sm ${p.is_active ? 'badge-success' : 'badge-muted'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><button class="dh-edit-btn" data-id="${p.id}">Edit</button> <button class="dh-del-btn" data-id="${p.id}">Delete</button></td>
+    </tr>`).join('');
+    // Edit/delete handlers
+    tbody.querySelectorAll('.dh-edit-btn').forEach(btn => {
+      btn.onclick = async () => {
+        const prod = data.products.find(p => p.id === btn.dataset.id);
+        if (!prod) return;
+        $('#dhProdEditId').value = prod.id;
+        $('#dhProdName').value = prod.name;
+        $('#dhProdCategory').value = prod.category || '';
+        $('#dhProdPrice').value = prod.price;
+        $('#dhProdCost').value = prod.cost || '';
+        $('#dhProdSku').value = prod.sku || '';
+        $('#dhProductForm').hidden = false;
+      };
+    });
+    tbody.querySelectorAll('.dh-del-btn').forEach(btn => {
+      btn.onclick = async () => {
+        await fetch(`/api/data/products/${btn.dataset.id}`, {method: 'DELETE', credentials: 'same-origin'});
+        showToast('Product deactivated', 'info');
+        loadDhProducts();
+      };
+    });
+  }
+
+  function setupDhProductsTab() {
+    const addBtn = $('#dhAddProductBtn');
+    const form = $('#dhProductForm');
+    const cancelBtn = $('#dhCancelProduct');
+    const saveBtn = $('#dhSaveProduct');
+    if (!addBtn) return;
+    addBtn.onclick = () => { form.hidden = false; $('#dhProdEditId').value = ''; $('#dhProdName').value = ''; $('#dhProdCategory').value = ''; $('#dhProdPrice').value = ''; $('#dhProdCost').value = ''; $('#dhProdSku').value = ''; };
+    if (cancelBtn) cancelBtn.onclick = () => { form.hidden = true; };
+    if (saveBtn) saveBtn.onclick = async () => {
+      const editId = $('#dhProdEditId').value;
+      const body = {
+        name: $('#dhProdName').value, category: $('#dhProdCategory').value || null,
+        price: parseFloat($('#dhProdPrice').value) || 0, cost: parseFloat($('#dhProdCost').value) || null,
+        sku: $('#dhProdSku').value || null
+      };
+      if (!body.name || !body.price) { showToast('Name and price required', 'error'); return; }
+      const url = editId ? `/api/data/products/${editId}` : '/api/data/products';
+      const method = editId ? 'PUT' : 'POST';
+      await fetch(url, {method, credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+      form.hidden = true;
+      showToast(editId ? 'Product updated' : 'Product added', 'success');
+      loadDhProducts();
+    };
+    // CSV upload for products
+    const csvInput = $('#dhProductCsvInput');
+    if (csvInput) csvInput.onchange = async () => {
+      if (!csvInput.files[0]) return;
+      const fd = new FormData();
+      fd.append('file', csvInput.files[0]);
+      const res = await fetch('/api/data/csv-upload-products', {method: 'POST', credentials: 'same-origin', body: fd});
+      const data = await res.json();
+      showToast(data.detail || `Imported ${data.imported || 0} products`, res.ok ? 'success' : 'error');
+      loadDhProducts();
+      csvInput.value = '';
+    };
+  }
+
+  // ── Customers Tab ──
+  let dhCustPage = 1;
+  async function loadDhCustomers(page, search) {
+    page = page || dhCustPage;
+    search = search !== undefined ? search : ($('#dhCustSearch')?.value || '');
+    const data = await api(`/api/data/customers?page=${page}&per_page=25&search=${encodeURIComponent(search)}`);
+    if (!data) return;
+    dhCustPage = data.page || 1;
+    const tbody = $('#dhCustomersTable tbody');
+    if (!data.customers || data.customers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No customers found.</td></tr>';
+      $('#dhCustPagination').innerHTML = '';
+      return;
+    }
+    tbody.innerHTML = data.customers.map(c => `<tr>
+      <td>${esc(c.email || '-')}</td><td><span class="badge-sm">${esc(c.segment || 'regular')}</span></td>
+      <td>${c.visit_count || 0}</td><td>${fmt(c.total_spent || 0)}</td>
+      <td>${c.last_seen ? c.last_seen.split('T')[0] : '-'}</td>
+      <td><button class="dh-edit-btn" data-id="${c.id}">Edit</button> <button class="dh-del-btn" data-id="${c.id}">Del</button></td>
+    </tr>`).join('');
+    // Pagination
+    const pages = data.pages || 1;
+    let pagHtml = '';
+    for (let i = 1; i <= Math.min(pages, 10); i++) {
+      pagHtml += `<button class="dh-page-btn${i === page ? ' active' : ''}" data-page="${i}">${i}</button>`;
+    }
+    $('#dhCustPagination').innerHTML = pagHtml;
+    $$('#dhCustPagination .dh-page-btn').forEach(btn => { btn.onclick = () => loadDhCustomers(parseInt(btn.dataset.page)); });
+    // Edit/delete
+    tbody.querySelectorAll('.dh-edit-btn').forEach(btn => {
+      btn.onclick = () => {
+        const c = data.customers.find(x => x.id === btn.dataset.id);
+        if (!c) return;
+        $('#dhCustEditId').value = c.id;
+        $('#dhCustEmail').value = c.email || '';
+        $('#dhCustSegment').value = c.segment || 'regular';
+        $('#dhCustomerForm').hidden = false;
+      };
+    });
+    tbody.querySelectorAll('.dh-del-btn').forEach(btn => {
+      btn.onclick = async () => {
+        await fetch(`/api/data/customers/${btn.dataset.id}`, {method: 'DELETE', credentials: 'same-origin'});
+        showToast('Customer deleted', 'info');
+        loadDhCustomers();
+      };
+    });
+  }
+
+  function setupDhCustomersTab() {
+    const addBtn = $('#dhAddCustomerBtn');
+    const form = $('#dhCustomerForm');
+    const cancelBtn = $('#dhCancelCustomer');
+    const saveBtn = $('#dhSaveCustomer');
+    const searchInput = $('#dhCustSearch');
+    if (!addBtn) return;
+    addBtn.onclick = () => { form.hidden = false; $('#dhCustEditId').value = ''; $('#dhCustEmail').value = ''; $('#dhCustSegment').value = 'regular'; };
+    if (cancelBtn) cancelBtn.onclick = () => { form.hidden = true; };
+    if (saveBtn) saveBtn.onclick = async () => {
+      const editId = $('#dhCustEditId').value;
+      const body = { email: $('#dhCustEmail').value || null, segment: $('#dhCustSegment').value || 'regular' };
+      const url = editId ? `/api/data/customers/${editId}` : '/api/data/customers';
+      const method = editId ? 'PUT' : 'POST';
+      await fetch(url, {method, credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+      form.hidden = true;
+      showToast(editId ? 'Customer updated' : 'Customer added', 'success');
+      loadDhCustomers();
+    };
+    if (searchInput) {
+      let t;
+      searchInput.oninput = () => { clearTimeout(t); t = setTimeout(() => loadDhCustomers(1, searchInput.value), 300); };
+    }
+    // CSV upload
+    const csvInput = $('#dhCustomerCsvInput');
+    if (csvInput) csvInput.onchange = async () => {
+      if (!csvInput.files[0]) return;
+      const fd = new FormData();
+      fd.append('file', csvInput.files[0]);
+      const res = await fetch('/api/data/csv-upload-customers', {method: 'POST', credentials: 'same-origin', body: fd});
+      const data = await res.json();
+      showToast(data.detail || `Imported ${data.imported || 0} customers`, res.ok ? 'success' : 'error');
+      loadDhCustomers();
+      csvInput.value = '';
+    };
+  }
+
+  // ── Connections Tab ──
+  function setupDhConnections() {
+    // Notify Me buttons
+    $$('.dh-notify-btn').forEach(btn => {
+      if (btn._bound) return;
+      btn._bound = true;
+      btn.onclick = async () => {
+        const wrap = btn.closest('.dh-notify-wrap');
+        const emailInput = wrap.querySelector('.dh-notify-email');
+        const email = emailInput?.value?.trim();
+        if (!email || !email.includes('@')) { showToast('Please enter a valid email', 'error'); return; }
+        await fetch('/api/data/connections/notify', {
+          method: 'POST', credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, integration: btn.dataset.integration})
+        });
+        btn.textContent = 'Notified!';
+        btn.disabled = true;
+        emailInput.disabled = true;
+        showToast('We\'ll notify you when it\'s ready!', 'success');
+      };
+    });
+  }
+
+  async function loadDhConnections() {
+    // Check if Google is connected
+    const settings = await api('/api/dashboard/settings');
+    const status = $('#dhGoogleStatus');
+    const btn = $('#dhGoogleConnectBtn');
+    if (settings && settings.google_place_id) {
+      if (status) { status.textContent = 'Connected'; status.classList.add('connected'); }
+      if (btn) { btn.textContent = 'Manage'; }
+    }
+    setupGoogleModal();
+  }
+
+  // ── Google Business Finder Modal ──
+  function setupGoogleModal() {
+    const connectBtn = $('#dhGoogleConnectBtn');
+    const modal = $('#dhGoogleModal');
+    const closeBtn = $('#dhGoogleModalClose');
+    if (!connectBtn || connectBtn._bound) return;
+    connectBtn._bound = true;
+
+    connectBtn.onclick = () => { modal.hidden = false; };
+    closeBtn.onclick = () => { modal.hidden = true; };
+    modal.onclick = (e) => { if (e.target === modal) modal.hidden = true; };
+
+    // Step 1: Search for own business
+    const searchBtn = $('#dhGoogleSearchBtn');
+    searchBtn.onclick = async () => {
+      const query = $('#dhGoogleSearch').value.trim();
+      if (!query) return;
+      const results = $('#dhGoogleResults');
+      results.innerHTML = '<div class="ai-loading">Searching...</div>';
+      const data = await api(`/api/data/google/search?query=${encodeURIComponent(query)}`);
+      if (!data || !data.results?.length) { results.innerHTML = '<div class="dh-hint" style="text-align:center;padding:20px">No businesses found. Try a different search.</div>'; return; }
+      results.innerHTML = data.results.map(r => `
+        <div class="dh-google-result" data-place='${JSON.stringify(r).replace(/'/g, "&#39;")}'>
+          <div class="dh-gr-info">
+            <div class="dh-gr-name">${esc(r.name)}</div>
+            <div class="dh-gr-addr">${esc(r.address)}</div>
+            <div class="dh-gr-meta">${r.rating ? r.rating + ' &#9733;' : ''} ${r.review_count ? '(' + r.review_count + ' reviews)' : ''}</div>
+          </div>
+          <button class="dh-gr-action">This is my business</button>
+        </div>
+      `).join('');
+      results.querySelectorAll('.dh-gr-action').forEach(btn => {
+        btn.onclick = async () => {
+          const place = JSON.parse(btn.closest('.dh-google-result').dataset.place);
+          await fetch('/api/data/google/connect', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({place_id: place.place_id, name: place.name, address: place.address, lat: place.lat, lng: place.lng})
+          });
+          showToast('Business connected!', 'success');
+          $('#dhGoogleStatus').textContent = 'Connected';
+          $('#dhGoogleStatus').classList.add('connected');
+          // Move to step 2 — find competitors
+          $('#dhGoogleStep1').hidden = true;
+          $('#dhGoogleStep2').hidden = false;
+          $('#dhGoogleModalTitle').textContent = 'Find Your Competitors';
+          loadNearbyCompetitors(place.lat, place.lng);
+        };
+      });
+    };
+
+    // Step 2: Competitor finder
+    const compSearchBtn = $('#dhCompSearchBtn');
+    if (compSearchBtn) compSearchBtn.onclick = async () => {
+      const query = $('#dhCompSearch').value.trim();
+      if (!query) return;
+      const data = await api(`/api/data/google/search?query=${encodeURIComponent(query)}`);
+      if (data && data.results) appendCompetitorResults(data.results);
+    };
+
+    const finishBtn = $('#dhFinishCompetitors');
+    if (finishBtn) finishBtn.onclick = () => {
+      modal.hidden = true;
+      showToast('Competitors saved!', 'success');
+      // Reset for next time
+      $('#dhGoogleStep1').hidden = false;
+      $('#dhGoogleStep2').hidden = true;
+      $('#dhGoogleModalTitle').textContent = 'Find Your Business on Google';
+    };
+  }
+
+  const selectedCompetitors = new Set();
+
+  async function loadNearbyCompetitors(lat, lng) {
+    const container = $('#dhCompetitorResults');
+    container.innerHTML = '<div class="ai-loading">Searching for nearby businesses...</div>';
+    const data = await api(`/api/data/google/nearby?lat=${lat}&lng=${lng}`);
+    if (!data || !data.results?.length) { container.innerHTML = '<div class="dh-hint">No nearby businesses found.</div>'; return; }
+    appendCompetitorResults(data.results, true);
+  }
+
+  function appendCompetitorResults(results, replace) {
+    const container = $('#dhCompetitorResults');
+    const html = results.map(r => `
+      <div class="dh-google-result" data-place='${JSON.stringify(r).replace(/'/g, "&#39;")}'>
+        <div class="dh-gr-check">${selectedCompetitors.has(r.place_id) ? '&#10003;' : ''}</div>
+        <div class="dh-gr-info">
+          <div class="dh-gr-name">${esc(r.name)}</div>
+          <div class="dh-gr-addr">${esc(r.address)}</div>
+          <div class="dh-gr-meta">${r.rating ? r.rating + ' &#9733;' : ''} ${r.review_count ? '(' + r.review_count + ' reviews)' : ''}</div>
+        </div>
+      </div>
+    `).join('');
+    if (replace) container.innerHTML = html;
+    else container.innerHTML += html;
+    container.querySelectorAll('.dh-google-result').forEach(el => {
+      el.onclick = async () => {
+        const place = JSON.parse(el.dataset.place);
+        if (selectedCompetitors.has(place.place_id)) {
+          selectedCompetitors.delete(place.place_id);
+          el.classList.remove('selected');
+          el.querySelector('.dh-gr-check').innerHTML = '';
+        } else {
+          selectedCompetitors.add(place.place_id);
+          el.classList.add('selected');
+          el.querySelector('.dh-gr-check').innerHTML = '&#10003;';
+          await fetch('/api/data/google/add-competitor', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({place_id: place.place_id, name: place.name, address: place.address, rating: place.rating || 0, review_count: place.review_count || 0, lat: place.lat || 0, lng: place.lng || 0, category: null})
+          });
+        }
+      };
+    });
+  }
+
+  // ── End Data Hub ──
 
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {

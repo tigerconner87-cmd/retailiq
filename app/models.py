@@ -99,6 +99,7 @@ class ShopSettings(Base):
     alert_customers = Column(Boolean, default=True)
     alert_reviews = Column(Boolean, default=True)
     alert_competitors = Column(Boolean, default=True)
+    google_api_key = Column(String(255), default="")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop", back_populates="settings")

@@ -729,6 +729,7 @@ def get_settings(user: User = Depends(get_current_user), db: Session = Depends(g
         "alert_customers": settings.alert_customers if settings else True,
         "alert_reviews": settings.alert_reviews if settings else True,
         "alert_competitors": settings.alert_competitors if settings else True,
+        "google_api_key": settings.google_api_key if settings else "",
     }
 
 
@@ -773,6 +774,11 @@ def update_settings(body: ShopSettingsUpdate, user: User = Depends(get_current_u
         settings.alert_competitors = body.alert_competitors
     if body.business_hours is not None:
         settings.business_hours = body.business_hours
+    if body.google_api_key is not None:
+        settings.google_api_key = body.google_api_key
+        # Also update the runtime config so Google API calls use the new key immediately
+        from app.config import settings as app_settings
+        app_settings.GOOGLE_PLACES_API_KEY = body.google_api_key
 
     db.commit()
     return {"detail": "Settings updated"}
