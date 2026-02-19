@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     CLOVER_MERCHANT_ID: str = ""
 
     GOOGLE_PLACES_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
 
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

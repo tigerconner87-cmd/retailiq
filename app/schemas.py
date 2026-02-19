@@ -402,6 +402,9 @@ class ShopSettingsUpdate(BaseModel):
     alert_competitors: Optional[bool] = None
     business_hours: Optional[dict] = None
     google_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    ai_enabled: Optional[bool] = None
+    ai_personality: Optional[str] = None
 
 
 # ── Onboarding ────────────────────────────────────────────────────────────────

@@ -2902,6 +2902,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (s('#setAlertReviews')) s('#setAlertReviews').checked = data.alert_reviews !== false;
     if (s('#setAlertCompetitors')) s('#setAlertCompetitors').checked = data.alert_competitors !== false;
     if (s('#setGoogleApiKey')) s('#setGoogleApiKey').value = data.google_api_key || '';
+    if (s('#setAnthropicApiKey')) s('#setAnthropicApiKey').value = data.anthropic_api_key || '';
+    if (s('#setAiPersonality')) s('#setAiPersonality').value = data.ai_personality || 'professional';
+    if (s('#setAiEnabled')) s('#setAiEnabled').checked = data.ai_enabled !== false;
   }
 
   // Save settings handler
@@ -2927,6 +2930,9 @@ document.addEventListener('DOMContentLoaded', () => {
         alert_reviews: $('#setAlertReviews')?.checked,
         alert_competitors: $('#setAlertCompetitors')?.checked,
         google_api_key: $('#setGoogleApiKey')?.value || null,
+        anthropic_api_key: $('#setAnthropicApiKey')?.value || null,
+        ai_enabled: $('#setAiEnabled')?.checked,
+        ai_personality: $('#setAiPersonality')?.value || null,
       };
       try {
         const res = await fetch('/api/dashboard/settings', {
@@ -3597,6 +3603,276 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── End Data Hub ──
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // AI ASSISTANT
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const aiFab = $('#aiFab');
+  const aiPanel = $('#aiChatPanel');
+  const aiMessages = $('#aiChatMessages');
+  const aiInput = $('#aiInput');
+  const aiSendBtn = $('#aiSendBtn');
+  const aiWelcome = $('#aiWelcome');
+  const aiRemaining = $('#aiRemaining');
+  let aiChatOpen = false;
+
+  // Toggle chat panel
+  if (aiFab) aiFab.addEventListener('click', () => {
+    aiChatOpen = !aiChatOpen;
+    aiPanel.classList.toggle('open', aiChatOpen);
+    aiFab.classList.toggle('active', aiChatOpen);
+    if (aiChatOpen) {
+      aiInput.focus();
+      // Load history on first open
+      if (!aiPanel.dataset.loaded) {
+        aiPanel.dataset.loaded = '1';
+        loadAiHistory();
+      }
+    }
+  });
+
+  // Close button
+  const aiCloseBtn = $('#aiCloseBtn');
+  if (aiCloseBtn) aiCloseBtn.addEventListener('click', () => {
+    aiChatOpen = false;
+    aiPanel.classList.remove('open');
+    aiFab.classList.remove('active');
+  });
+
+  // Clear history
+  const aiClearBtn = $('#aiClearBtn');
+  if (aiClearBtn) aiClearBtn.addEventListener('click', async () => {
+    if (!confirm('Clear all AI conversation history?')) return;
+    await fetch('/api/ai/history', {method: 'DELETE', credentials: 'same-origin'});
+    aiMessages.innerHTML = '';
+    if (aiWelcome) {
+      aiMessages.appendChild(aiWelcome.cloneNode(true));
+      setupQuickPrompts();
+    }
+    showToast('Conversation cleared', 'info', 1500);
+  });
+
+  // Quick prompts
+  function setupQuickPrompts() {
+    $$('.ai-quick-prompt', aiMessages).forEach(btn => {
+      btn.addEventListener('click', () => {
+        aiInput.value = btn.dataset.prompt;
+        sendAiMessage();
+      });
+    });
+  }
+  setupQuickPrompts();
+
+  // Send message
+  async function sendAiMessage() {
+    const text = aiInput.value.trim();
+    if (!text) return;
+
+    // Hide welcome
+    const welcome = $('.ai-welcome', aiMessages);
+    if (welcome) welcome.remove();
+
+    // Add user message
+    appendAiMessage('user', text);
+    aiInput.value = '';
+    aiInput.style.height = 'auto';
+    aiSendBtn.disabled = true;
+
+    // Show typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'ai-msg assistant';
+    typingEl.innerHTML = `
+      <div class="ai-msg-avatar">🧠</div>
+      <div class="ai-msg-bubble ai-typing">
+        <div class="ai-typing-dot"></div>
+        <div class="ai-typing-dot"></div>
+        <div class="ai-typing-dot"></div>
+      </div>`;
+    aiMessages.appendChild(typingEl);
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({message: text}),
+      });
+      const data = await res.json();
+      typingEl.remove();
+
+      if (data.response) {
+        appendAiMessage('assistant', data.response);
+      }
+      if (data.remaining !== undefined) {
+        aiRemaining.textContent = `${data.remaining} requests remaining today`;
+      }
+    } catch (err) {
+      typingEl.remove();
+      appendAiMessage('assistant', '⚠️ Sorry, I encountered an error. Please try again.');
+    }
+    aiSendBtn.disabled = false;
+    aiInput.focus();
+  }
+
+  // Append message to chat
+  function appendAiMessage(role, content) {
+    const div = document.createElement('div');
+    div.className = `ai-msg ${role}`;
+    const avatar = role === 'assistant' ? '🧠' : '👤';
+    div.innerHTML = `
+      <div class="ai-msg-avatar">${avatar}</div>
+      <div class="ai-msg-bubble">${role === 'assistant' ? formatAiMarkdown(content) : esc(content)}</div>`;
+    aiMessages.appendChild(div);
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+  }
+
+  // Simple markdown formatter
+  function formatAiMarkdown(text) {
+    return esc(text)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p>')
+      .replace(/$/, '</p>')
+      .replace(/<p><\/p>/g, '');
+  }
+
+  // Load conversation history
+  async function loadAiHistory() {
+    try {
+      const res = await fetch('/api/ai/history', {credentials: 'same-origin'});
+      const data = await res.json();
+      if (data.messages && data.messages.length > 0) {
+        const welcome = $('.ai-welcome', aiMessages);
+        if (welcome) welcome.remove();
+        data.messages.forEach(m => appendAiMessage(m.role, m.content));
+      }
+      if (data.remaining !== undefined) {
+        aiRemaining.textContent = `${data.remaining} requests remaining today`;
+      }
+    } catch (err) {
+      console.error('[RetailIQ] Error loading AI history:', err);
+    }
+  }
+
+  // Send on Enter (Shift+Enter for newline)
+  if (aiInput) aiInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendAiMessage();
+    }
+  });
+
+  // Auto-resize textarea
+  if (aiInput) aiInput.addEventListener('input', () => {
+    aiInput.style.height = 'auto';
+    aiInput.style.height = Math.min(aiInput.scrollHeight, 80) + 'px';
+  });
+
+  // Send button
+  if (aiSendBtn) aiSendBtn.addEventListener('click', () => sendAiMessage());
+
+  // ── AI Email Rewrite ──
+  // Dynamically add AI rewrite buttons to email campaigns after they load
+  const origLoadMkeEmails = loadMkeEmails;
+  loadMkeEmails = async function() {
+    await origLoadMkeEmails();
+    // Add AI rewrite button to each email card
+    $$('.mke-email-actions', $('#mkeEmailList')).forEach(actions => {
+      if (actions.querySelector('.mke-ai-rewrite')) return;
+      const btn = document.createElement('button');
+      btn.className = 'mke-ai-rewrite';
+      btn.innerHTML = '🧠 AI Rewrite';
+      btn.addEventListener('click', async () => {
+        const card = btn.closest('.mke-email-card');
+        const campIdEl = card.querySelector('[data-camp-id]');
+        const campId = campIdEl ? campIdEl.dataset.campId : null;
+        const camp = window.__mkeEmailData && window.__mkeEmailData[campId];
+        if (!camp) return;
+        btn.disabled = true;
+        btn.textContent = 'Rewriting...';
+        try {
+          const res = await fetch('/api/ai/rewrite-email', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({subject: camp.subject, body: camp.body}),
+          });
+          const data = await res.json();
+          if (data.subject || data.body) {
+            const subjectEl = card.querySelector('.mke-email-subject');
+            const bodyEl = card.querySelector('.mke-email-body');
+            if (subjectEl && data.subject) subjectEl.textContent = data.subject;
+            if (bodyEl && data.body) bodyEl.innerHTML = esc(data.body).replace(/\n/g, '<br>');
+            // Update cached data
+            if (window.__mkeEmailData[campId]) {
+              if (data.subject) window.__mkeEmailData[campId].subject = data.subject;
+              if (data.body) window.__mkeEmailData[campId].body = data.body;
+            }
+            showToast('Email rewritten with AI!', 'success', 2000);
+          }
+        } catch (err) {
+          showToast('AI rewrite failed', 'error', 2000);
+        }
+        btn.disabled = false;
+        btn.innerHTML = '🧠 AI Rewrite';
+      });
+      actions.appendChild(btn);
+    });
+  };
+
+  // ── AI Content Generator ──
+  const aiGenModal = $('#aiGenModal');
+  const aiGenBtn = $('#aiGenBtn');
+  const aiGenResult = $('#aiGenResult');
+  const aiGenCopy = $('#aiGenCopy');
+  let aiGenType = 'social';
+
+  // Type selection
+  $$('.ai-gen-type').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.ai-gen-type').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      aiGenType = btn.dataset.type;
+    });
+  });
+
+  // Generate button
+  if (aiGenBtn) aiGenBtn.addEventListener('click', async () => {
+    const prompt = $('#aiGenPrompt')?.value.trim();
+    if (!prompt) { showToast('Enter a description first', 'warning', 2000); return; }
+    aiGenBtn.disabled = true;
+    aiGenBtn.textContent = 'Generating...';
+    aiGenResult.hidden = true;
+    aiGenCopy.hidden = true;
+    try {
+      const res = await fetch('/api/ai/generate-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({content_type: aiGenType, prompt}),
+      });
+      const data = await res.json();
+      if (data.content) {
+        aiGenResult.textContent = data.content;
+        aiGenResult.hidden = false;
+        aiGenCopy.hidden = false;
+      }
+    } catch (err) {
+      showToast('Content generation failed', 'error', 2000);
+    }
+    aiGenBtn.disabled = false;
+    aiGenBtn.textContent = 'Generate with AI';
+  });
+
+  // ── End AI Assistant ──
 
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {

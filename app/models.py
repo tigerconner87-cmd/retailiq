@@ -100,6 +100,9 @@ class ShopSettings(Base):
     alert_reviews = Column(Boolean, default=True)
     alert_competitors = Column(Boolean, default=True)
     google_api_key = Column(String(255), default="")
+    anthropic_api_key = Column(String(255), default="")
+    ai_enabled = Column(Boolean, default=True)
+    ai_personality = Column(String(50), default="professional")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop", back_populates="settings")
@@ -484,3 +487,15 @@ class WinBackCampaign(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop")
+
+
+# ── AI Chat Message ──────────────────────────────────────────────────────────
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # user, assistant
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

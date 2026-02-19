@@ -7,7 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.database import Base, engine
-from app.routers import auth, dashboard_api, data_hub, pages
+from app.routers import ai, auth, dashboard_api, data_hub, pages
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +54,9 @@ _ALTER_STMTS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_end_date TIMESTAMP",
     "ALTER TABLE shops ADD COLUMN IF NOT EXISTS city VARCHAR(255)",
     "ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS google_api_key VARCHAR(255) DEFAULT ''",
+    "ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS anthropic_api_key VARCHAR(255) DEFAULT ''",
+    "ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS ai_enabled BOOLEAN DEFAULT true",
+    "ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS ai_personality VARCHAR(50) DEFAULT 'professional'",
 ]
 
 
@@ -90,6 +93,7 @@ def on_startup():
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Routers
+app.include_router(ai.router)
 app.include_router(auth.router)
 app.include_router(dashboard_api.router)
 app.include_router(data_hub.router)

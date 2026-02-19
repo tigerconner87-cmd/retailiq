@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=21">
+  <link rel="stylesheet" href="/static/dashboard.css?v=22">
 </head>
 <body>
   <!-- Sidebar -->
@@ -1011,6 +1011,12 @@
               <h3 class="mke-panel-title">Email Campaigns</h3>
               <p class="mke-panel-sub">Ready-to-send campaigns with personalization placeholders</p>
             </div>
+            <div class="mke-panel-actions">
+              <button class="ai-action-btn" id="aiGenContentBtn" onclick="document.getElementById('aiGenModal').hidden=false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/></svg>
+                AI Content Generator
+              </button>
+            </div>
           </div>
           <div id="mkeEmailList" class="mke-email-list">
             <div class="ai-loading">Building email campaigns...</div>
@@ -1332,6 +1338,28 @@
             </div>
           </div>
           <div class="settings-group">
+            <h3 class="settings-group-title">AI Assistant</h3>
+            <div class="settings-grid">
+              <div class="settings-field" style="grid-column:1/-1">
+                <label class="settings-label">Anthropic API Key</label>
+                <input type="password" class="settings-input" id="setAnthropicApiKey" placeholder="Enter your Anthropic API key (optional — smart fallback used if blank)">
+                <small style="color:var(--text3);margin-top:4px;display:block">Powers the AI chat assistant, email rewriting, and content generation. Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>.</small>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">AI Personality</label>
+                <select class="settings-input" id="setAiPersonality">
+                  <option value="professional">Professional</option>
+                  <option value="friendly">Friendly & Casual</option>
+                  <option value="concise">Ultra Concise</option>
+                  <option value="detailed">Detailed & Thorough</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-toggles">
+              <label class="settings-toggle"><input type="checkbox" id="setAiEnabled" checked><span>Enable AI Assistant</span></label>
+            </div>
+          </div>
+          <div class="settings-group">
             <h3 class="settings-group-title">Notifications & Alerts</h3>
             <div class="settings-grid">
               <div class="settings-field">
@@ -1359,6 +1387,76 @@
       </section>
     </div>
   </main>
+
+  <!-- AI Chat Widget -->
+  <button class="ai-fab" id="aiFab" title="RetailIQ AI Assistant">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/>
+      <line x1="9" y1="22" x2="15" y2="22"/>
+      <line x1="10" y1="19" x2="14" y2="19"/>
+    </svg>
+    <div class="ai-fab-badge" id="aiFabBadge" hidden></div>
+  </button>
+
+  <div class="ai-chat-panel" id="aiChatPanel">
+    <div class="ai-chat-header">
+      <div class="ai-chat-title">
+        <div class="ai-dot"></div>
+        RetailIQ AI
+      </div>
+      <div class="ai-chat-actions">
+        <button id="aiClearBtn" title="Clear history">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button id="aiCloseBtn" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="ai-chat-messages" id="aiChatMessages">
+      <div class="ai-welcome" id="aiWelcome">
+        <div class="ai-welcome-icon">🧠</div>
+        <div class="ai-welcome-title">RetailIQ AI Assistant</div>
+        <div class="ai-welcome-sub">Your AI-powered retail business advisor. Ask anything about sales, marketing, customers, or competitors.</div>
+        <div class="ai-quick-prompts">
+          <button class="ai-quick-prompt" data-prompt="How can I increase my average order value?">💰 How can I increase my average order value?</button>
+          <button class="ai-quick-prompt" data-prompt="Write a social media post for my best-selling product">📱 Write a social post for my bestseller</button>
+          <button class="ai-quick-prompt" data-prompt="What strategies can I use to win back inactive customers?">👥 How to win back inactive customers?</button>
+          <button class="ai-quick-prompt" data-prompt="Give me 5 ideas to beat my competitors">🏆 5 ideas to beat my competitors</button>
+        </div>
+      </div>
+    </div>
+    <div class="ai-chat-remaining" id="aiRemaining"></div>
+    <div class="ai-chat-input">
+      <textarea id="aiInput" placeholder="Ask RetailIQ AI..." rows="1"></textarea>
+      <button class="ai-chat-send" id="aiSendBtn" title="Send">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- AI Content Generator Modal -->
+  <div class="ai-gen-modal-overlay" id="aiGenModal" hidden onclick="if(event.target===this)this.hidden=true">
+    <div class="ai-gen-modal">
+      <div class="ai-gen-modal-header">
+        <h3>🧠 AI Content Generator</h3>
+        <button class="ai-gen-modal-close" onclick="document.getElementById('aiGenModal').hidden=true">&times;</button>
+      </div>
+      <div class="ai-gen-modal-body">
+        <div class="ai-gen-type-row">
+          <button class="ai-gen-type active" data-type="social">📱 Social Post</button>
+          <button class="ai-gen-type" data-type="promotion">🏷️ Promotion</button>
+          <button class="ai-gen-type" data-type="ad">📣 Ad Copy</button>
+        </div>
+        <textarea class="ai-gen-textarea" id="aiGenPrompt" placeholder="Describe what you want to create... (e.g., 'A post about our new spring collection')"></textarea>
+        <div class="ai-gen-result" id="aiGenResult" hidden></div>
+        <div class="ai-gen-actions">
+          <button class="btn-secondary" id="aiGenCopy" hidden onclick="navigator.clipboard.writeText(document.getElementById('aiGenResult').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+          <button class="btn-primary" id="aiGenBtn">Generate with AI</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Help Tooltip Button -->
   <button class="help-tooltip-btn" id="helpTooltipBtn" title="Toggle help tooltips">?</button>
@@ -1396,7 +1494,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=21"></script>
+  <script src="/static/dashboard.js?v=22"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

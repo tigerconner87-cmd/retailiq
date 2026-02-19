@@ -489,6 +489,10 @@ def get_email_campaigns(db: Session, shop_id: str) -> dict:
     p1 = top_products[0]["name"] if top_products else "our featured item"
     p2 = top_products[1]["name"] if len(top_products) > 1 else "popular picks"
     p3 = top_products[2]["name"] if len(top_products) > 2 else "trending finds"
+    cat1 = top_products[0]["category"] if top_products else "Apparel"
+    cat2 = top_products[1]["category"] if len(top_products) > 1 else "Accessories"
+    price1 = float(top_products[0]["price"]) if top_products and top_products[0].get("price") else 40.0
+    price1_sale = price1 * 0.75
 
     campaigns = [
         {
@@ -629,12 +633,12 @@ The {shop_name} Team""",
 For a limited time, enjoy amazing deals at {shop_name}:
 
 🏷️ THE DEALS:
-- 25% off all {top_products[0]['category'] if top_products else 'Apparel'} items
-- Buy 2, get 1 free on {top_products[1]['category'] if len(top_products) > 1 else 'Accessories'}
+- 25% off all {cat1} items
+- Buy 2, get 1 free on {cat2}
 - Free gift with purchases over $50
 
 🌟 STAFF PICKS FOR {season.upper()}:
-- {p1} — Now ${top_products[0]['price'] * 0.75:.0f} (was ${top_products[0]['price']:.0f})
+- {p1} — Now ${price1_sale:.0f} (was ${price1:.0f})
 - {p2} — The perfect {season} essential
 - {p3} — While supplies last!
 

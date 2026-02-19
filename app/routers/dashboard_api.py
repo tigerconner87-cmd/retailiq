@@ -730,6 +730,9 @@ def get_settings(user: User = Depends(get_current_user), db: Session = Depends(g
         "alert_reviews": settings.alert_reviews if settings else True,
         "alert_competitors": settings.alert_competitors if settings else True,
         "google_api_key": settings.google_api_key if settings else "",
+        "anthropic_api_key": settings.anthropic_api_key if settings and hasattr(settings, 'anthropic_api_key') else "",
+        "ai_enabled": settings.ai_enabled if settings and hasattr(settings, 'ai_enabled') else True,
+        "ai_personality": settings.ai_personality if settings and hasattr(settings, 'ai_personality') else "professional",
     }
 
 
@@ -779,6 +782,12 @@ def update_settings(body: ShopSettingsUpdate, user: User = Depends(get_current_u
         # Also update the runtime config so Google API calls use the new key immediately
         from app.config import settings as app_settings
         app_settings.GOOGLE_PLACES_API_KEY = body.google_api_key
+    if body.anthropic_api_key is not None:
+        settings.anthropic_api_key = body.anthropic_api_key
+    if body.ai_enabled is not None:
+        settings.ai_enabled = body.ai_enabled
+    if body.ai_personality is not None:
+        settings.ai_personality = body.ai_personality
 
     db.commit()
     return {"detail": "Settings updated"}
