@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=26">
+  <link rel="stylesheet" href="/static/dashboard.css?v=27">
 </head>
 <body>
   <!-- Sidebar -->
@@ -1581,11 +1581,11 @@
   </div>
 
   <!-- Post Now Modal -->
-  <div class="post-now-overlay" id="postNowModal" hidden onclick="if(event.target===this)this.hidden=true">
+  <div class="post-now-overlay" id="postNowModal" hidden style="display:none" onclick="if(event.target===this){this.hidden=true;this.style.display='none'}">
     <div class="post-now-modal">
       <div class="post-now-header">
         <h3>Post Now</h3>
-        <button class="post-now-close" onclick="document.getElementById('postNowModal').hidden=true">&times;</button>
+        <button class="post-now-close" onclick="this.closest('.post-now-overlay').hidden=true;this.closest('.post-now-overlay').style.display='none'">&times;</button>
       </div>
       <div class="post-now-body">
         <div class="post-now-field">
@@ -1649,7 +1649,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=26"></script>
+  <script src="/static/dashboard.js?v=27"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

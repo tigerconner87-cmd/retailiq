@@ -4231,6 +4231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#postNowText').value = text;
     $('#postNowHashtags').value = hashtags;
     modal.hidden = false;
+    modal.style.display = 'flex';
 
     // Platform selector
     let selectedPlatform = 'instagram';
@@ -4262,6 +4263,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sageBtn = $('#postNowEditSage');
     sageBtn.onclick = () => {
       modal.hidden = true;
+      modal.style.display = 'none';
       const content = $('#postNowText').value;
       askSage('Help me improve this social media post for my shop. Make it more engaging:\n\n' + content);
     };
@@ -4284,6 +4286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         showToast('Content marked as posted!', 'success');
         modal.hidden = true;
+        modal.style.display = 'none';
       } catch (e) {
         showToast('Failed to save', 'error');
       }
