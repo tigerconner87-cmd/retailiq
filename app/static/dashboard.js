@@ -3784,7 +3784,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Clear history
   const aiClearBtn = $('#aiClearBtn');
   if (aiClearBtn) aiClearBtn.addEventListener('click', async () => {
-    if (!confirm('Clear all conversation history with Sage?')) return;
+    if (!confirm('Clear all conversation history with Claw Bot?')) return;
     await fetch('/api/ai/history', {method: 'DELETE', credentials: 'same-origin'});
     aiMessages.innerHTML = '';
     if (aiWelcome) {
@@ -3872,10 +3872,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show thinking indicator
     const typingEl = document.createElement('div');
-    typingEl.className = 'sage-thinking';
+    typingEl.className = 'claw-thinking';
     typingEl.innerHTML = `
-      <div class="sage-avatar-sm">S</div>
-      <span>Sage is thinking...</span>
+      <div class="claw-avatar-sm">&#129302;</div>
+      <span>Claw Bot is thinking...</span>
       <div class="ai-typing-dot"></div>
       <div class="ai-typing-dot"></div>
       <div class="ai-typing-dot"></div>`;
@@ -3901,7 +3901,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       typingEl.remove();
-      appendAiMessage('assistant', 'Sage is taking a break. Try again in a moment.');
+      appendAiMessage('assistant', 'Claw Bot is offline. Try again in a moment.');
     }
 
     aiSendBtn.disabled = false;
@@ -3945,7 +3945,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (role === 'assistant') {
       const actionsHtml = buildMsgActions(content);
       div.innerHTML = `
-        <div class="sage-avatar-sm">S</div>
+        <div class="claw-avatar-sm">&#129302;</div>
         <div class="ai-msg-content">
           <div class="ai-msg-bubble">${formatAiMarkdown(content)}</div>
           <div class="ai-msg-time">${time}</div>
@@ -4011,7 +4011,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (actions.querySelector('.mke-ai-rewrite')) return;
       const btn = document.createElement('button');
       btn.className = 'mke-ai-rewrite';
-      btn.innerHTML = '<span class="sage-mini-avatar" style="width:14px;height:14px;font-size:7px">S</span> Sage Rewrite';
+      btn.innerHTML = '<span class="claw-mini-avatar" style="width:14px;height:14px;font-size:7px">&#129302;</span> Claw Bot Rewrite';
       btn.addEventListener('click', async () => {
         const card = btn.closest('.mke-email-card');
         const campIdEl = card.querySelector('[data-camp-id]');
@@ -4037,13 +4037,13 @@ document.addEventListener('DOMContentLoaded', () => {
               if (data.subject) window.__mkeEmailData[campId].subject = data.subject;
               if (data.body) window.__mkeEmailData[campId].body = data.body;
             }
-            showToast('Email rewritten by Sage!', 'success', 2000);
+            showToast('Email rewritten by Claw Bot!', 'success', 2000);
           }
         } catch (err) {
-          showToast('Sage rewrite failed', 'error', 2000);
+          showToast('Claw Bot rewrite failed', 'error', 2000);
         }
         btn.disabled = false;
-        btn.innerHTML = '<span class="sage-mini-avatar" style="width:14px;height:14px;font-size:7px">S</span> Sage Rewrite';
+        btn.innerHTML = '<span class="claw-mini-avatar" style="width:14px;height:14px;font-size:7px">&#129302;</span> Claw Bot Rewrite';
       });
       actions.appendChild(btn);
     });
@@ -4068,7 +4068,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const prompt = $('#aiGenPrompt')?.value.trim();
     if (!prompt) { showToast('Enter a description first', 'warning', 2000); return; }
     aiGenBtn.disabled = true;
-    aiGenBtn.textContent = 'Sage is writing...';
+    aiGenBtn.textContent = 'Claw Bot is writing...';
     aiGenResult.hidden = true;
     aiGenCopy.hidden = true;
     try {
@@ -4088,7 +4088,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Content generation failed', 'error', 2000);
     }
     aiGenBtn.disabled = false;
-    aiGenBtn.textContent = 'Generate with Sage';
+    aiGenBtn.textContent = 'Generate with Claw Bot';
   });
 
   // ── Test Connection Button ──
@@ -4104,8 +4104,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (data.ok) {
-        resultEl.innerHTML = `<span style="color:var(--success)">Connected! Sage is ready.</span>`;
-        showToast('Sage connected successfully!', 'success');
+        resultEl.innerHTML = `<span style="color:var(--success)">Connected! Claw Bot is ready.</span>`;
+        showToast('Claw Bot connected successfully!', 'success');
       } else {
         resultEl.innerHTML = `<span style="color:var(--danger)">${esc(data.message || 'Connection failed')}</span>`;
       }
@@ -4123,8 +4123,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
   });
 
-  // ── Ask Sage global function (for inline buttons) ──
-  window.askSage = function(prompt) {
+  // ── Ask Claw Bot global function (for inline buttons) ──
+  window.askClaw = function(prompt) {
     if (!aiChatOpen) {
       aiChatOpen = true;
       aiPanel.classList.add('open');
@@ -4138,7 +4138,10 @@ document.addEventListener('DOMContentLoaded', () => {
     sendAiMessage();
   };
 
-  // ── End Sage AI Assistant ──
+  // Keep backward compat alias
+  window.askSage = window.askClaw;
+
+  // ── End Claw Bot AI Assistant ──
 
   // ══════════════════════════════════════════════════════════════════════════
   // AI AGENT FLEET — Advanced System
@@ -4185,6 +4188,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tab.dataset.tab === 'outputs' && !_agentOutputsData) loadAgentOutputs();
       if (tab.dataset.tab === 'tasks' && !_agentTasksData) loadAgentTasks();
       if (tab.dataset.tab === 'performance') loadAgentPerformance();
+      if (tab.dataset.tab === 'deliverables') loadDeliverables();
+      if (tab.dataset.tab === 'audit') loadAuditLog();
     };
   });
 
@@ -4487,6 +4492,108 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
   }
 
+  // ── Deliverables Tab ──
+  async function loadDeliverables() {
+    const grid = $('#deliverablesGrid');
+    if (!grid) return;
+    grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Loading deliverables...</div>';
+    try {
+      const agentFilter = $('#delAgentFilter') ? $('#delAgentFilter').value : '';
+      const statusFilter = $('#delStatusFilter') ? $('#delStatusFilter').value : '';
+      let url = '/api/agents/deliverables?limit=50';
+      if (agentFilter) url += '&agent_type=' + agentFilter;
+      if (statusFilter) url += '&status=' + statusFilter;
+      const res = await fetch(url, {credentials: 'same-origin'});
+      const data = await res.json();
+      const items = data.deliverables || [];
+      if (items.length === 0) {
+        grid.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:2rem;margin-bottom:0.5rem">&#128230;</div>No deliverables yet. Run a command to generate outputs.</div>';
+        return;
+      }
+      grid.innerHTML = items.map(d => {
+        const statusColors = {draft:'#f59e0b',approved:'#10b981',shipped:'#6366f1',rejected:'#ef4444'};
+        const statusColor = statusColors[d.status] || '#71717a';
+        const quality = d.overall_quality ? Math.round(d.overall_quality) : '—';
+        const qualityColor = d.overall_quality >= 80 ? '#10b981' : d.overall_quality >= 60 ? '#f59e0b' : '#ef4444';
+        const timeAgo = agentTimeAgo(d.created_at);
+        return `
+        <div class="deliverable-card" style="background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;color:var(--text1)">${esc(d.title || d.deliverable_type)}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${statusColor}22;color:${statusColor};font-weight:600;text-transform:uppercase">${d.status}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text3)">${esc(d.agent_type)} &middot; ${d.deliverable_type} &middot; ${timeAgo}</div>
+          <div style="font-size:13px;color:var(--text2);max-height:60px;overflow:hidden;text-overflow:ellipsis">${esc((d.content || '').substring(0, 200))}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto">
+            <span style="font-size:12px;font-weight:700;color:${qualityColor}">Quality: ${quality}/100</span>
+            ${d.status === 'draft' ? '<button class="btn-sm" onclick="approveDeliverable(' + d.id + ')" style="font-size:11px;padding:4px 12px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer">Approve</button>' : ''}
+          </div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger)">Failed to load deliverables</div>';
+    }
+  }
+
+  // Deliverable filter change handlers
+  const delAgentFilter = $('#delAgentFilter');
+  const delStatusFilter = $('#delStatusFilter');
+  if (delAgentFilter) delAgentFilter.onchange = () => loadDeliverables();
+  if (delStatusFilter) delStatusFilter.onchange = () => loadDeliverables();
+
+  window.approveDeliverable = async function(id) {
+    try {
+      const res = await fetch('/api/agents/deliverables/' + id + '/approve', {
+        method: 'POST', credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (data.error) {
+        showToast(data.error, 'error');
+      } else {
+        showToast('Deliverable approved!', 'success');
+        loadDeliverables();
+      }
+    } catch (err) {
+      showToast('Approval failed', 'error');
+    }
+  };
+
+  // ── Audit Log Tab ──
+  async function loadAuditLog() {
+    const container = $('#auditLogFeed');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Loading audit log...</div>';
+    try {
+      const res = await fetch('/api/agents/audit-log?limit=100', {credentials: 'same-origin'});
+      const data = await res.json();
+      const entries = data.entries || [];
+      if (entries.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:2rem;margin-bottom:0.5rem">&#128220;</div>No audit entries yet. Actions will appear here.</div>';
+        return;
+      }
+      container.innerHTML = entries.map(e => {
+        const actionColors = {goal_started:'#6366f1',task_completed:'#10b981',deliverable_created:'#f59e0b',deliverable_approved:'#10b981',email_sent:'#3b82f6',agent_executed:'#8b5cf6',policy_blocked:'#ef4444'};
+        const color = actionColors[e.action] || '#71717a';
+        const timeAgo = agentTimeAgo(e.created_at);
+        const details = e.details || {};
+        let detailStr = '';
+        if (details.quality_score) detailStr += ' &middot; Quality: ' + Math.round(details.quality_score) + '/100';
+        if (details.reason) detailStr += ' &middot; ' + esc(details.reason);
+        return `
+        <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);align-items:flex-start">
+          <div style="width:8px;height:8px;border-radius:50%;background:${color};margin-top:6px;flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--text1)"><strong>${esc(e.actor)}</strong> <span style="color:var(--text3)">${esc(e.action.replace(/_/g, ' '))}</span> ${e.resource_type ? '<span style="color:var(--text2)">' + esc(e.resource_type) + (e.resource_id ? ' #' + e.resource_id : '') + '</span>' : ''}</div>
+            ${detailStr ? '<div style="font-size:12px;color:var(--text3);margin-top:2px">' + detailStr + '</div>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--text3);white-space:nowrap">${timeAgo}</div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger)">Failed to load audit log</div>';
+    }
+  }
+
   // Toggle agent active/paused
   window.toggleAgent = async function(agentType, checkbox) {
     try {
@@ -4599,13 +4706,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   };
 
-  // Open agent chat (redirect to Sage with agent context)
+  // Open agent chat (redirect to Claw Bot with agent context)
   window.openAgentChat = function(agentType) {
     if (!_agentsData) return;
     const agent = _agentsData.agents.find(a => a.agent_type === agentType);
     if (!agent) return;
 
-    // Open the Sage chat panel
+    // Open the Claw Bot chat panel
     const chatPanel = $('.ai-chat-panel');
     if (chatPanel) {
       chatPanel.classList.add('open');
@@ -4640,7 +4747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Intercept Sage sendAiMessage to use agent chat when in agent mode
+  // Intercept sendAiMessage to use agent chat when in agent mode
   if (aiSendBtn && aiInput) {
     const origHandler = aiSendBtn.onclick;
     aiSendBtn.onclick = async function(e) {
@@ -4693,7 +4800,7 @@ document.addEventListener('DOMContentLoaded', () => {
       window._activeAgentType = null;
       window._activeAgentName = null;
       const chatHeaderName = document.querySelector('.ai-chat-title');
-      if (chatHeaderName) chatHeaderName.textContent = 'Sage';
+      if (chatHeaderName) chatHeaderName.textContent = 'Claw Bot';
       if (origClose) origClose.call(this, e);
     };
   }
@@ -4736,7 +4843,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressText = $('#agentProgressText');
     if (progress) { progress.hidden = false; progress.style.display = 'flex'; }
     if (progressFill) progressFill.style.width = '20%';
-    if (progressText) progressText.textContent = 'Sage is coordinating your team...';
+    if (progressText) progressText.textContent = 'Claw Bot is coordinating your team...';
 
     try {
       // Animate progress
@@ -5261,13 +5368,13 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Text copied! ' + selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1) + ' opened.', 'success', 3000);
     };
 
-    // Edit with Sage
-    const sageBtn = $('#postNowEditSage');
-    sageBtn.onclick = () => {
+    // Edit with Claw Bot
+    const clawEditBtn = $('#postNowEditClaw');
+    clawEditBtn.onclick = () => {
       modal.hidden = true;
       modal.style.display = 'none';
       const content = $('#postNowText').value;
-      askSage('Help me improve this social media post for my shop. Make it more engaging:\n\n' + content);
+      askClaw('Help me improve this social media post for my shop. Make it more engaging:\n\n' + content);
     };
 
     // Mark as Posted
@@ -6008,7 +6115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeNav) loadSection(activeNav.dataset.section);
   };
 
-  // ── Sage Error Handling Enhancement ──
+  // ── Claw Bot Error Handling Enhancement ──
   const origSendAiMessage = sendAiMessage;
   // Override to add better error messages (the original already handles errors,
   // but we enhance the catch block's message)

@@ -82,6 +82,15 @@ def on_startup():
         "CREATE INDEX IF NOT EXISTS ix_alerts_shop_read ON alerts (shop_id, is_read)",
         "CREATE INDEX IF NOT EXISTS ix_competitors_shop ON competitors (shop_id)",
         "CREATE INDEX IF NOT EXISTS ix_expenses_shop ON expenses (shop_id)",
+        # Claw Bot indexes
+        "CREATE INDEX IF NOT EXISTS ix_execution_goals_shop ON execution_goals (shop_id)",
+        "CREATE INDEX IF NOT EXISTS ix_execution_goals_status ON execution_goals (shop_id, status)",
+        "CREATE INDEX IF NOT EXISTS ix_execution_tasks_goal ON execution_tasks (goal_id)",
+        "CREATE INDEX IF NOT EXISTS ix_execution_tasks_shop ON execution_tasks (shop_id)",
+        "CREATE INDEX IF NOT EXISTS ix_agent_deliverables_goal ON agent_deliverables (goal_id)",
+        "CREATE INDEX IF NOT EXISTS ix_agent_deliverables_shop ON agent_deliverables (shop_id)",
+        "CREATE INDEX IF NOT EXISTS ix_audit_log_shop ON audit_log (shop_id, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_email_sequences_shop ON email_sequences (shop_id)",
     ]
     with engine.begin() as conn:
         for stmt in _INDEX_STMTS:

@@ -13,8 +13,10 @@ from app.dependencies import get_current_user, get_db
 from app.models import (
     User, Shop, ShopSettings, Agent, AgentActivity,
     TaskGroup, OrchestratedTask, AgentConfig, AgentOutput, AgentRun,
+    ExecutionGoal, ExecutionTask, AgentDeliverable, AuditLog,
 )
 from app.services.orchestrator import TaskOrchestrator
+from app.services.policy_engine import PolicyEngine
 from app.config import settings
 
 import os
@@ -69,16 +71,24 @@ async def orchestrate_command(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    log.info("[agents] /orchestrate called — command=%s", command[:100])
     shop = _get_shop(db, user)
     if not shop:
         return {"error": "No shop found"}
     api_key = _get_api_key(db, shop)
     if not api_key:
-        return {"error": "No API key configured"}
+        log.warning("[agents] No API key for orchestrate")
+        return {"error": "No API key configured. Add your Anthropic API key in Settings."}
     ctx = _get_shop_context(db, shop, user)
     orch = TaskOrchestrator(db, shop, api_key, ctx)
-    result = await orch.process_command(command)
-    return result
+    try:
+        result = await orch.process_command(command)
+        log.info("[agents] Orchestrate result — agent_count=%s, summary=%s",
+                 result.get("agent_count"), (result.get("summary") or "")[:100])
+        return result
+    except Exception as e:
+        log.exception("[agents] Orchestrate failed: %s", e)
+        return {"error": f"Command execution failed: {str(e)}"}
 
 
 # ── Single agent run ──────────────────────────────────────────────────────────
@@ -90,6 +100,7 @@ async def run_single_agent(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    log.info("[agents] /%s/run called — instructions=%s", agent_type, (instructions or "(default)")[:80])
     if agent_type not in ("maya", "scout", "emma", "alex", "max"):
         return {"error": "Invalid agent type"}
     shop = _get_shop(db, user)
@@ -97,11 +108,19 @@ async def run_single_agent(
         return {"error": "No shop found"}
     api_key = _get_api_key(db, shop)
     if not api_key:
-        return {"error": "No API key configured"}
+        log.warning("[agents] No API key for %s/run", agent_type)
+        return {"error": "No API key configured. Add your Anthropic API key in Settings."}
     ctx = _get_shop_context(db, shop, user)
     orch = TaskOrchestrator(db, shop, api_key, ctx)
-    result = await orch.execute_single_agent(agent_type, instructions)
-    return result
+    try:
+        result = await orch.execute_single_agent(agent_type, instructions)
+        output_count = len(result.get("outputs", []))
+        agent_name = result.get("agent_name", agent_type)
+        log.info("[agents] %s produced %d outputs", agent_name, output_count)
+        return result
+    except Exception as e:
+        log.exception("[agents] %s/run failed: %s", agent_type, e)
+        return {"error": f"Agent run failed: {str(e)}"}
 
 
 # ── Agent status (with seed on first access) ─────────────────────────────────
@@ -608,3 +627,219 @@ def _seed_agent_operations(db: Session, shop_id: str):
 
     db.commit()
     log.info("Agent operations data seeded for shop %s", shop_id)
+
+
+# ── Claw Bot: Goals ──────────────────────────────────────────────────────────
+
+@router.get("/goals")
+def get_goals(
+    status: str = Query("", description="Filter by status"),
+    limit: int = Query(20, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get execution goals (Claw Bot operations)."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    q = db.query(ExecutionGoal).filter(ExecutionGoal.shop_id == shop.id)
+    if status:
+        q = q.filter(ExecutionGoal.status == status)
+    goals = q.order_by(desc(ExecutionGoal.created_at)).limit(limit).all()
+    return {
+        "goals": [
+            {
+                "id": g.id,
+                "command": g.command,
+                "intent": g.intent,
+                "priority": g.priority,
+                "status": g.status,
+                "quality_score": g.quality_score,
+                "total_tasks": g.total_tasks,
+                "completed_tasks": g.completed_tasks,
+                "total_tokens": g.total_tokens,
+                "total_cost": g.total_cost,
+                "result_summary": g.result_summary,
+                "created_at": g.created_at.isoformat(),
+                "started_at": g.started_at.isoformat() if g.started_at else None,
+                "completed_at": g.completed_at.isoformat() if g.completed_at else None,
+            }
+            for g in goals
+        ],
+    }
+
+
+@router.get("/goals/{goal_id}")
+def get_goal_detail(
+    goal_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get detailed goal with tasks and deliverables."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    goal = db.query(ExecutionGoal).filter(
+        ExecutionGoal.id == goal_id, ExecutionGoal.shop_id == shop.id
+    ).first()
+    if not goal:
+        return {"error": "Goal not found"}
+
+    tasks = db.query(ExecutionTask).filter(ExecutionTask.goal_id == goal.id).all()
+    deliverables = db.query(AgentDeliverable).filter(AgentDeliverable.goal_id == goal.id).all()
+
+    return {
+        "goal": {
+            "id": goal.id,
+            "command": goal.command,
+            "intent": goal.intent,
+            "priority": goal.priority,
+            "status": goal.status,
+            "quality_score": goal.quality_score,
+            "total_tasks": goal.total_tasks,
+            "completed_tasks": goal.completed_tasks,
+            "result_summary": goal.result_summary,
+            "plan": goal.plan,
+            "created_at": goal.created_at.isoformat(),
+            "completed_at": goal.completed_at.isoformat() if goal.completed_at else None,
+        },
+        "tasks": [
+            {
+                "id": t.id,
+                "agent_type": t.agent_type,
+                "agent_name": AGENT_NAMES.get(t.agent_type, t.agent_type),
+                "agent_color": AGENT_COLORS.get(t.agent_type, "#6366f1"),
+                "instructions": t.instructions,
+                "status": t.status,
+                "quality_score": t.quality_score,
+                "retry_count": t.retry_count,
+                "result_summary": t.result_summary,
+                "tokens_used": t.tokens_used,
+                "duration_ms": t.duration_ms,
+            }
+            for t in tasks
+        ],
+        "deliverables": [
+            {
+                "id": d.id,
+                "agent_type": d.agent_type,
+                "deliverable_type": d.deliverable_type,
+                "title": d.title,
+                "content": d.content,
+                "overall_quality": d.overall_quality,
+                "quality_scores": d.quality_scores,
+                "status": d.status,
+                "created_at": d.created_at.isoformat(),
+            }
+            for d in deliverables
+        ],
+    }
+
+
+# ── Claw Bot: Deliverables ───────────────────────────────────────────────────
+
+@router.get("/deliverables")
+def get_deliverables(
+    agent_type: str = Query("", description="Filter by agent"),
+    status: str = Query("", description="Filter by status"),
+    limit: int = Query(30, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get agent deliverables."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    q = db.query(AgentDeliverable).filter(AgentDeliverable.shop_id == shop.id)
+    if agent_type:
+        q = q.filter(AgentDeliverable.agent_type == agent_type)
+    if status:
+        q = q.filter(AgentDeliverable.status == status)
+    deliverables = q.order_by(desc(AgentDeliverable.created_at)).limit(limit).all()
+    return {
+        "deliverables": [
+            {
+                "id": d.id,
+                "agent_type": d.agent_type,
+                "agent_color": AGENT_COLORS.get(d.agent_type, "#6366f1"),
+                "deliverable_type": d.deliverable_type,
+                "title": d.title,
+                "content": d.content,
+                "overall_quality": d.overall_quality,
+                "status": d.status,
+                "shipped_via": d.shipped_via,
+                "created_at": d.created_at.isoformat(),
+            }
+            for d in deliverables
+        ],
+    }
+
+
+@router.post("/deliverables/{deliverable_id}/approve")
+def approve_deliverable(
+    deliverable_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Approve a deliverable for shipping."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    d = db.query(AgentDeliverable).filter(
+        AgentDeliverable.id == deliverable_id, AgentDeliverable.shop_id == shop.id
+    ).first()
+    if not d:
+        return {"error": "Deliverable not found"}
+    d.status = "approved"
+    db.commit()
+    return {"ok": True, "status": "approved"}
+
+
+# ── Claw Bot: Audit Log ─────────────────────────────────────────────────────
+
+@router.get("/audit-log")
+def get_audit_log(
+    limit: int = Query(50, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the immutable audit log."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    entries = (
+        db.query(AuditLog)
+        .filter(AuditLog.shop_id == shop.id)
+        .order_by(desc(AuditLog.created_at))
+        .limit(limit)
+        .all()
+    )
+    return {
+        "entries": [
+            {
+                "id": e.id,
+                "actor": e.actor,
+                "action": e.action,
+                "resource_type": e.resource_type,
+                "resource_id": e.resource_id,
+                "details": e.details,
+                "created_at": e.created_at.isoformat(),
+            }
+            for e in entries
+        ],
+    }
+
+
+# ── Claw Bot: Policy / Usage Stats ──────────────────────────────────────────
+
+@router.get("/usage")
+def get_usage_stats(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get current Claw Bot usage statistics and policy limits."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    engine = PolicyEngine(db, shop.id)
+    return engine.get_usage_stats()

@@ -14,6 +14,7 @@ from app.models import (
     RevenueGoal, MarketingCampaign, PlanInterest, WinBackCampaign,
     PostedContent, Agent, AgentActivity, AgentTask,
     Goal, ProductGoal, Product, Customer, Competitor, StrategyNote,
+    ExecutionGoal, ExecutionTask, AgentDeliverable, AuditLog,
 )
 from app.schemas import (
     AlertsResponse,
@@ -108,6 +109,18 @@ from app.services.competitor_intelligence import (
 )
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+
+def _effective_plan_tier(user: User) -> str:
+    """Return effective plan tier — demo and trial users get full 'scale' access."""
+    if user.email == "demo@forgeapp.com":
+        return "scale"
+    # 14-day trial gets full access
+    if user.trial_end_date and datetime.utcnow() < user.trial_end_date:
+        return "scale"
+    if user.created_at and (datetime.utcnow() - user.created_at).days <= 14:
+        return "scale"
+    return user.plan_tier or "starter"
 
 
 def _get_shop(db: Session, user: User):
@@ -1345,6 +1358,160 @@ def _seed_agent_activities(db: Session, shop_id: str, agents: list[Agent]):
         ))
 
 
+def _seed_claw_bot_data(db: Session, shop_id: str):
+    """Seed demo execution goals, tasks, deliverables and audit log for Claw Bot."""
+    now = datetime.utcnow()
+
+    # Check if already seeded
+    existing = db.query(ExecutionGoal).filter(ExecutionGoal.shop_id == shop_id).first()
+    if existing:
+        return
+
+    goals_data = [
+        {
+            "command": "Create a full week of social media content for our spring collection",
+            "intent": "content_creation",
+            "priority": "high",
+            "status": "completed",
+            "quality_score": 87.5,
+            "total_tasks": 3,
+            "completed_tasks": 3,
+            "total_tokens": 4200,
+            "total_cost": 0.021,
+            "hours_ago": 4,
+            "tasks": [
+                {"agent_type": "maya", "instructions": "Generate 7 Instagram captions for spring collection", "status": "completed", "quality_score": 91.0, "tokens_used": 1800, "duration_ms": 3200},
+                {"agent_type": "maya", "instructions": "Create 3 promotional email subjects and bodies", "status": "completed", "quality_score": 85.0, "tokens_used": 1400, "duration_ms": 2800},
+                {"agent_type": "maya", "instructions": "Draft 2 TikTok video scripts with hooks", "status": "completed", "quality_score": 82.0, "tokens_used": 1000, "duration_ms": 2100},
+            ],
+            "deliverables": [
+                {"agent_type": "maya", "type": "social_post", "title": "Spring Collection — Instagram Week", "content": "Monday: 'New arrivals are blooming! Our Spring Collection just dropped — think pastels, florals, and fresh fits for the season ahead. Link in bio!'\n\nTuesday: 'Style tip: Pair our new Linen Sundress with the Canvas Tote for the perfect weekend look. Which color is your fave? Drop a comment!'\n\nWednesday: 'Behind the scenes at Forge HQ — picking our favorite pieces from the Spring line. Stay tuned for a surprise drop Friday!'\n\nThursday: 'Customer spotlight: @emery_t rocking the Slim Fit Jeans with our Leather Belt combo. Tag us to be featured!'\n\nFriday: 'FLASH FRIDAY: 20% off all new spring accessories for the next 24 hours. Use code SPRING24 at checkout.'\n\nSaturday: 'Weekend vibes with our new Oversized Hoodie in Sage Green. Cozy never looked this good.'\n\nSunday: 'Week in review: Which was your favorite spring look? Vote in our stories!'", "quality": 91.0, "status": "approved"},
+                {"agent_type": "maya", "type": "email_campaign", "title": "Spring Launch Email Sequence", "content": "Subject: Spring has sprung at [Shop Name]!\n\nHi [Name],\n\nOur Spring Collection is here and it's our freshest drop yet. From breezy linens to vibrant accessories — there's something for everyone.\n\nShop early for first pick on limited pieces.\n\n[CTA: Shop Spring Collection]", "quality": 85.0, "status": "shipped"},
+            ],
+        },
+        {
+            "command": "Analyze competitor pricing and find opportunities",
+            "intent": "competitive_analysis",
+            "priority": "medium",
+            "status": "completed",
+            "quality_score": 79.0,
+            "total_tasks": 2,
+            "completed_tasks": 2,
+            "total_tokens": 3100,
+            "total_cost": 0.016,
+            "hours_ago": 18,
+            "tasks": [
+                {"agent_type": "scout", "instructions": "Compare pricing across all tracked competitors", "status": "completed", "quality_score": 82.0, "tokens_used": 1600, "duration_ms": 2900},
+                {"agent_type": "max", "instructions": "Identify pricing optimization opportunities", "status": "completed", "quality_score": 76.0, "tokens_used": 1500, "duration_ms": 2700},
+            ],
+            "deliverables": [
+                {"agent_type": "scout", "type": "report", "title": "Competitor Price Comparison Report", "content": "Competitor pricing analysis for your market:\n\n1. Style Hub: Average price 8% higher on comparable items. Weak on accessories.\n2. Urban Threads: Running a 30% off sale this week — expect foot traffic dip.\n3. Neighborhood Finds: Prices 5% below yours but declining review scores.\n\nOpportunity: You're underpriced on accessories by 12%. Room to increase margins on Leather Belts, Scarves, and Tote Bags.", "quality": 82.0, "status": "approved"},
+                {"agent_type": "max", "type": "recommendation", "title": "Pricing Optimization Suggestions", "content": "Based on competitive analysis, here are 5 pricing adjustments:\n\n1. Leather Belt: $45 → $52 (+$7) — still below competitor avg\n2. Canvas Tote: $38 → $42 (+$4) — high demand supports increase\n3. Silk Scarf: $35 → $39 (+$4) — unique design justifies premium\n4. Beanie Hat: Keep at $28 — competitive sweet spot\n5. Cotton Hoodie: $55 → $59 (+$4) — strong repeat purchase item\n\nEstimated monthly impact: +$1,420 revenue", "quality": 76.0, "status": "draft"},
+            ],
+        },
+        {
+            "command": "Win back customers who haven't visited in 30 days",
+            "intent": "customer_retention",
+            "priority": "high",
+            "status": "executing",
+            "quality_score": None,
+            "total_tasks": 2,
+            "completed_tasks": 1,
+            "total_tokens": 1800,
+            "total_cost": 0.009,
+            "hours_ago": 1,
+            "tasks": [
+                {"agent_type": "emma", "instructions": "Identify at-risk customers and draft win-back emails", "status": "completed", "quality_score": 88.0, "tokens_used": 1800, "duration_ms": 3400},
+                {"agent_type": "emma", "instructions": "Create follow-up sequence for non-responders", "status": "running", "quality_score": None, "tokens_used": 0, "duration_ms": 0},
+            ],
+            "deliverables": [
+                {"agent_type": "emma", "type": "email_campaign", "title": "Win-Back Campaign — 8 At-Risk Customers", "content": "Subject: We miss you, [Name]!\n\nIt's been a while since your last visit and we've got some exciting new pieces we think you'd love.\n\nAs a thank you for being a loyal customer, here's 15% off your next purchase:\n\nCode: COMEBACK15\n\nValid for 7 days. We can't wait to see you again!\n\n[CTA: Shop New Arrivals]", "quality": 88.0, "status": "draft"},
+            ],
+        },
+    ]
+
+    audit_entries = []
+
+    for g_data in goals_data:
+        goal_id = str(uuid.uuid4())
+        goal = ExecutionGoal(
+            id=goal_id,
+            shop_id=shop_id,
+            command=g_data["command"],
+            intent=g_data["intent"],
+            priority=g_data["priority"],
+            status=g_data["status"],
+            plan={"tasks": [{"agent": t["agent_type"], "instructions": t["instructions"]} for t in g_data["tasks"]]},
+            quality_score=g_data["quality_score"],
+            total_tasks=g_data["total_tasks"],
+            completed_tasks=g_data["completed_tasks"],
+            total_tokens=g_data["total_tokens"],
+            total_cost=g_data["total_cost"],
+            created_at=now - timedelta(hours=g_data["hours_ago"]),
+        )
+        db.add(goal)
+        audit_entries.append(AuditLog(
+            id=str(uuid.uuid4()), shop_id=shop_id, actor="claw_bot",
+            action="goal_started", resource_type="goal", resource_id=goal_id,
+            details={"command": g_data["command"], "intent": g_data["intent"]},
+            created_at=now - timedelta(hours=g_data["hours_ago"]),
+        ))
+
+        for i, t_data in enumerate(g_data["tasks"]):
+            task_id = str(uuid.uuid4())
+            task = ExecutionTask(
+                id=task_id,
+                goal_id=goal_id,
+                shop_id=shop_id,
+                agent_type=t_data["agent_type"],
+                instructions=t_data["instructions"],
+                depends_on=[],
+                status=t_data["status"],
+                quality_score=t_data["quality_score"],
+                tokens_used=t_data["tokens_used"],
+                duration_ms=t_data["duration_ms"],
+                created_at=now - timedelta(hours=g_data["hours_ago"]) + timedelta(minutes=i * 2),
+            )
+            db.add(task)
+
+            if t_data["status"] == "completed":
+                audit_entries.append(AuditLog(
+                    id=str(uuid.uuid4()), shop_id=shop_id, actor="claw_bot",
+                    action="task_completed", resource_type="task", resource_id=task_id,
+                    details={"agent_type": t_data["agent_type"], "quality_score": t_data["quality_score"]},
+                    created_at=now - timedelta(hours=g_data["hours_ago"]) + timedelta(minutes=i * 2 + 3),
+                ))
+
+            # Create deliverables for this task's agent
+            for d_data in g_data.get("deliverables", []):
+                if d_data["agent_type"] == t_data["agent_type"] and t_data["status"] == "completed":
+                    del_id = str(uuid.uuid4())
+                    deliverable = AgentDeliverable(
+                        id=del_id,
+                        goal_id=goal_id,
+                        task_id=task_id,
+                        shop_id=shop_id,
+                        agent_type=d_data["agent_type"],
+                        deliverable_type=d_data["type"],
+                        title=d_data["title"],
+                        content=d_data["content"],
+                        quality_scores={"relevance": d_data["quality"], "clarity": d_data["quality"] - 2, "brand_voice": d_data["quality"] + 1},
+                        overall_quality=d_data["quality"],
+                        status=d_data["status"],
+                        created_at=now - timedelta(hours=g_data["hours_ago"]) + timedelta(minutes=5),
+                    )
+                    db.add(deliverable)
+                    audit_entries.append(AuditLog(
+                        id=str(uuid.uuid4()), shop_id=shop_id, actor="claw_bot",
+                        action="deliverable_created", resource_type="deliverable", resource_id=del_id,
+                        details={"title": d_data["title"], "quality_score": d_data["quality"]},
+                        created_at=now - timedelta(hours=g_data["hours_ago"]) + timedelta(minutes=5),
+                    ))
+
+    for entry in audit_entries:
+        db.add(entry)
+
+
 @router.get("/agents")
 async def get_agents(
     user: User = Depends(get_current_user),
@@ -1372,6 +1539,7 @@ async def get_agents(
         db.flush()
         # Seed mock activity for demo
         _seed_agent_activities(db, shop.id, agents)
+        _seed_claw_bot_data(db, shop.id)
         db.commit()
 
     # Get activity counts
@@ -1436,7 +1604,7 @@ async def get_agents(
             "estimated_revenue_impact": round(total_month * 28.5, -1),
             "hours_saved": round(total_month * 0.3, 1),
         },
-        "plan_tier": "scale" if user.email == "demo@forgeapp.com" else user.plan_tier,
+        "plan_tier": _effective_plan_tier(user),
     }
 
 

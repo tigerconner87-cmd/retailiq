@@ -1288,14 +1288,14 @@ svg.spin{animation:spin .8s linear infinite}
    AI Chat Widget
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* Sage Floating Button */
-.ai-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#059669,#10b981);border:none;color:#fff;cursor:pointer;z-index:900;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(16,185,129,.35);transition:all .3s;animation:sagePulse 3s ease-in-out infinite}
-.ai-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(16,185,129,.5);animation:none}
+/* Claw Bot Floating Button */
+.ai-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#ef4444);border:none;color:#fff;cursor:pointer;z-index:900;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(239,68,68,.35);transition:all .3s;animation:clawPulse 3s ease-in-out infinite}
+.ai-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(239,68,68,.5);animation:none}
 .ai-fab.active{transform:scale(0.95);animation:none}
-.sage-fab-sparkle{transition:transform .3s}
-.ai-fab.active .sage-fab-sparkle{transform:rotate(90deg)}
-.ai-fab-badge{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--success);border:2px solid var(--bg-0)}
-@keyframes sagePulse{0%,100%{box-shadow:0 4px 20px rgba(16,185,129,.35)}50%{box-shadow:0 4px 30px rgba(16,185,129,.55)}}
+.claw-fab-icon{transition:transform .3s}
+.ai-fab.active .claw-fab-icon{transform:rotate(90deg)}
+.ai-fab-badge{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--warning);border:2px solid var(--bg-0)}
+@keyframes clawPulse{0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.35)}50%{box-shadow:0 4px 30px rgba(239,68,68,.55)}}
 
 /* Chat panel */
 .ai-chat-panel{position:fixed;bottom:92px;right:24px;width:420px;max-height:550px;background:var(--bg-1);border:1px solid var(--border);border-radius:16px;z-index:901;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.4);opacity:0;transform:translateY(20px) scale(0.95);pointer-events:none;transition:all .3s cubic-bezier(.4,0,.2,1)}
@@ -1304,9 +1304,9 @@ svg.spin{animation:spin .8s linear infinite}
 /* Chat header */
 .ai-chat-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
 .ai-chat-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
-.sage-header{background:linear-gradient(135deg,rgba(5,150,105,.08),rgba(16,185,129,.04))}
-.sage-avatar-sm{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
-.sage-avatar-lg{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;margin:0 auto 12px}
+.claw-header{background:linear-gradient(135deg,rgba(220,38,38,.08),rgba(239,68,68,.04))}
+.claw-avatar-sm{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.claw-avatar-lg{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;margin:0 auto 12px}
 .ai-chat-actions{display:flex;gap:4px}
 .ai-chat-actions button{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:4px;transition:.2s}
 .ai-chat-actions button:hover{color:var(--text);background:var(--bg-2)}
@@ -1321,7 +1321,7 @@ svg.spin{animation:spin .8s linear infinite}
 .ai-msg{display:flex;gap:8px;max-width:92%;animation:aiMsgIn .3s ease-out}
 .ai-msg.user{align-self:flex-end;flex-direction:row-reverse}
 .ai-msg-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
-.ai-msg.assistant .ai-msg-avatar{background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:800;font-size:11px}
+.ai-msg.assistant .ai-msg-avatar{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-weight:800;font-size:14px}
 .ai-msg.user .ai-msg-avatar{background:var(--bg-3);color:var(--text2)}
 .ai-msg-content{flex:1;min-width:0}
 .ai-msg-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-word}
@@ -1358,8 +1358,8 @@ svg.spin{animation:spin .8s linear infinite}
 .ai-chat-input textarea{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;resize:none;outline:none;max-height:80px;min-height:36px;line-height:1.4;transition:border-color .2s}
 .ai-chat-input textarea:focus{border-color:var(--primary)}
 .ai-chat-input textarea::placeholder{color:var(--text3)}
-.ai-chat-send{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#059669,#10b981);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
-.ai-chat-send:hover{background:linear-gradient(135deg,#047857,#059669);transform:scale(1.05)}
+.ai-chat-send{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#ef4444);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.ai-chat-send:hover{background:linear-gradient(135deg,#b91c1c,#dc2626);transform:scale(1.05)}
 .ai-chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .ai-chat-remaining{font-size:10px;color:var(--text3);text-align:center;padding:0 14px 8px}
 
@@ -1371,7 +1371,7 @@ svg.spin{animation:spin .8s linear infinite}
 .ai-prompt-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:6px;padding-left:4px}
 .ai-quick-prompts{display:flex;flex-direction:column;gap:5px}
 .ai-quick-prompt{padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);cursor:pointer;text-align:left;transition:.2s}
-.ai-quick-prompt:hover{border-color:var(--success);color:#10b981;background:rgba(16,185,129,.04)}
+.ai-quick-prompt:hover{border-color:var(--danger);color:#ef4444;background:rgba(239,68,68,.04)}
 
 /* Message action buttons (copy, etc) */
 .ai-msg-actions{display:flex;gap:4px;margin-top:6px;padding:0 4px;opacity:0;transition:opacity .2s}
@@ -1407,16 +1407,19 @@ svg.spin{animation:spin .8s linear infinite}
 .ai-action-btn:hover{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);transform:translateY(-1px)}
 .ai-action-btn svg{width:14px;height:14px}
 
-/* Sage typing indicator text */
-.sage-thinking{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;color:var(--text3);font-style:italic}
-.sage-thinking .sage-avatar-sm{flex-shrink:0}
+/* Claw Bot typing indicator text */
+.claw-thinking{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;color:var(--text3);font-style:italic}
+.claw-thinking .claw-avatar-sm{flex-shrink:0}
 
-/* Ask Sage buttons */
-.ask-sage-btn{background:linear-gradient(135deg,rgba(5,150,105,.12),rgba(16,185,129,.06))!important;border-color:rgba(16,185,129,.3)!important;color:#10b981!important}
-.ask-sage-btn:hover{background:linear-gradient(135deg,rgba(5,150,105,.2),rgba(16,185,129,.1))!important;border-color:rgba(16,185,129,.5)!important}
-.sage-mini-avatar{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:9px;line-height:1;flex-shrink:0}
-.ask-sage-inline{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid rgba(16,185,129,.25);border-radius:var(--radius-sm);background:rgba(16,185,129,.06);color:#10b981;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
-.ask-sage-inline:hover{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);transform:translateY(-1px)}
+/* Ask Claw Bot buttons */
+.ask-claw-btn{background:linear-gradient(135deg,rgba(220,38,38,.12),rgba(239,68,68,.06))!important;border-color:rgba(239,68,68,.3)!important;color:#ef4444!important}
+.ask-claw-btn:hover{background:linear-gradient(135deg,rgba(220,38,38,.2),rgba(239,68,68,.1))!important;border-color:rgba(239,68,68,.5)!important}
+.claw-mini-avatar{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;line-height:1;flex-shrink:0}
+.ask-claw-inline{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);background:rgba(239,68,68,.06);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
+.ask-claw-inline:hover{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);transform:translateY(-1px)}
+
+/* Claw Bot icon in header */
+.claw-bot-icon{font-size:24px;vertical-align:middle;margin-right:4px}
 
 /* ══════════════════════════════════════════════════════════════════════════
    Price Comparison Intelligence
@@ -1496,8 +1499,8 @@ svg.spin{animation:spin .8s linear infinite}
 .pnp-btn:hover{border-color:var(--primary)}
 .post-now-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
 .post-now-main-btn{flex:1;min-width:200px;padding:12px 20px;font-size:14px;font-weight:600}
-.post-now-sage-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border:1px solid rgba(16,185,129,.25);border-radius:var(--radius-sm);background:rgba(16,185,129,.06);color:#10b981;font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
-.post-now-sage-btn:hover{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4)}
+.post-now-claw-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);background:rgba(239,68,68,.06);color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
+.post-now-claw-btn:hover{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4)}
 .post-now-posted-btn{padding:10px 16px;border:1px solid rgba(16,185,129,.3);border-radius:var(--radius-sm);background:rgba(16,185,129,.08);color:#10b981;font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
 .post-now-posted-btn:hover{background:rgba(16,185,129,.15)}
 
@@ -1742,7 +1745,7 @@ svg.spin{animation:spin .8s linear infinite}
   .ai-chat-panel{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;max-height:100vh;border-radius:0;z-index:1000}
   .ai-chat-messages{max-height:calc(100vh - 160px)}
   .ai-fab{bottom:16px;right:16px;width:50px;height:50px}
-  .ask-sage-inline{display:none}
+  .ask-claw-inline{display:none}
   .connected-accounts-grid{grid-template-columns:1fr}
   .post-action-bar{flex-direction:column}
   .pab-btn{justify-content:center}

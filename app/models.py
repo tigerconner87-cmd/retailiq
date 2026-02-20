@@ -678,8 +678,127 @@ class SentEmail(Base):
     template = Column(String(50), default="plain")  # plain, marketing, test
     status = Column(String(20), default="sent")  # sent, failed
     error_message = Column(Text)
-    sent_by = Column(String(50), default="user")  # user, maya, emma, sage, system
+    sent_by = Column(String(50), default="user")  # user, maya, emma, claw_bot, system
     agent_output_id = Column(String(36), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")
+
+
+# ── Claw Bot: Execution Goals ─────────────────────────────────────────────
+
+class ExecutionGoal(Base):
+    __tablename__ = "execution_goals"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    command = Column(Text, nullable=False)
+    intent = Column(String(100))  # marketing, retention, strategy, competitive, sales
+    priority = Column(String(20), default="medium")  # critical, high, medium, low
+    status = Column(String(20), default="planning")  # planning, executing, verifying, completed, failed
+    plan = Column(JSON, default=dict)
+    result_summary = Column(Text)
+    quality_score = Column(Float)  # 0-100
+    total_tasks = Column(Integer, default=0)
+    completed_tasks = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    total_cost = Column(Float, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime)
+    completed_at = Column(DateTime)
+
+    shop = relationship("Shop")
+    tasks = relationship("ExecutionTask", back_populates="goal", cascade="all, delete-orphan")
+    deliverables = relationship("AgentDeliverable", back_populates="goal", cascade="all, delete-orphan")
+
+
+# ── Claw Bot: Execution Tasks ─────────────────────────────────────────────
+
+class ExecutionTask(Base):
+    __tablename__ = "execution_tasks"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    goal_id = Column(String(36), ForeignKey("execution_goals.id"), nullable=False, index=True)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False)
+    instructions = Column(Text, nullable=False)
+    depends_on = Column(JSON, default=list)  # task IDs this depends on
+    status = Column(String(20), default="pending")  # pending, running, completed, failed, retrying
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=2)
+    result_summary = Column(Text)
+    quality_score = Column(Float)
+    tokens_used = Column(Integer, default=0)
+    duration_ms = Column(Integer, default=0)
+    error_message = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime)
+    completed_at = Column(DateTime)
+
+    goal = relationship("ExecutionGoal", back_populates="tasks")
+    shop = relationship("Shop")
+    deliverables = relationship("AgentDeliverable", back_populates="task", cascade="all, delete-orphan")
+
+
+# ── Claw Bot: Agent Deliverables ──────────────────────────────────────────
+
+class AgentDeliverable(Base):
+    __tablename__ = "agent_deliverables"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    goal_id = Column(String(36), ForeignKey("execution_goals.id"), nullable=True, index=True)
+    task_id = Column(String(36), ForeignKey("execution_tasks.id"), nullable=True, index=True)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False)
+    deliverable_type = Column(String(50), nullable=False)  # email_draft, social_post, analysis, strategy, bundle, etc.
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=False)
+    quality_scores = Column(JSON, default=dict)  # 8 quality dimensions
+    overall_quality = Column(Float)  # 0-100
+    status = Column(String(20), default="draft")  # draft, approved, shipped, rejected
+    shipped_via = Column(String(50))  # email, social, dashboard
+    shipped_at = Column(DateTime)
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    goal = relationship("ExecutionGoal", back_populates="deliverables")
+    task = relationship("ExecutionTask", back_populates="deliverables")
+    shop = relationship("Shop")
+
+
+# ── Email Sequences ───────────────────────────────────────────────────────
+
+class EmailSequence(Base):
+    __tablename__ = "email_sequences"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    trigger_type = Column(String(50), nullable=False)  # winback, welcome, post_purchase, promotion
+    steps = Column(JSON, default=list)  # [{delay_days, subject, body, template}]
+    status = Column(String(20), default="draft")  # draft, active, paused, completed
+    enrolled_count = Column(Integer, default=0)
+    sent_count = Column(Integer, default=0)
+    open_rate = Column(Float)
+    click_rate = Column(Float)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    shop = relationship("Shop")
+
+
+# ── Immutable Audit Log ──────────────────────────────────────────────────
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    actor = Column(String(50), nullable=False)  # claw_bot, maya, scout, emma, alex, max, user, system
+    action = Column(String(100), nullable=False)  # goal_created, task_started, email_sent, etc.
+    resource_type = Column(String(50))  # goal, task, deliverable, email
+    resource_id = Column(String(36))
+    details = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop")

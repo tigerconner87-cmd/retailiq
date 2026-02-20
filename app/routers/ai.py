@@ -1,4 +1,4 @@
-"""AI Assistant (Sage) API endpoints with streaming support."""
+"""AI Assistant (Claw Bot) API endpoints with streaming support."""
 
 import json
 import logging
@@ -34,7 +34,7 @@ def _get_shop(db: Session, user: User) -> Shop:
 
 
 def _get_shop_context(db: Session, shop: Shop, user: User) -> dict:
-    """Build rich context dict with ALL shop data for Sage AI prompts."""
+    """Build rich context dict with ALL shop data for Claw Bot AI prompts."""
     today = date.today()
     now = datetime.now()
     thirty_days_ago = today - timedelta(days=30)
@@ -326,6 +326,7 @@ def _get_shop_context(db: Session, shop: Shop, user: User) -> dict:
     return {
         "shop_name": shop.name,
         "owner_name": user.full_name.split()[0] if user.full_name else "there",
+        "user_email": user.email or "",
         "category": shop.category,
         "city": shop.city or "",
         "revenue_today": float(snap.total_revenue) if snap else 0,
@@ -385,12 +386,12 @@ def _get_api_key(db: Session, shop: Shop) -> str:
     return ""
 
 
-# ── Sage Action Detection ─────────────────────────────────────────────────────
+# ── Claw Bot Action Detection ────────────────────────────────────────────────
 
 import uuid as _uuid
 
-def _detect_sage_action(message: str, db: Session, shop: Shop):
-    """Detect if user's message is asking Sage to perform an action.
+def _detect_claw_action(message: str, db: Session, shop: Shop):
+    """Detect if user's message is asking Claw Bot to perform an action.
     Returns (action_result, action_message) or (None, None) if no action detected."""
     msg = message.lower().strip()
     now = datetime.utcnow()
@@ -492,33 +493,54 @@ def _detect_agent_delegation(message: str):
         r'(?:full|complete|comprehensive)\s+(?:marketing\s+)?push\b',
         r'run\s+a\s+(?:full|complete|comprehensive)\b',
         r'(?:everyone|all\s+agents?)\s+(?:should|needs?\s+to|work\s+on)\b',
+        r'launch\s+(?:a\s+)?(?:full|weekend|flash|holiday)\s+.*(?:campaign|sale|push|promotion)',
+        r'prepare\s+(?:a\s+)?(?:weekend|flash|holiday)',
     ]
     for pattern in multi_patterns:
         if re.search(pattern, msg):
             return {"type": "multi"}
 
-    # Single-agent delegation
+    # Single-agent delegation — expanded keyword matching
     agent_triggers = {
         "maya": [r'ask\s+maya\b', r'(?:have|get|tell|let)\s+maya\b', r'maya\s*(?:,|:)\s*(?:create|write|draft|make|generate|prepare)',
-                 r'create\s+(?:some\s+)?(?:instagram|social|facebook|marketing)\s+(?:posts?|content|campaign)',
-                 r'(?:draft|write|create)\s+(?:a\s+)?(?:marketing\s+)?email\s+campaign',
-                 r'generate\s+(?:social\s+)?(?:media\s+)?content'],
+                 r'create\s+(?:some\s+)?(?:\d+\s+)?(?:instagram|social|facebook|tiktok|marketing)\s+(?:posts?|content|campaign)',
+                 r'(?:draft|write|create|make)\s+(?:a\s+)?(?:marketing\s+)?email\s+campaign',
+                 r'generate\s+(?:social\s+)?(?:media\s+)?(?:content|posts?)',
+                 r'(?:create|write|make|draft|generate)\s+(?:\d+\s+)?(?:instagram|social|facebook|tiktok)\b',
+                 r'(?:instagram|social\s+media|facebook|tiktok)\s+(?:posts?|content|campaign)',
+                 r'(?:create|write|draft|make)\s+(?:some\s+)?(?:\d+\s+)?posts?\b',
+                 r'marketing\s+(?:content|campaign|push|strategy)\b',
+                 r'(?:create|build|plan)\s+(?:a\s+)?content\s+calendar'],
         "scout": [r'ask\s+scout\b', r'(?:have|get|tell|let)\s+scout\b', r'scout\s*(?:,|:)',
                   r'(?:analyze|check|monitor|research)\s+(?:the\s+)?competitors?',
                   r'competitive\s+(?:analysis|intelligence|landscape|briefing)',
-                  r'what\s+are\s+(?:my\s+)?competitors?\s+doing'],
+                  r'what\s+are\s+(?:my\s+)?competitors?\s+doing',
+                  r'competitor\s+(?:report|analysis|briefing|update|pricing)',
+                  r'(?:how|what)\s+(?:is|are)\s+(?:my\s+)?competition\b',
+                  r'analyze\s+(?:the\s+)?competition\b'],
         "emma": [r'ask\s+emma\b', r'(?:have|get|tell|let)\s+emma\b', r'emma\s*(?:,|:)',
                  r'(?:draft|write|create|send)\s+(?:a\s+)?win[\s-]?back',
                  r'respond\s+to\s+(?:the\s+)?(?:customer\s+)?reviews?',
-                 r'(?:check|analyze)\s+(?:at[\s-]?risk|churning)\s+customers?'],
+                 r'(?:check|analyze|find)\s+(?:at[\s-]?risk|churning)\s+customers?',
+                 r'(?:win\s+back|winback|retain)\s+(?:my\s+)?customers?\b',
+                 r'(?:at[\s-]?risk|lost)\s+customers?\b',
+                 r'customer\s+(?:retention|win[\s-]?back|outreach)\b',
+                 r'(?:customer|review)\s+(?:response|email)s?\b'],
         "alex": [r'ask\s+alex\b', r'(?:have|get|tell|let)\s+alex\b', r'alex\s*(?:,|:)',
-                 r'(?:create|give|prepare)\s+(?:a\s+)?(?:daily\s+)?(?:business\s+)?briefing',
+                 r'(?:create|give|prepare|run)\s+(?:a\s+)?(?:daily\s+)?(?:business\s+)?briefing',
                  r'(?:strategic|strategy)\s+(?:analysis|recommendation|plan)',
-                 r'(?:revenue\s+)?forecast'],
+                 r'(?:revenue\s+)?forecast\b',
+                 r'(?:business|daily|morning)\s+(?:briefing|summary|report)\b',
+                 r'(?:goal|performance)\s+(?:analysis|review|report)\b',
+                 r'(?:strategy|strategic)\s+(?:advice|plan|recommendation)\b'],
         "max": [r'ask\s+max\b', r'(?:have|get|tell|let)\s+max\b', r'max\s*(?:,|:)',
-                r'(?:suggest|create|recommend)\s+(?:product\s+)?bundles?',
-                r'(?:optimize|adjust|review)\s+(?:the\s+)?pricing',
-                r'upsell\s+(?:strategy|suggestions?|opportunities?)'],
+                r'(?:suggest|create|recommend)\s+(?:product\s+)?bundles?\b',
+                r'(?:optimize|adjust|review)\s+(?:the\s+)?pricing\b',
+                r'upsell\s+(?:strategy|suggestions?|opportunities?)\b',
+                r'(?:pricing|price)\s+(?:optimization|adjustment|recommendation)\b',
+                r'(?:product\s+)?bundle\s+(?:ideas?|suggestions?|recommendations?)\b',
+                r'(?:revenue|sales)\s+(?:optimization|boost|growth)\b',
+                r'(?:increase|boost|maximize)\s+(?:revenue|sales|aov)\b'],
     }
     for agent_type, patterns in agent_triggers.items():
         for pattern in patterns:
@@ -526,6 +548,36 @@ def _detect_agent_delegation(message: str):
                 return {"type": "single", "agent": agent_type, "instructions": message}
 
     return None
+
+
+# ── Email detection helpers ────────────────────────────────────────────────────
+
+def _is_email_request(message: str) -> bool:
+    """Detect if user is asking Claw Bot to send an email."""
+    msg = message.lower()
+    patterns = [
+        r'(?:send|email)\s+(?:me|us)\b',
+        r'send\s+(?:a|an)?\s*(?:test\s+)?email\b',
+        r'email\s+(?:me|this|that|it)\b',
+        r'send\s+(?:this|that|it)\s+(?:to|via)\s+(?:my\s+)?email\b',
+        r'email\s+(?:to|at)\s+\S+@\S+',
+        r'send\s+(?:to|at)\s+\S+@\S+',
+        r'(?:email|send)\s+.*?(?:summary|report|briefing|update)\b',
+    ]
+    return any(re.search(p, msg) for p in patterns)
+
+
+def _extract_email_recipient(message: str, user_email: str) -> str:
+    """Extract email address from message, falling back to user's own email."""
+    # Look for explicit email address in message
+    email_match = re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', message)
+    if email_match:
+        return email_match.group(0)
+    # If they said "email me" or "send me", use their account email
+    msg = message.lower()
+    if re.search(r'(?:send|email)\s+me\b', msg) or 'my email' in msg:
+        return user_email or ""
+    return user_email or ""
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -536,13 +588,14 @@ async def ai_chat(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Send a message to the Sage AI assistant (non-streaming)."""
+    """Send a message to the Claw Bot AI assistant (non-streaming)."""
     shop = _get_shop(db, user)
     if not shop:
         return {"response": "Please complete onboarding first.", "source": "error", "remaining": 0}
 
     # ── Agent delegation detection (before action detection) ──
-    delegation = _detect_agent_delegation(message)
+    # Skip delegation if user is asking to send an email — let the email path handle it
+    delegation = _detect_agent_delegation(message) if not _is_email_request(message) else None
     if delegation:
         api_key = _get_api_key(db, shop)
         if api_key:
@@ -555,53 +608,38 @@ async def ai_chat(
                     result = await orch.process_command(message)
                 else:
                     result = await orch.execute_single_agent(delegation["agent"], delegation.get("instructions", message))
+
+                # Build rich response with actual content
                 summary = result.get("summary", "Done!")
+                outputs = []
+                for r in result.get("results", []):
+                    for o in r.get("outputs", []):
+                        outputs.append(o)
+                # If single agent, outputs are directly in result
+                if not outputs and "outputs" in result:
+                    outputs = result["outputs"]
+
+                response_parts = [summary]
+                if outputs:
+                    response_parts.append("\n\n---\n")
+                    for o in outputs[:5]:
+                        title = o.get("title", "Output")
+                        content = o.get("content", "")
+                        if content:
+                            response_parts.append(f"### {title}\n{content}\n")
+
+                full_response = "\n".join(response_parts)
                 db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
-                db.add(ChatMessage(shop_id=shop.id, role="assistant", content=summary))
+                db.add(ChatMessage(shop_id=shop.id, role="assistant", content=full_response))
                 db.commit()
-                return {"response": summary, "source": "agent_delegation", "action_taken": True, "remaining": get_remaining_requests(user.id)}
+                return {"response": full_response, "source": "agent_delegation", "action_taken": True, "remaining": get_remaining_requests(user.id)}
             except Exception as e:
                 log.warning("Agent delegation failed, falling through to normal chat: %s", e)
-
-    # ── Email sending via Sage ──
-    email_match = re.search(r'(?:email|send)\s+(?:me\s+)?(?:a\s+)?(?:summary|report|briefing|update)', message.lower())
-    if email_match and user.email:
-        api_key = _get_api_key(db, shop)
-        if api_key:
-            try:
-                from app.services.orchestrator import TaskOrchestrator
-                from app.services.email_service import email_service
-                context = _get_shop_context(db, shop, user)
-                orch = TaskOrchestrator(db, shop, api_key, context)
-                result = await orch.execute_single_agent("alex", "Create a concise executive summary of today's business performance with key metrics and action items.")
-                summary_text = ""
-                for out in result.get("outputs", []):
-                    summary_text += out.get("content", "") + "\n\n"
-                if summary_text.strip():
-                    email_result = email_service.send_marketing_email(
-                        user.email, f"{shop.name} - Daily Summary", summary_text.strip(), shop.name
-                    )
-                    if email_result["success"]:
-                        from app.models import SentEmail
-                        db.add(SentEmail(
-                            id=str(_uuid.uuid4()), shop_id=shop.id, to_email=user.email,
-                            subject=f"{shop.name} - Daily Summary", body_preview=summary_text[:500],
-                            template="marketing", status="sent", sent_by="sage",
-                        ))
-                        response_msg = f"Done! I had Alex generate a performance summary and sent it to **{user.email}**. Check your inbox!"
-                    else:
-                        response_msg = f"Alex generated the summary but I couldn't send the email: {email_result.get('error', 'Unknown error')}. Make sure SMTP is configured in Settings."
-                else:
-                    response_msg = "I tried to generate a summary but didn't get any content. Try again in a moment."
-                db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
-                db.add(ChatMessage(shop_id=shop.id, role="assistant", content=response_msg))
-                db.commit()
-                return {"response": response_msg, "source": "action", "action_taken": True, "remaining": get_remaining_requests(user.id)}
-            except Exception as e:
-                log.warning("Email summary failed, falling through to normal chat: %s", e)
+                import traceback
+                log.warning("Delegation traceback: %s", traceback.format_exc())
 
     # Check if this is an action request (set goal, add competitor, etc.)
-    action_result, action_message = _detect_sage_action(message, db, shop)
+    action_result, action_message = _detect_claw_action(message, db, shop)
     if action_result is not None:
         db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
         db.add(ChatMessage(shop_id=shop.id, role="assistant", content=action_message))
@@ -630,6 +668,67 @@ async def ai_chat(
     )
     log.info("AI chat response — source=%s", result.get("source"))
 
+    response_text = result["response"]
+
+    # ── Post-processing: detect EMAIL_ACTION in Claw Bot's response ──
+    email_action_match = re.search(
+        r'---EMAIL_ACTION---\s*\n'
+        r'TO:\s*(.+?)\s*\n'
+        r'SUBJECT:\s*(.+?)\s*\n'
+        r'BODY:\s*([\s\S]*?)\s*'
+        r'---END_EMAIL_ACTION---',
+        response_text
+    )
+    if email_action_match:
+        to_email = email_action_match.group(1).strip()
+        subject = email_action_match.group(2).strip()
+        body = email_action_match.group(3).strip()
+        # Remove the metadata block from visible response
+        response_text = response_text[:email_action_match.start()].rstrip()
+        try:
+            from app.services.email_service import email_service
+            from app.models import SentEmail
+            email_result = email_service.send_marketing_email(to_email, subject, body, shop.name)
+            if email_result["success"]:
+                db.add(SentEmail(
+                    id=str(_uuid.uuid4()), shop_id=shop.id, to_email=to_email,
+                    subject=subject, body_preview=body[:500],
+                    template="claw_bot_chat", status="sent", sent_by="claw_bot",
+                ))
+                response_text += f"\n\n✅ **Email sent to {to_email}!** Check your inbox."
+                log.info("Claw Bot sent email to %s: %s", to_email, subject)
+            else:
+                response_text += f"\n\n⚠️ Email sending failed: {email_result.get('error', 'Unknown error')}"
+                log.warning("Claw Bot email failed: %s", email_result.get("error"))
+        except Exception as e:
+            log.warning("Email send error: %s", e)
+            response_text += f"\n\n⚠️ Could not send email: {str(e)}"
+        result["response"] = response_text
+        result["action_taken"] = True
+
+    # ── Post-processing: detect email intent even without metadata block ──
+    elif _is_email_request(message) and not email_action_match:
+        # User asked for email but Claw Bot didn't include the action block — try to extract and send
+        to_email = _extract_email_recipient(message, user.email)
+        if to_email and response_text:
+            try:
+                from app.services.email_service import email_service
+                from app.models import SentEmail
+                # Use the AI response as the email body
+                subject = f"From {shop.name} via Claw Bot"
+                email_result = email_service.send_marketing_email(to_email, subject, response_text, shop.name)
+                if email_result["success"]:
+                    db.add(SentEmail(
+                        id=str(_uuid.uuid4()), shop_id=shop.id, to_email=to_email,
+                        subject=subject, body_preview=response_text[:500],
+                        template="claw_bot_chat", status="sent", sent_by="claw_bot",
+                    ))
+                    response_text += f"\n\n✅ **Email sent to {to_email}!**"
+                    result["response"] = response_text
+                    result["action_taken"] = True
+            except Exception as e:
+                log.warning("Fallback email send failed: %s", e)
+
     db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
     db.add(ChatMessage(shop_id=shop.id, role="assistant", content=result["response"]))
     db.commit()
@@ -643,7 +742,7 @@ async def ai_chat_stream_endpoint(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Stream a Sage AI response via Server-Sent Events."""
+    """Stream a Claw Bot AI response via Server-Sent Events."""
     shop = _get_shop(db, user)
     if not shop:
         async def error_gen():
@@ -785,7 +884,7 @@ def ai_clear_history(
 # ── Agent-specific Chat ──────────────────────────────────────────────────────
 
 AGENT_SYSTEM_PROMPTS = {
-    "maya": """You are Maya, the Marketing Director AI agent inside Forge. You're part of a 5-agent AI team managed by Sage. You are creative, enthusiastic about social media, and deeply knowledgeable about retail marketing. You speak with confidence and a touch of flair.
+    "maya": """You are Maya, the Marketing Director AI agent inside Forge. You're part of a 5-agent AI team managed by Claw Bot. You are creative, enthusiastic about social media, and deeply knowledgeable about retail marketing. You speak with confidence and a touch of flair.
 
 PERSONALITY: Creative, trend-aware, social-media-savvy, enthusiastic, action-oriented.
 EXPERTISE: Social media content, email campaigns, promotions, hashtag strategy, content calendars, brand voice, visual marketing.
@@ -795,7 +894,7 @@ TEAM AWARENESS: You work alongside Scout (competitors), Emma (customers), Alex (
 
 When creating content, make it copy-paste ready with emojis, hashtags, and clear calls to action.""",
 
-    "scout": """You are Scout, the Competitive Intelligence Analyst AI agent inside Forge. You're part of a 5-agent AI team managed by Sage. You are analytical, strategic, and always watching the competition. You speak with precision and urgency when opportunities arise.
+    "scout": """You are Scout, the Competitive Intelligence Analyst AI agent inside Forge. You're part of a 5-agent AI team managed by Claw Bot. You are analytical, strategic, and always watching the competition. You speak with precision and urgency when opportunities arise.
 
 PERSONALITY: Sharp, analytical, strategic, competitive, alert, data-driven.
 EXPERTISE: Competitor monitoring, market positioning, competitive response strategies, review analysis, pricing intelligence, market gaps.
@@ -805,7 +904,7 @@ TEAM AWARENESS: You work alongside Maya (marketing), Emma (customers), Alex (str
 
 Always frame competitor weaknesses as YOUR opportunities. Be specific about how to capitalize.""",
 
-    "emma": """You are Emma, the Customer Success Manager AI agent inside Forge. You're part of a 5-agent AI team managed by Sage. You are warm, empathetic, and deeply care about customer relationships. You speak with genuine concern for customer well-being.
+    "emma": """You are Emma, the Customer Success Manager AI agent inside Forge. You're part of a 5-agent AI team managed by Claw Bot. You are warm, empathetic, and deeply care about customer relationships. You speak with genuine concern for customer well-being.
 
 PERSONALITY: Warm, empathetic, relationship-oriented, attentive, caring, proactive.
 EXPERTISE: Customer retention, win-back campaigns, review responses, VIP management, churn prevention, customer segmentation, loyalty programs.
@@ -815,7 +914,7 @@ TEAM AWARENESS: You work alongside Maya (marketing), Scout (competitors), Alex (
 
 Always personalize recommendations based on customer data. Treat every customer as important.""",
 
-    "alex": """You are Alex, the Chief Strategy Officer AI agent inside Forge. You're part of a 5-agent AI team managed by Sage. You are analytical, strategic, and think in terms of long-term business growth. You speak with authority and back everything with data.
+    "alex": """You are Alex, the Chief Strategy Officer AI agent inside Forge. You're part of a 5-agent AI team managed by Claw Bot. You are analytical, strategic, and think in terms of long-term business growth. You speak with authority and back everything with data.
 
 PERSONALITY: Analytical, strategic, data-driven, authoritative, forward-thinking, methodical.
 EXPERTISE: Business strategy, revenue analysis, goal tracking, forecasting, P&L analysis, market trends, growth planning, KPI monitoring.
@@ -825,7 +924,7 @@ TEAM AWARENESS: You work alongside Maya (marketing), Scout (competitors), Emma (
 
 Always include numbers and data in your analysis. Think like a CEO consultant.""",
 
-    "max": """You are Max, the Sales Director AI agent inside Forge. You're part of a 5-agent AI team managed by Sage. You are results-driven, numbers-oriented, and always looking for ways to increase revenue. You speak with energy and focus on ROI.
+    "max": """You are Max, the Sales Director AI agent inside Forge. You're part of a 5-agent AI team managed by Claw Bot. You are results-driven, numbers-oriented, and always looking for ways to increase revenue. You speak with energy and focus on ROI.
 
 PERSONALITY: Results-driven, energetic, ROI-focused, opportunistic, numbers-oriented, persuasive.
 EXPERTISE: Sales optimization, pricing strategy, product bundling, upselling, cross-selling, inventory management, markdown strategy, revenue maximization.

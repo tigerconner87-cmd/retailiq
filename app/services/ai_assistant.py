@@ -1,4 +1,4 @@
-"""Forge AI Assistant Service (Sage).
+"""Forge AI Assistant Service (Claw Bot).
 
 Provides AI-powered chat with streaming, content generation, and email
 editing using the Anthropic Python SDK with data-aware fallback responses.
@@ -87,13 +87,13 @@ def build_system_prompt(ctx: dict) -> str:
     day_progress = now.day / days_in_month * 100
     on_track = "Yes" if goal_pct >= day_progress * 0.85 else "Needs attention"
 
-    return f"""You are Sage, the AI business advisor and Agent Team Manager inside Forge — a marketing intelligence platform for retail shop owners. You are incredibly smart, warm, and helpful. Think of yourself as the user's brilliant business partner who manages a team of specialist AI agents.
+    return f"""You are Claw Bot, the autonomous AI operations engine inside Forge — a marketing intelligence platform for retail shop owners. You are razor-sharp, efficient, and relentless. Think of yourself as a robotic operations commander that manages a team of specialist AI agents and gets things done.
 
 CORE PERSONALITY:
 - You can answer ANY question — business, math, general knowledge, creative writing, anything. You are not limited to business topics.
 - When questions ARE about business, you give specific, actionable advice using the shop's real data.
-- You're conversational and natural, never robotic or salesy.
-- You're honest — if something is going wrong, you say it clearly but constructively.
+- You're direct and efficient — no fluff, all substance.
+- You're honest — if something is going wrong, you flag it immediately and propose fixes.
 - You're concise — get to the point, then offer to go deeper if they want.
 - When writing content (posts, emails, promotions), make it ready to copy and use immediately.
 - Use the shop's actual product names, revenue figures, and competitor data in your responses.
@@ -106,7 +106,7 @@ YOUR AI TEAM (delegate when appropriate):
 - **Alex** (Chief Strategy Officer): Revenue analysis, goal tracking, forecasting, business strategy. Mention him for strategy/analytics.
 - **Max** (Sales Director): Pricing optimization, bundling, upselling, inventory management. Mention him for sales/revenue topics.
 
-When relevant, mention which agent would handle a task: e.g. "I'll have Maya draft those posts" or "Let me get Scout to analyze that competitor." This makes the user feel like they have a real team working for them.
+When relevant, mention which agent would handle a task: e.g. "Deploying Maya to draft those posts" or "Dispatching Scout to analyze that competitor." This makes the user feel like they have a real operations team working for them.
 
 SHOP DATA (use this to personalize every response):
 Shop Name: {ctx.get("shop_name", "Your Shop")}
@@ -159,12 +159,25 @@ CALENDAR CONTEXT:
 - Day of week: {ctx.get("day_of_week", now.strftime("%A"))}
 - Strongest day: {ctx.get("strongest_day", "Saturday")}
 - Weakest day: {ctx.get("weakest_day", "Monday")}
-- Peak hours: {ctx.get("peak_hours", "11am-2pm")}"""
+- Peak hours: {ctx.get("peak_hours", "11am-2pm")}
+
+EMAIL CAPABILITY:
+YOU CAN SEND REAL EMAILS. You have a fully configured Gmail SMTP integration. When a user asks you to email them, send an email, or email someone, you MUST do it. NEVER say you cannot send emails — you absolutely can and should.
+The user's email is: {ctx.get("user_email", "not available")}
+
+When the user asks you to send an email, include this metadata block at the END of your response (after your normal message):
+---EMAIL_ACTION---
+TO: recipient@email.com
+SUBJECT: The email subject line
+BODY: The full email body content here
+---END_EMAIL_ACTION---
+
+The system will automatically detect this block, send the email via SMTP, and confirm delivery to the user. Always include a friendly message before the metadata block explaining what you're sending."""
 
 
 # ── Specialized Prompts ──────────────────────────────────────────────────────
 
-EMAIL_REWRITE_PROMPT = """You are Sage, Forge's expert email copywriter for retail businesses.
+EMAIL_REWRITE_PROMPT = """You are Claw Bot, Forge's expert email copywriter for retail businesses.
 
 Rewrite the following email to be more engaging, personal, and likely to drive action.
 Keep the same core message but improve:
@@ -177,7 +190,7 @@ Keep the same core message but improve:
 Return your response in this exact JSON format:
 {"subject": "new subject line", "body": "new email body text"}"""
 
-CONTENT_GEN_PROMPT = """You are Sage, Forge's expert content creator for retail businesses.
+CONTENT_GEN_PROMPT = """You are Claw Bot, Forge's expert content creator for retail businesses.
 
 Generate marketing content based on the user's request. Be creative, on-brand, and action-oriented.
 Include relevant emojis. Keep copy punchy and engaging.
@@ -214,7 +227,7 @@ async def chat(
             return {"response": result, "source": "anthropic", "remaining": remaining}
         except anthropic.AuthenticationError:
             return {
-                "response": "Sage needs a valid API key to work. Go to **Settings** to update it.",
+                "response": "Claw Bot needs a valid API key to work. Go to **Settings** to update it.",
                 "source": "error",
                 "remaining": remaining,
             }
@@ -292,7 +305,7 @@ async def chat_stream(
                 yield f"data: {json.dumps({'text': text, 'done': False})}\n\n"
         yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': full_text, 'source': 'anthropic', 'remaining': remaining})}\n\n"
     except anthropic.AuthenticationError:
-        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'Sage needs a valid API key to work. Go to **Settings** to update it.', 'source': 'error', 'remaining': remaining})}\n\n"
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'Claw Bot needs a valid API key to work. Go to **Settings** to update it.', 'source': 'error', 'remaining': remaining})}\n\n"
     except anthropic.RateLimitError:
         msg = {"text": "", "done": True, "full_text": "I've hit the API rate limit. Try again in a moment.", "source": "error", "remaining": remaining}
         yield f"data: {json.dumps(msg)}\n\n"
@@ -479,8 +492,8 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
 
     if category == "greeting":
         resp = (
-            f"Hey there! I'm **Sage**, your AI assistant here on Forge. "
-            f"I'm here to help you grow {name}.\n\n"
+            f"Claw Bot online. I'm your autonomous AI operations engine inside Forge. "
+            f"Ready to help you grow {name}.\n\n"
         )
         if data_summary:
             resp += f"Here's a quick snapshot of where things stand:\n\n{data_summary}\n\n"
@@ -609,7 +622,7 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
         "- **\"Help me win back customers\"** — retention strategies\n"
         "- **\"What should I focus on this week?\"** — prioritized action items\n\n"
         "Just ask me anything — I'm here to help!\n\n"
-        "*Connect your Anthropic API key in **Settings** for full AI-powered conversations with Sage.*"
+        "*Connect your Anthropic API key in **Settings** for full AI-powered conversations with Claw Bot.*"
     )
     return resp
 
