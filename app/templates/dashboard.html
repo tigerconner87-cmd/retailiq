@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=29">
+  <link rel="stylesheet" href="/static/dashboard.css?v=30">
 </head>
 <body>
   <!-- Sidebar -->
@@ -305,6 +305,38 @@
             <h2 class="agents-title">Your AI Team</h2>
             <p class="agents-subtitle">Meet your AI employees. They work 24/7 so you don't have to.</p>
           </div>
+          <div class="agents-header-actions">
+            <button class="mke-btn primary" id="agentNewTaskBtn" onclick="document.getElementById('agentQuickTaskBar').hidden=false;document.getElementById('agentQuickTaskBar').style.display='flex';document.getElementById('aqtTitle').focus()">+ Assign Task</button>
+          </div>
+        </div>
+
+        <!-- Live Collaboration Bar -->
+        <div class="agents-collab-bar" id="agentsCollabBar">
+          <div class="collab-live-dot"></div>
+          <span class="collab-label">Live Activity</span>
+          <div class="collab-agents" id="collabAgents">
+            <!-- Rendered by JS: active agent bubbles with current task -->
+          </div>
+        </div>
+
+        <!-- Quick Task Assignment Bar -->
+        <div class="agent-quick-task-bar" id="agentQuickTaskBar" hidden style="display:none">
+          <input type="text" id="aqtTitle" placeholder="What should your agents work on?" class="aqt-input">
+          <select id="aqtAgent" class="aqt-select">
+            <option value="">Auto-assign</option>
+            <option value="maya">Maya (Marketing)</option>
+            <option value="scout">Scout (Competitors)</option>
+            <option value="emma">Emma (Customers)</option>
+            <option value="alex">Alex (Strategy)</option>
+            <option value="max">Max (Sales)</option>
+          </select>
+          <select id="aqtPriority" class="aqt-select">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+          <button class="mke-btn primary" id="aqtSubmit" onclick="submitQuickTask()">Assign</button>
+          <button class="mke-btn" onclick="this.parentElement.hidden=true;this.parentElement.style.display='none'">Cancel</button>
         </div>
 
         <!-- Agent Metrics -->
@@ -331,25 +363,80 @@
           </div>
         </div>
 
-        <!-- Agent Grid -->
-        <div class="agents-grid" id="agentsGrid">
-          <!-- Cards rendered by JS -->
+        <!-- Agent Tabs -->
+        <div class="agents-tabs" id="agentsTabs">
+          <button class="agents-tab active" data-tab="team">Team</button>
+          <button class="agents-tab" data-tab="tasks">Task Board</button>
+          <button class="agents-tab" data-tab="activity">Activity Feed</button>
+          <button class="agents-tab" data-tab="performance">Performance</button>
         </div>
 
-        <!-- Agent Activity Feed -->
-        <div class="agents-activity-section">
-          <div class="agents-activity-header">
-            <h3>All Agent Activity</h3>
-            <div class="agents-activity-filters" id="agentActivityFilters">
-              <button class="agent-filter-btn active" data-agent="">All</button>
-              <button class="agent-filter-btn" data-agent="maya">Maya</button>
-              <button class="agent-filter-btn" data-agent="scout">Scout</button>
-              <button class="agent-filter-btn" data-agent="emma">Emma</button>
-              <button class="agent-filter-btn" data-agent="alex">Alex</button>
-              <button class="agent-filter-btn" data-agent="max">Max</button>
+        <!-- Tab: Team (Agent Grid) -->
+        <div class="agents-tab-panel active" id="agentsPanel-team">
+          <div class="agents-grid" id="agentsGrid">
+            <!-- Cards rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Tab: Task Board -->
+        <div class="agents-tab-panel" id="agentsPanel-tasks">
+          <div class="task-board">
+            <div class="task-column">
+              <div class="task-column-header">
+                <span class="task-column-dot pending"></span>
+                <h4>Pending</h4>
+                <span class="task-column-count" id="tbPendingCount">0</span>
+              </div>
+              <div class="task-column-body" id="tbPending">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+            <div class="task-column">
+              <div class="task-column-header">
+                <span class="task-column-dot in-progress"></span>
+                <h4>In Progress</h4>
+                <span class="task-column-count" id="tbInProgressCount">0</span>
+              </div>
+              <div class="task-column-body" id="tbInProgress">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+            <div class="task-column">
+              <div class="task-column-header">
+                <span class="task-column-dot completed"></span>
+                <h4>Completed</h4>
+                <span class="task-column-count" id="tbCompletedCount">0</span>
+              </div>
+              <div class="task-column-body" id="tbCompleted">
+                <!-- Rendered by JS -->
+              </div>
             </div>
           </div>
-          <div class="agents-activity-feed" id="agentActivityFeed">
+        </div>
+
+        <!-- Tab: Activity Feed -->
+        <div class="agents-tab-panel" id="agentsPanel-activity">
+          <div class="agents-activity-section">
+            <div class="agents-activity-header">
+              <h3>All Agent Activity</h3>
+              <div class="agents-activity-filters" id="agentActivityFilters">
+                <button class="agent-filter-btn active" data-agent="">All</button>
+                <button class="agent-filter-btn" data-agent="maya">Maya</button>
+                <button class="agent-filter-btn" data-agent="scout">Scout</button>
+                <button class="agent-filter-btn" data-agent="emma">Emma</button>
+                <button class="agent-filter-btn" data-agent="alex">Alex</button>
+                <button class="agent-filter-btn" data-agent="max">Max</button>
+              </div>
+            </div>
+            <div class="agents-activity-feed" id="agentActivityFeed">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Performance -->
+        <div class="agents-tab-panel" id="agentsPanel-performance">
+          <div class="agents-perf-grid" id="agentsPerfGrid">
             <!-- Rendered by JS -->
           </div>
         </div>
@@ -1745,7 +1832,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=29"></script>
+  <script src="/static/dashboard.js?v=30"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

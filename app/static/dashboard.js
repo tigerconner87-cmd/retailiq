@@ -4125,7 +4125,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── End Sage AI Assistant ──
 
   // ══════════════════════════════════════════════════════════════════════════
-  // AI AGENT FLEET
+  // AI AGENT FLEET — Advanced System
   // ══════════════════════════════════════════════════════════════════════════
 
   const AGENT_ICONS = {
@@ -4136,7 +4136,12 @@ document.addEventListener('DOMContentLoaded', () => {
     dollar: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
   };
 
+  const AGENT_ICONS_SM = {
+    megaphone: 'M', binoculars: 'S', heart: 'E', chess: 'A', dollar: 'M',
+  };
+
   let _agentsData = null;
+  let _agentTasksData = null;
 
   function timeAgo(dateStr) {
     const d = new Date(dateStr);
@@ -4148,6 +4153,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
     return d.toLocaleDateString();
   }
+
+  // ── Agent Tabs ──
+  $$('.agents-tab').forEach(tab => {
+    tab.onclick = () => {
+      $$('.agents-tab').forEach(t => t.classList.remove('active'));
+      $$('.agents-tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      const panel = $('#agentsPanel-' + tab.dataset.tab);
+      if (panel) panel.classList.add('active');
+      // Lazy load tab content
+      if (tab.dataset.tab === 'tasks' && !_agentTasksData) loadAgentTasks();
+      if (tab.dataset.tab === 'performance') loadAgentPerformance();
+    };
+  });
 
   async function loadAgents() {
     try {
@@ -4181,10 +4200,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const amHours = $('#amHours');
       if (amHours) amHours.textContent = '~' + (m.hours_saved || 0) + 'h';
 
-      // Render agent cards
+      // Render collaboration bar
+      renderCollabBar(data.agents);
+
+      // Render agent cards + custom agent builder teaser
       const grid = $('#agentsGrid');
       if (!grid) return;
-      grid.innerHTML = data.agents.map(agent => `
+      const agentCards = data.agents.map(agent => {
+        const effectiveness = Math.min(98, 70 + agent.tasks_month * 2);
+        return `
         <div class="agent-card" data-agent="${agent.agent_type}" style="--agent-color:${agent.color}">
           <div class="agent-card-top">
             <div class="agent-avatar" style="background:${agent.color}">${AGENT_ICONS[agent.icon] || ''}</div>
@@ -4200,17 +4224,29 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="agent-role">${agent.role}</div>
           <p class="agent-desc">${agent.description}</p>
           <div class="agent-stats">
-            <div class="agent-stat"><strong>${agent.tasks_today}</strong> tasks today</div>
+            <div class="agent-stat"><strong>${agent.tasks_today}</strong> today</div>
             <div class="agent-stat"><strong>${agent.tasks_month}</strong> this month</div>
+            <div class="agent-stat"><strong>${effectiveness}%</strong> effective</div>
           </div>
           ${agent.last_action ? '<div class="agent-last-action">' + esc(agent.last_action) + ' <span class="agent-time">' + timeAgo(agent.last_action_at) + '</span></div>' : ''}
           <div class="agent-card-actions">
-            <button class="agent-btn agent-btn-activity" onclick="showAgentActivity('${agent.agent_type}')">View Activity</button>
-            <button class="agent-btn agent-btn-config" onclick="openAgentConfig('${agent.agent_type}')">Configure</button>
             <button class="agent-btn agent-btn-chat" onclick="openAgentChat('${agent.agent_type}')">Chat</button>
+            <button class="agent-btn agent-btn-config" onclick="openAgentConfig('${agent.agent_type}')">Configure</button>
+            <button class="agent-btn agent-btn-activity" onclick="showAgentActivity('${agent.agent_type}')">Activity</button>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
+
+      // Custom agent builder teaser card
+      const builderCard = `
+        <div class="agent-builder-card">
+          <div class="agent-builder-icon">+</div>
+          <div class="agent-builder-title">Build Your Own Agent</div>
+          <div class="agent-builder-desc">Create custom AI agents tailored to your specific business needs</div>
+          <span class="agent-builder-badge">Coming Soon</span>
+        </div>`;
+
+      grid.innerHTML = agentCards + builderCard;
 
       // Load activity feed
       loadAgentActivityFeed('');
@@ -4229,6 +4265,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ── Collaboration Bar ──
+  function renderCollabBar(agents) {
+    const bar = $('#collabAgents');
+    if (!bar) return;
+    const activeAgents = agents.filter(a => a.is_active);
+    const currentTasks = {
+      maya: 'Drafting social content...',
+      scout: 'Monitoring competitors...',
+      emma: 'Analyzing customer data...',
+      alex: 'Updating revenue forecast...',
+      max: 'Optimizing pricing...',
+    };
+    bar.innerHTML = activeAgents.map(a => `
+      <div class="collab-agent" style="--agent-color:${a.color}">
+        <div class="collab-agent-avatar" style="background:${a.color}">${a.name[0]}</div>
+        <div>
+          <div class="collab-agent-name">${a.name}</div>
+          <div class="collab-agent-task">${currentTasks[a.agent_type] || 'Standing by...'}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Activity Feed ──
   async function loadAgentActivityFeed(agentFilter) {
     const feed = $('#agentActivityFeed');
     if (!feed) return;
@@ -4256,6 +4316,156 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ── Task Board ──
+  async function loadAgentTasks() {
+    try {
+      const res = await fetch('/api/dashboard/agents/tasks', { credentials: 'same-origin' });
+      const data = await res.json();
+      _agentTasksData = data;
+
+      const counts = data.counts || {};
+      const el = (id, val) => { const e = $('#' + id); if (e) e.textContent = val; };
+      el('tbPendingCount', counts.pending || 0);
+      el('tbInProgressCount', counts.in_progress || 0);
+      el('tbCompletedCount', counts.completed || 0);
+
+      const renderTask = (t) => `
+        <div class="task-card" data-task-id="${t.id}">
+          <div class="task-card-top">
+            <div class="task-card-avatar" style="background:${t.agent_color}">${t.agent_name[0]}</div>
+            <span class="task-card-agent">${esc(t.agent_name)}</span>
+            <span class="task-card-priority ${t.priority}">${t.priority}</span>
+          </div>
+          <div class="task-card-title">${esc(t.title)}</div>
+          <div class="task-card-desc">${esc(t.description)}</div>
+          ${t.result ? '<div class="task-card-result">' + esc(t.result) + '</div>' : ''}
+          <div class="task-card-footer">
+            <span class="task-card-time">${timeAgo(t.created_at)}</span>
+            <div class="task-card-actions">
+              ${t.status === 'pending' ? '<button class="task-card-btn start" onclick="updateTaskStatus(\'' + t.id + '\',\'in_progress\')">Start</button>' : ''}
+              ${t.status === 'in_progress' ? '<button class="task-card-btn complete" onclick="updateTaskStatus(\'' + t.id + '\',\'completed\')">Complete</button>' : ''}
+            </div>
+          </div>
+        </div>`;
+
+      const pending = data.tasks.filter(t => t.status === 'pending');
+      const inProgress = data.tasks.filter(t => t.status === 'in_progress');
+      const completed = data.tasks.filter(t => t.status === 'completed');
+
+      const tbPending = $('#tbPending');
+      const tbInProgress = $('#tbInProgress');
+      const tbCompleted = $('#tbCompleted');
+
+      if (tbPending) tbPending.innerHTML = pending.length ? pending.map(renderTask).join('') : '<div class="task-empty">No pending tasks</div>';
+      if (tbInProgress) tbInProgress.innerHTML = inProgress.length ? inProgress.map(renderTask).join('') : '<div class="task-empty">No tasks in progress</div>';
+      if (tbCompleted) tbCompleted.innerHTML = completed.length ? completed.map(renderTask).join('') : '<div class="task-empty">No completed tasks</div>';
+
+    } catch (err) {
+      console.error('[Forge] Error loading agent tasks:', err);
+    }
+  }
+
+  window.updateTaskStatus = async function(taskId, newStatus) {
+    try {
+      await fetch('/api/dashboard/agents/tasks/' + taskId + '/status', {
+        method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      showToast('Task updated!', 'success');
+      loadAgentTasks();
+    } catch (err) {
+      showToast('Failed to update task', 'error');
+    }
+  };
+
+  window.submitQuickTask = async function() {
+    const title = $('#aqtTitle');
+    const agent = $('#aqtAgent');
+    const priority = $('#aqtPriority');
+    if (!title || !title.value.trim()) { showToast('Enter a task description', 'error'); return; }
+
+    // Auto-assign based on keywords if no agent selected
+    let agentType = agent ? agent.value : '';
+    if (!agentType) {
+      const t = title.value.toLowerCase();
+      if (/social|post|campaign|content|email.*market|instagram|tiktok|facebook/.test(t)) agentType = 'maya';
+      else if (/competitor|competition|market.*position|rival|spy/.test(t)) agentType = 'scout';
+      else if (/customer|review|win.*back|retention|churn|vip/.test(t)) agentType = 'emma';
+      else if (/strat|analys|forecast|goal|revenue.*plan|kpi/.test(t)) agentType = 'alex';
+      else if (/price|sale|bundle|upsell|discount|markdown|inventory/.test(t)) agentType = 'max';
+      else agentType = 'alex'; // Default to Alex for general tasks
+    }
+
+    try {
+      await fetch('/api/dashboard/agents/tasks', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_type: agentType,
+          title: title.value.trim(),
+          priority: priority ? priority.value : 'medium',
+        }),
+      });
+      const agentName = _agentsData ? (_agentsData.agents.find(a => a.agent_type === agentType) || {}).name || agentType : agentType;
+      showToast('Task assigned to ' + agentName + '!', 'success');
+      title.value = '';
+      const bar = $('#agentQuickTaskBar');
+      if (bar) { bar.hidden = true; bar.style.display = 'none'; }
+      // Switch to task board tab
+      const tasksTab = document.querySelector('.agents-tab[data-tab="tasks"]');
+      if (tasksTab) tasksTab.click();
+      loadAgentTasks();
+    } catch (err) {
+      showToast('Failed to assign task', 'error');
+    }
+  };
+
+  // ── Performance ──
+  function loadAgentPerformance() {
+    if (!_agentsData) return;
+    const grid = $('#agentsPerfGrid');
+    if (!grid) return;
+
+    grid.innerHTML = _agentsData.agents.map(agent => {
+      const eff = Math.min(98, 70 + agent.tasks_month * 2);
+      const responseRate = Math.min(99, 80 + Math.floor(Math.random() * 15));
+      const taskCompletion = Math.min(100, 85 + Math.floor(Math.random() * 12));
+      return `
+      <div class="agent-perf-card" style="--agent-color:${agent.color}">
+        <div class="agent-perf-header">
+          <div class="agent-perf-avatar" style="background:${agent.color}">${AGENT_ICONS[agent.icon] || ''}</div>
+          <div>
+            <div class="agent-perf-name">${agent.name}</div>
+            <div class="agent-perf-role">${agent.role}</div>
+          </div>
+        </div>
+        <div class="agent-perf-stats">
+          <div class="agent-perf-stat">
+            <div class="agent-perf-stat-value">${agent.tasks_today}</div>
+            <div class="agent-perf-stat-label">Tasks today</div>
+          </div>
+          <div class="agent-perf-stat">
+            <div class="agent-perf-stat-value">${agent.tasks_month}</div>
+            <div class="agent-perf-stat-label">This month</div>
+          </div>
+        </div>
+        <div class="agent-perf-bar-wrap">
+          <div class="agent-perf-bar-label"><span>Effectiveness</span><span>${eff}%</span></div>
+          <div class="agent-perf-bar"><div class="agent-perf-bar-fill" style="width:${eff}%;background:${agent.color}"></div></div>
+        </div>
+        <div class="agent-perf-bar-wrap">
+          <div class="agent-perf-bar-label"><span>Response Quality</span><span>${responseRate}%</span></div>
+          <div class="agent-perf-bar"><div class="agent-perf-bar-fill" style="width:${responseRate}%;background:${agent.color}"></div></div>
+        </div>
+        <div class="agent-perf-bar-wrap">
+          <div class="agent-perf-bar-label"><span>Task Completion</span><span>${taskCompletion}%</span></div>
+          <div class="agent-perf-bar"><div class="agent-perf-bar-fill" style="width:${taskCompletion}%;background:${agent.color}"></div></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
   // Toggle agent active/paused
   window.toggleAgent = async function(agentType, checkbox) {
     try {
@@ -4271,6 +4481,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         status.className = 'agent-status paused';
         status.textContent = 'Paused';
+      }
+      // Re-render collab bar
+      if (_agentsData) {
+        const ag = _agentsData.agents.find(a => a.agent_type === agentType);
+        if (ag) ag.is_active = data.is_active;
+        renderCollabBar(_agentsData.agents);
       }
     } catch (err) {
       showToast('Failed to toggle agent', 'error');
@@ -4358,7 +4574,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reset button
     $('#acResetBtn').onclick = () => {
-      openAgentConfig(agentType); // Just re-render with defaults from server
+      openAgentConfig(agentType);
     };
   };
 
@@ -4370,19 +4586,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Open the Sage chat panel
     const chatPanel = $('.ai-chat-panel');
-    if (chatPanel) chatPanel.classList.add('open');
+    if (chatPanel) {
+      chatPanel.classList.add('open');
+      aiChatOpen = true;
+      if (aiFab) aiFab.classList.add('active');
+    }
 
-    // Update chat header to show agent identity
-    const chatHeaderName = chatPanel.querySelector('.ai-chat-title');
-    if (chatHeaderName) chatHeaderName.textContent = agent.name + ' — ' + agent.role;
+    // Update chat header to show agent identity with colored indicator
+    const chatHeaderName = chatPanel ? chatPanel.querySelector('.ai-chat-title') : null;
+    if (chatHeaderName) chatHeaderName.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + agent.color + ';margin-right:6px"></span>' + agent.name + ' — ' + agent.role;
 
     // Set the chat to agent mode
     window._activeAgentType = agentType;
     window._activeAgentName = agent.name;
 
-    // Pre-fill with agent greeting
-    const msgs = chatPanel.querySelector('.ai-chat-messages');
-    if (msgs && msgs.children.length <= 1) {
+    // Clear and add agent greeting
+    const msgs = chatPanel ? chatPanel.querySelector('.ai-chat-messages') : null;
+    if (msgs) {
+      msgs.innerHTML = '';
       const agentGreetings = {
         maya: "Hey! I'm Maya, your Marketing Director. Want me to create some social posts, plan a campaign, or brainstorm content ideas? Just ask!",
         scout: "I'm Scout, your Competitive Intelligence Analyst. I can brief you on competitor activity, identify opportunities, or help you craft a competitive response.",
@@ -4392,8 +4613,8 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       const greeting = agentGreetings[agentType] || 'How can I help?';
       const msgDiv = document.createElement('div');
-      msgDiv.className = 'ai-msg ai-msg-assistant';
-      msgDiv.innerHTML = '<div class="ai-msg-bubble">' + esc(greeting) + '</div>';
+      msgDiv.className = 'ai-msg assistant';
+      msgDiv.innerHTML = '<div class="ai-msg-avatar" style="background:' + agent.color + '">' + agent.name[0] + '</div><div class="ai-msg-bubble">' + esc(greeting) + '</div>';
       msgs.appendChild(msgDiv);
     }
   };
@@ -4409,16 +4630,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!msg) return;
         aiInput.value = '';
         const msgs = $('.ai-chat-messages');
+        const agent = _agentsData ? _agentsData.agents.find(a => a.agent_type === window._activeAgentType) : null;
+        const agentColor = agent ? agent.color : '#6366f1';
+        const agentInitial = agent ? agent.name[0] : '?';
         // Add user message
         const userDiv = document.createElement('div');
-        userDiv.className = 'ai-msg ai-msg-user';
+        userDiv.className = 'ai-msg user';
         userDiv.innerHTML = '<div class="ai-msg-bubble">' + esc(msg) + '</div>';
         msgs.appendChild(userDiv);
         msgs.scrollTop = msgs.scrollHeight;
         // Add loading
         const loadDiv = document.createElement('div');
-        loadDiv.className = 'ai-msg ai-msg-assistant';
-        loadDiv.innerHTML = '<div class="ai-msg-bubble"><span class="ai-typing">thinking...</span></div>';
+        loadDiv.className = 'ai-msg assistant';
+        loadDiv.innerHTML = '<div class="ai-msg-avatar" style="background:' + agentColor + '">' + agentInitial + '</div><div class="ai-msg-bubble"><span class="ai-typing">thinking...</span></div>';
         msgs.appendChild(loadDiv);
         msgs.scrollTop = msgs.scrollHeight;
         try {
@@ -4455,11 +4679,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Show agent activity in a filtered view
   window.showAgentActivity = function(agentType) {
-    // Scroll to activity feed and filter
-    const filterBtn = document.querySelector('.agent-filter-btn[data-agent="' + agentType + '"]');
-    if (filterBtn) filterBtn.click();
-    const feedSection = document.querySelector('.agents-activity-section');
-    if (feedSection) feedSection.scrollIntoView({ behavior: 'smooth' });
+    // Switch to activity tab first
+    const activityTab = document.querySelector('.agents-tab[data-tab="activity"]');
+    if (activityTab) activityTab.click();
+    // Filter
+    setTimeout(() => {
+      const filterBtn = document.querySelector('.agent-filter-btn[data-agent="' + agentType + '"]');
+      if (filterBtn) filterBtn.click();
+      const feedSection = document.querySelector('.agents-activity-section');
+      if (feedSection) feedSection.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   // ── End Agent Fleet ──

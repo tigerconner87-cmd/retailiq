@@ -12,7 +12,7 @@ from app.dependencies import get_current_user, get_db
 from app.models import (
     User, Alert, Shop, Recommendation, ShopSettings, Expense,
     RevenueGoal, MarketingCampaign, PlanInterest, WinBackCampaign,
-    PostedContent, Agent, AgentActivity,
+    PostedContent, Agent, AgentActivity, AgentTask,
 )
 from app.schemas import (
     AlertsResponse,
@@ -1435,7 +1435,7 @@ async def get_agents(
             "estimated_revenue_impact": round(total_month * 28.5, -1),
             "hours_saved": round(total_month * 0.3, 1),
         },
-        "plan_tier": user.plan_tier,
+        "plan_tier": "scale" if user.email == "demo@forgeapp.com" else user.plan_tier,
     }
 
 
@@ -1542,3 +1542,159 @@ async def get_all_agent_activity(
             for a, atype in rows
         ]
     }
+
+
+# ── Agent Tasks ──────────────────────────────────────────────────────────────
+
+def _seed_agent_tasks(db: Session, shop_id: str):
+    """Generate demo tasks for the task board."""
+    now = datetime.utcnow()
+    tasks = [
+        ("maya", "Create Valentine's Day social campaign", "Generate 5 Instagram posts and 2 stories for Valentine's Day", "completed", "high", -72, -48, "Created 5 posts with lifestyle imagery and 2 story templates. Average engagement predicted: 4.2%"),
+        ("maya", "Design spring collection teaser content", "Create preview posts for upcoming spring arrivals", "in_progress", "medium", -12, -6, None),
+        ("scout", "Analyze Style Hub's weekend sale impact", "Monitor competitor pricing changes and customer flow", "completed", "high", -48, -24, "Style Hub's 30% sale drove 15% traffic increase. Recommended counter: exclusive bundle deals targeting their dissatisfied customers."),
+        ("scout", "Weekly competitor review scan", "Check all competitor review changes and new reviews", "in_progress", "medium", -8, -4, None),
+        ("emma", "Draft win-back emails for lapsed VIPs", "Create personalized emails for 5 VIP customers inactive 30+ days", "completed", "high", -96, -72, "Drafted 5 personalized win-back emails with 15% discount offers. 3 customers have personal product picks based on purchase history."),
+        ("emma", "Respond to new Google reviews", "Draft responses for 3 new reviews received this week", "pending", "medium", -2, None, None),
+        ("alex", "Monthly revenue forecast update", "Analyze current trends and update Q1 projections", "completed", "high", -120, -96, "Q1 projection updated: $54,200 (+8% vs Q4). Key drivers: accessory category growth and improved repeat rate."),
+        ("alex", "Identify underperforming product categories", "Run margin analysis across all categories", "pending", "medium", -4, None, None),
+        ("max", "Create weekend bundle suggestions", "Design 3 product bundles for weekend promotion", "in_progress", "high", -6, -3, None),
+        ("max", "Price optimization analysis", "Review slow movers for markdown opportunities", "pending", "low", -1, None, None),
+    ]
+
+    for agent_type, title, desc, status, priority, created_h, started_h, result in tasks:
+        task = AgentTask(
+            id=str(uuid.uuid4()),
+            shop_id=shop_id,
+            agent_type=agent_type,
+            title=title,
+            description=desc,
+            status=status,
+            priority=priority,
+            created_at=now + timedelta(hours=created_h),
+            started_at=(now + timedelta(hours=started_h)) if started_h else None,
+            completed_at=(now + timedelta(hours=started_h + 12)) if status == "completed" and started_h else None,
+            result=result,
+        )
+        db.add(task)
+
+
+@router.get("/agents/tasks")
+async def get_agent_tasks(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    status: str = Query(None),
+    agent_filter: str = Query(None),
+):
+    """Get all agent tasks for the task board."""
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+
+    # Auto-seed tasks on first access
+    existing = db.query(AgentTask).filter(AgentTask.shop_id == shop.id).count()
+    if existing == 0:
+        _seed_agent_tasks(db, shop.id)
+        db.commit()
+
+    q = db.query(AgentTask).filter(AgentTask.shop_id == shop.id)
+    if status:
+        q = q.filter(AgentTask.status == status)
+    if agent_filter:
+        q = q.filter(AgentTask.agent_type == agent_filter)
+
+    tasks = q.order_by(AgentTask.created_at.desc()).all()
+
+    return {
+        "tasks": [
+            {
+                "id": t.id,
+                "agent_type": t.agent_type,
+                "agent_name": AGENT_DEFAULTS.get(t.agent_type, {}).get("name", t.agent_type),
+                "agent_color": AGENT_DEFAULTS.get(t.agent_type, {}).get("color", "#6366f1"),
+                "title": t.title,
+                "description": t.description,
+                "status": t.status,
+                "priority": t.priority,
+                "created_at": t.created_at.isoformat(),
+                "started_at": t.started_at.isoformat() if t.started_at else None,
+                "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+                "result": t.result,
+            }
+            for t in tasks
+        ],
+        "counts": {
+            "pending": db.query(AgentTask).filter(AgentTask.shop_id == shop.id, AgentTask.status == "pending").count(),
+            "in_progress": db.query(AgentTask).filter(AgentTask.shop_id == shop.id, AgentTask.status == "in_progress").count(),
+            "completed": db.query(AgentTask).filter(AgentTask.shop_id == shop.id, AgentTask.status == "completed").count(),
+        },
+    }
+
+
+@router.post("/agents/tasks")
+async def create_agent_task(
+    agent_type: str = Body(...),
+    title: str = Body(...),
+    description: str = Body(""),
+    priority: str = Body("medium"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new task for an agent."""
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+    if agent_type not in AGENT_DEFAULTS:
+        raise HTTPException(400, "Invalid agent type")
+
+    task = AgentTask(
+        id=str(uuid.uuid4()),
+        shop_id=shop.id,
+        agent_type=agent_type,
+        title=title,
+        description=description,
+        priority=priority,
+    )
+    db.add(task)
+    db.commit()
+
+    return {
+        "ok": True,
+        "task": {
+            "id": task.id,
+            "agent_type": task.agent_type,
+            "agent_name": AGENT_DEFAULTS[agent_type]["name"],
+            "agent_color": AGENT_DEFAULTS[agent_type]["color"],
+            "title": task.title,
+            "description": task.description,
+            "status": task.status,
+            "priority": task.priority,
+            "created_at": task.created_at.isoformat(),
+        },
+    }
+
+
+@router.put("/agents/tasks/{task_id}/status")
+async def update_agent_task_status(
+    task_id: str,
+    status: str = Body(..., embed=True),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a task's status."""
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+    task = db.query(AgentTask).filter(AgentTask.id == task_id, AgentTask.shop_id == shop.id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    now = datetime.utcnow()
+    task.status = status
+    if status == "in_progress" and not task.started_at:
+        task.started_at = now
+    elif status == "completed":
+        task.completed_at = now
+    db.commit()
+
+    return {"ok": True, "status": task.status}

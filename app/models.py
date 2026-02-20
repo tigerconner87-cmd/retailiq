@@ -553,3 +553,21 @@ class AgentActivity(Base):
 
     agent = relationship("Agent", back_populates="activities")
     shop = relationship("Shop")
+
+
+class AgentTask(Base):
+    __tablename__ = "agent_tasks"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False)  # maya, scout, emma, alex, max
+    title = Column(String(255), nullable=False)
+    description = Column(Text, default="")
+    status = Column(String(20), default="pending")  # pending, in_progress, completed
+    priority = Column(String(20), default="medium")  # high, medium, low
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime)
+    completed_at = Column(DateTime)
+    result = Column(Text)
+
+    shop = relationship("Shop")
