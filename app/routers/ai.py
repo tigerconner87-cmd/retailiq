@@ -477,6 +477,57 @@ def _detect_sage_action(message: str, db: Session, shop: Shop):
     return None, None
 
 
+# ── Agent Delegation Detection ────────────────────────────────────────────────
+
+def _detect_agent_delegation(message: str):
+    """Detect if user is asking to delegate work to agents. Returns dict or None."""
+    msg = message.lower().strip()
+
+    # Multi-agent commands
+    multi_patterns = [
+        r'(?:prepare|create|generate|build|run)\s+a\s+full\b',
+        r'ask\s+(?:the\s+)?(?:whole\s+)?team\s+to\b',
+        r'run\s+all\s+agents?\b',
+        r'(?:have|get|let)\s+(?:the\s+)?team\b',
+        r'(?:full|complete|comprehensive)\s+(?:marketing\s+)?push\b',
+        r'run\s+a\s+(?:full|complete|comprehensive)\b',
+        r'(?:everyone|all\s+agents?)\s+(?:should|needs?\s+to|work\s+on)\b',
+    ]
+    for pattern in multi_patterns:
+        if re.search(pattern, msg):
+            return {"type": "multi"}
+
+    # Single-agent delegation
+    agent_triggers = {
+        "maya": [r'ask\s+maya\b', r'(?:have|get|tell|let)\s+maya\b', r'maya\s*(?:,|:)\s*(?:create|write|draft|make|generate|prepare)',
+                 r'create\s+(?:some\s+)?(?:instagram|social|facebook|marketing)\s+(?:posts?|content|campaign)',
+                 r'(?:draft|write|create)\s+(?:a\s+)?(?:marketing\s+)?email\s+campaign',
+                 r'generate\s+(?:social\s+)?(?:media\s+)?content'],
+        "scout": [r'ask\s+scout\b', r'(?:have|get|tell|let)\s+scout\b', r'scout\s*(?:,|:)',
+                  r'(?:analyze|check|monitor|research)\s+(?:the\s+)?competitors?',
+                  r'competitive\s+(?:analysis|intelligence|landscape|briefing)',
+                  r'what\s+are\s+(?:my\s+)?competitors?\s+doing'],
+        "emma": [r'ask\s+emma\b', r'(?:have|get|tell|let)\s+emma\b', r'emma\s*(?:,|:)',
+                 r'(?:draft|write|create|send)\s+(?:a\s+)?win[\s-]?back',
+                 r'respond\s+to\s+(?:the\s+)?(?:customer\s+)?reviews?',
+                 r'(?:check|analyze)\s+(?:at[\s-]?risk|churning)\s+customers?'],
+        "alex": [r'ask\s+alex\b', r'(?:have|get|tell|let)\s+alex\b', r'alex\s*(?:,|:)',
+                 r'(?:create|give|prepare)\s+(?:a\s+)?(?:daily\s+)?(?:business\s+)?briefing',
+                 r'(?:strategic|strategy)\s+(?:analysis|recommendation|plan)',
+                 r'(?:revenue\s+)?forecast'],
+        "max": [r'ask\s+max\b', r'(?:have|get|tell|let)\s+max\b', r'max\s*(?:,|:)',
+                r'(?:suggest|create|recommend)\s+(?:product\s+)?bundles?',
+                r'(?:optimize|adjust|review)\s+(?:the\s+)?pricing',
+                r'upsell\s+(?:strategy|suggestions?|opportunities?)'],
+    }
+    for agent_type, patterns in agent_triggers.items():
+        for pattern in patterns:
+            if re.search(pattern, msg):
+                return {"type": "single", "agent": agent_type, "instructions": message}
+
+    return None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/chat")
@@ -489,6 +540,65 @@ async def ai_chat(
     shop = _get_shop(db, user)
     if not shop:
         return {"response": "Please complete onboarding first.", "source": "error", "remaining": 0}
+
+    # ── Agent delegation detection (before action detection) ──
+    delegation = _detect_agent_delegation(message)
+    if delegation:
+        api_key = _get_api_key(db, shop)
+        if api_key:
+            try:
+                from app.services.orchestrator import TaskOrchestrator
+                context = _get_shop_context(db, shop, user)
+                orch = TaskOrchestrator(db, shop, api_key, context)
+                d_type = delegation["type"]
+                if d_type == "multi":
+                    result = await orch.process_command(message)
+                else:
+                    result = await orch.execute_single_agent(delegation["agent"], delegation.get("instructions", message))
+                summary = result.get("summary", "Done!")
+                db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
+                db.add(ChatMessage(shop_id=shop.id, role="assistant", content=summary))
+                db.commit()
+                return {"response": summary, "source": "agent_delegation", "action_taken": True, "remaining": get_remaining_requests(user.id)}
+            except Exception as e:
+                log.warning("Agent delegation failed, falling through to normal chat: %s", e)
+
+    # ── Email sending via Sage ──
+    email_match = re.search(r'(?:email|send)\s+(?:me\s+)?(?:a\s+)?(?:summary|report|briefing|update)', message.lower())
+    if email_match and user.email:
+        api_key = _get_api_key(db, shop)
+        if api_key:
+            try:
+                from app.services.orchestrator import TaskOrchestrator
+                from app.services.email_service import email_service
+                context = _get_shop_context(db, shop, user)
+                orch = TaskOrchestrator(db, shop, api_key, context)
+                result = await orch.execute_single_agent("alex", "Create a concise executive summary of today's business performance with key metrics and action items.")
+                summary_text = ""
+                for out in result.get("outputs", []):
+                    summary_text += out.get("content", "") + "\n\n"
+                if summary_text.strip():
+                    email_result = email_service.send_marketing_email(
+                        user.email, f"{shop.name} - Daily Summary", summary_text.strip(), shop.name
+                    )
+                    if email_result["success"]:
+                        from app.models import SentEmail
+                        db.add(SentEmail(
+                            id=str(_uuid.uuid4()), shop_id=shop.id, to_email=user.email,
+                            subject=f"{shop.name} - Daily Summary", body_preview=summary_text[:500],
+                            template="marketing", status="sent", sent_by="sage",
+                        ))
+                        response_msg = f"Done! I had Alex generate a performance summary and sent it to **{user.email}**. Check your inbox!"
+                    else:
+                        response_msg = f"Alex generated the summary but I couldn't send the email: {email_result.get('error', 'Unknown error')}. Make sure SMTP is configured in Settings."
+                else:
+                    response_msg = "I tried to generate a summary but didn't get any content. Try again in a moment."
+                db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
+                db.add(ChatMessage(shop_id=shop.id, role="assistant", content=response_msg))
+                db.commit()
+                return {"response": response_msg, "source": "action", "action_taken": True, "remaining": get_remaining_requests(user.id)}
+            except Exception as e:
+                log.warning("Email summary failed, falling through to normal chat: %s", e)
 
     # Check if this is an action request (set goal, add competitor, etc.)
     action_result, action_message = _detect_sage_action(message, db, shop)

@@ -7,7 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.database import Base, engine
-from app.routers import ai, auth, dashboard_api, data_hub, pages
+from app.routers import agents, ai, auth, dashboard_api, data_hub, email, pages
 
 log = logging.getLogger(__name__)
 
@@ -93,10 +93,12 @@ def on_startup():
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Routers
+app.include_router(agents.router)
 app.include_router(ai.router)
 app.include_router(auth.router)
 app.include_router(dashboard_api.router)
 app.include_router(data_hub.router)
+app.include_router(email.router)
 app.include_router(pages.router)
 
 

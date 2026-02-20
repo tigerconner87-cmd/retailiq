@@ -571,3 +571,115 @@ class AgentTask(Base):
     result = Column(Text)
 
     shop = relationship("Shop")
+
+
+# ── Autonomous Agent Operations ──────────────────────────────────────────────
+
+class TaskGroup(Base):
+    __tablename__ = "task_groups"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    command = Column(Text, nullable=False)
+    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    agent_count = Column(Integer, default=0)
+    completed_count = Column(Integer, default=0)
+    summary = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime)
+
+    shop = relationship("Shop")
+    tasks = relationship("OrchestratedTask", back_populates="group", cascade="all, delete-orphan")
+
+
+class OrchestratedTask(Base):
+    __tablename__ = "orchestrated_tasks"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    group_id = Column(String(36), ForeignKey("task_groups.id"), nullable=False, index=True)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False)
+    instructions = Column(Text, nullable=False)
+    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    result_summary = Column(Text)
+    tokens_used = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime)
+    completed_at = Column(DateTime)
+
+    group = relationship("TaskGroup", back_populates="tasks")
+    shop = relationship("Shop")
+
+
+class AgentConfig(Base):
+    __tablename__ = "agent_configs"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False)
+    is_enabled = Column(Boolean, default=True)
+    custom_instructions = Column(Text, default="")
+    settings = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    shop = relationship("Shop")
+
+
+class AgentOutput(Base):
+    __tablename__ = "agent_outputs"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False, index=True)
+    run_id = Column(String(36), ForeignKey("agent_runs.id"), nullable=True)
+    output_type = Column(String(50), nullable=False)  # post, email, analysis, strategy, bundle, etc.
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=False)
+    metadata_json = Column(JSON, default=dict)
+    rating = Column(Integer)  # 1-5 stars
+    is_saved = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")
+    run = relationship("AgentRun", back_populates="outputs")
+
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False, index=True)
+    trigger = Column(String(50), default="manual")  # manual, command, scheduled, chat
+    instructions = Column(Text, default="")
+    status = Column(String(20), default="running")  # running, completed, failed
+    output_count = Column(Integer, default=0)
+    tokens_used = Column(Integer, default=0)
+    duration_ms = Column(Integer, default=0)
+    error_message = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime)
+
+    shop = relationship("Shop")
+    outputs = relationship("AgentOutput", back_populates="run")
+
+
+# ── Sent Email Log ──────────────────────────────────────────────────────────
+
+class SentEmail(Base):
+    __tablename__ = "sent_emails"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    to_email = Column(String(255), nullable=False)
+    subject = Column(String(500), nullable=False)
+    body_preview = Column(Text, default="")
+    template = Column(String(50), default="plain")  # plain, marketing, test
+    status = Column(String(20), default="sent")  # sent, failed
+    error_message = Column(Text)
+    sent_by = Column(String(50), default="user")  # user, maya, emma, sage, system
+    agent_output_id = Column(String(36), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")

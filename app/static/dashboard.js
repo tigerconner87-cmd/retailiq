@@ -4158,6 +4158,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let _agentsData = null;
   let _agentTasksData = null;
+  let _agentOutputsData = null;
+  let _commandRunning = false;
+  let _currentOutputId = null;
 
   function timeAgo(dateStr) {
     const d = new Date(dateStr);
@@ -4179,6 +4182,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const panel = $('#agentsPanel-' + tab.dataset.tab);
       if (panel) panel.classList.add('active');
       // Lazy load tab content
+      if (tab.dataset.tab === 'outputs' && !_agentOutputsData) loadAgentOutputs();
       if (tab.dataset.tab === 'tasks' && !_agentTasksData) loadAgentTasks();
       if (tab.dataset.tab === 'performance') loadAgentPerformance();
     };
@@ -4246,6 +4250,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           ${agent.last_action ? '<div class="agent-last-action">' + esc(agent.last_action) + ' <span class="agent-time">' + timeAgo(agent.last_action_at) + '</span></div>' : ''}
           <div class="agent-card-actions">
+            <button class="agent-btn agent-btn-run" id="agentRunBtn-${agent.agent_type}" onclick="runSingleAgent('${agent.agent_type}')">Run Now</button>
             <button class="agent-btn agent-btn-chat" onclick="openAgentChat('${agent.agent_type}')">Chat</button>
             <button class="agent-btn agent-btn-config" onclick="openAgentConfig('${agent.agent_type}')">Configure</button>
             <button class="agent-btn agent-btn-activity" onclick="showAgentActivity('${agent.agent_type}')">Activity</button>
@@ -4707,7 +4712,418 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 100);
   };
 
+  // ── Command Bar ──
+  const cmdInput = $('#agentCommandInput');
+  if (cmdInput) {
+    cmdInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitAgentCommand(); }
+    });
+  }
+
+  window.submitAgentCommand = async function() {
+    const input = $('#agentCommandInput');
+    if (!input) return;
+    const command = input.value.trim();
+    if (!command || _commandRunning) return;
+
+    _commandRunning = true;
+    input.disabled = true;
+    const submitBtn = $('#agentCommandSubmit');
+    if (submitBtn) submitBtn.disabled = true;
+
+    const progress = $('#agentCommandProgress');
+    const progressFill = $('#agentProgressFill');
+    const progressText = $('#agentProgressText');
+    if (progress) { progress.hidden = false; progress.style.display = 'flex'; }
+    if (progressFill) progressFill.style.width = '20%';
+    if (progressText) progressText.textContent = 'Sage is coordinating your team...';
+
+    try {
+      // Animate progress
+      let pct = 20;
+      const pInterval = setInterval(() => {
+        pct = Math.min(pct + Math.random() * 10, 90);
+        if (progressFill) progressFill.style.width = pct + '%';
+      }, 800);
+
+      const res = await fetch('/api/agents/orchestrate', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      });
+      const data = await res.json();
+
+      clearInterval(pInterval);
+      if (progressFill) progressFill.style.width = '100%';
+      if (progressText) progressText.textContent = 'Complete!';
+
+      setTimeout(() => {
+        if (progress) { progress.hidden = true; progress.style.display = 'none'; }
+      }, 1500);
+
+      if (data.error) {
+        showToast(data.error, 'error');
+      } else {
+        showToast('Team completed ' + (data.agent_count || 0) + ' task(s)!', 'success');
+        input.value = '';
+        // Refresh feeds
+        loadAgentActivityFeed('');
+        _agentOutputsData = null;
+        _agentTasksData = null;
+        // Load metrics
+        loadAgentMetricsBar();
+      }
+    } catch (err) {
+      showToast('Command failed: ' + err.message, 'error');
+      if (progress) { progress.hidden = true; progress.style.display = 'none'; }
+    }
+
+    _commandRunning = false;
+    input.disabled = false;
+    if (submitBtn) submitBtn.disabled = false;
+  };
+
+  // ── Run Single Agent ──
+  window.runSingleAgent = async function(agentType) {
+    const btn = $('#agentRunBtn-' + agentType);
+    if (btn) { btn.classList.add('running'); btn.textContent = 'Running...'; btn.disabled = true; }
+
+    try {
+      const res = await fetch('/api/agents/' + agentType + '/run', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructions: '' }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        showToast(data.error, 'error');
+      } else {
+        const name = data.agent_name || agentType;
+        const outCount = (data.outputs || []).length;
+        showToast(name + ' produced ' + outCount + ' output(s)!', 'success');
+        loadAgentActivityFeed('');
+        _agentOutputsData = null;
+        _agentTasksData = null;
+        loadAgentMetricsBar();
+      }
+    } catch (err) {
+      showToast('Run failed: ' + err.message, 'error');
+    }
+
+    if (btn) { btn.classList.remove('running'); btn.textContent = 'Run Now'; btn.disabled = false; }
+  };
+
+  // ── Agent Outputs Grid ──
+  window.loadAgentOutputs = async function() {
+    const grid = $('#agentOutputsGrid');
+    if (!grid) return;
+    grid.innerHTML = '<div class="agent-feed-loading">Loading outputs...</div>';
+
+    const agentFilter = ($('#aoAgentFilter') || {}).value || 'all';
+    const typeFilter = ($('#aoTypeFilter') || {}).value || '';
+
+    try {
+      let url = '/api/agents/' + agentFilter + '/outputs?limit=40';
+      if (typeFilter) url += '&output_type=' + typeFilter;
+      const res = await fetch(url, { credentials: 'same-origin' });
+      const data = await res.json();
+      _agentOutputsData = data;
+
+      if (!data.outputs || data.outputs.length === 0) {
+        grid.innerHTML = '<div class="agent-feed-empty">No outputs yet. Run an agent to generate content!</div>';
+        return;
+      }
+
+      const agentNames = { maya: 'Maya', scout: 'Scout', emma: 'Emma', alex: 'Alex', max: 'Max' };
+      grid.innerHTML = data.outputs.map(o => `
+        <div class="agent-output-card" style="--agent-color:${o.agent_color}" onclick="showAgentOutput('${o.id}')">
+          <div class="agent-output-card-top">
+            <span class="agent-output-type-badge" style="background:${o.agent_color}20;color:${o.agent_color}">${o.output_type.replace(/_/g, ' ')}</span>
+            <span class="agent-output-agent">${agentNames[o.agent_type] || o.agent_type}</span>
+          </div>
+          <div class="agent-output-card-title">${esc(o.title)}</div>
+          <div class="agent-output-card-preview">${esc(o.content.substring(0, 120))}${o.content.length > 120 ? '...' : ''}</div>
+          <div class="agent-output-card-footer">
+            <span class="agent-output-card-time">${timeAgo(o.created_at)}</span>
+            ${o.rating ? '<span class="agent-output-card-rating">' + '&#9733;'.repeat(o.rating) + '</span>' : ''}
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      grid.innerHTML = '<div class="agent-feed-empty">Failed to load outputs.</div>';
+    }
+  };
+
+  // ── Show Agent Output Modal ──
+  window.showAgentOutput = function(outputId) {
+    if (!_agentOutputsData) return;
+    const output = _agentOutputsData.outputs.find(o => o.id === outputId);
+    if (!output) return;
+
+    _currentOutputId = outputId;
+
+    const modal = $('#agentOutputModal');
+    if (!modal) return;
+    modal.hidden = false;
+    modal.style.display = 'flex';
+
+    const badge = $('#aoModalBadge');
+    if (badge) {
+      badge.textContent = output.output_type.replace(/_/g, ' ');
+      badge.style.background = output.agent_color + '20';
+      badge.style.color = output.agent_color;
+    }
+    const title = $('#aoModalTitle');
+    if (title) title.textContent = output.title;
+
+    const body = $('#aoModalBody');
+    if (body) body.innerHTML = '<pre class="agent-output-content">' + esc(output.content) + '</pre>';
+
+    // Set star rating
+    $$('.ao-star').forEach(star => {
+      const val = parseInt(star.dataset.star);
+      star.classList.toggle('active', output.rating && val <= output.rating);
+    });
+
+    // Show "Send Email" button for email-related output types
+    const sendBtn = $('#aoSendEmailBtn');
+    if (sendBtn) {
+      const emailTypes = ['winback_email', 'email_campaign', 'email', 'review_response'];
+      sendBtn.style.display = emailTypes.includes(output.output_type) ? 'inline-flex' : 'none';
+    }
+  };
+
+  // ── Rate Output ──
+  window.rateAgentOutput = async function(rating) {
+    if (!_currentOutputId) return;
+    try {
+      await fetch('/api/agents/output/' + _currentOutputId + '/rate', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      });
+      $$('.ao-star').forEach(star => {
+        const val = parseInt(star.dataset.star);
+        star.classList.toggle('active', val <= rating);
+      });
+      // Update local data
+      if (_agentOutputsData) {
+        const o = _agentOutputsData.outputs.find(o => o.id === _currentOutputId);
+        if (o) o.rating = rating;
+      }
+      showToast('Rating saved!', 'success');
+    } catch (err) {
+      showToast('Failed to save rating', 'error');
+    }
+  };
+
+  // ── Copy Output ──
+  window.copyAgentOutput = function() {
+    if (!_currentOutputId || !_agentOutputsData) return;
+    const output = _agentOutputsData.outputs.find(o => o.id === _currentOutputId);
+    if (!output) return;
+    navigator.clipboard.writeText(output.content).then(() => {
+      showToast('Copied to clipboard!', 'success');
+    }).catch(() => {
+      showToast('Failed to copy', 'error');
+    });
+  };
+
+  // ── Metrics Bar (enhanced) ──
+  async function loadAgentMetricsBar() {
+    try {
+      const res = await fetch('/api/agents/metrics', { credentials: 'same-origin' });
+      const data = await res.json();
+      if (data.error) return;
+      const el = (id, val) => { const e = $('#' + id); if (e) e.textContent = val; };
+      el('amTotalTasks', data.total_runs || 0);
+      el('amContent', data.total_outputs || 0);
+      el('amOpportunities', data.total_commands || 0);
+      el('amRevenue', '$' + (data.estimated_value || 0).toLocaleString());
+      el('amHours', '~' + (data.hours_saved || 0) + 'h');
+    } catch (err) {
+      // silent
+    }
+  }
+
+  // Load metrics on agents page load
+  loadAgentMetricsBar();
+
   // ── End Agent Fleet ──
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // EMAIL SENDING
+  // ══════════════════════════════════════════════════════════════════════════
+
+  window.sendAgentOutputEmail = function() {
+    if (!_currentOutputId || !_agentOutputsData) return;
+    const output = _agentOutputsData.outputs.find(o => o.id === _currentOutputId);
+    if (!output) return;
+
+    const agentNames = { maya: 'Maya', scout: 'Scout', emma: 'Emma', alex: 'Alex', max: 'Max' };
+    const agentName = agentNames[output.agent_type] || output.agent_type;
+
+    // Open a send-email confirmation modal
+    openForgeModal('Send Email', `
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px;color:var(--text2)">To:</label>
+          <input type="email" id="sendEmailTo" class="settings-input" placeholder="customer@example.com" style="width:100%">
+        </div>
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px;color:var(--text2)">Subject:</label>
+          <input type="text" id="sendEmailSubject" class="settings-input" value="${esc(output.title)}" style="width:100%">
+        </div>
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px;color:var(--text2)">Preview:</label>
+          <div style="background:var(--bg3);padding:12px;border-radius:8px;max-height:200px;overflow-y:auto;font-size:13px;white-space:pre-wrap;color:var(--text2)">${esc(output.content)}</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn-secondary" onclick="closeForgeModal()">Cancel</button>
+          <button class="btn-primary" onclick="confirmSendEmail('${output.id}', '${output.agent_type}')">Send Now</button>
+        </div>
+      </div>
+    `);
+  };
+
+  window.confirmSendEmail = async function(outputId, agentType) {
+    const to = ($('#sendEmailTo') || {}).value;
+    const subject = ($('#sendEmailSubject') || {}).value;
+    if (!to || !subject) {
+      showToast('Please fill in recipient and subject', 'error');
+      return;
+    }
+    const output = _agentOutputsData ? _agentOutputsData.outputs.find(o => o.id === outputId) : null;
+    if (!output) return;
+
+    try {
+      const res = await fetch('/api/email/send', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: to,
+          subject: subject,
+          body: output.content,
+          template: 'marketing',
+          sent_by: agentType,
+          agent_output_id: outputId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Email sent to ' + to + '!', 'success');
+        closeForgeModal();
+      } else {
+        showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
+      }
+    } catch (err) {
+      showToast('Send failed: ' + err.message, 'error');
+    }
+  };
+
+  window.testEmailConnection = async function() {
+    const resultEl = $('#emailTestResult');
+    const badge = $('#emailStatusBadge');
+    const btn = $('#testEmailBtn');
+    const userEmail = ($('#setSmtpUser') || {}).value;
+    if (!userEmail) {
+      if (resultEl) resultEl.textContent = 'Enter your email address first.';
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+    if (resultEl) resultEl.textContent = 'Sending test email...';
+
+    try {
+      const res = await fetch('/api/email/test', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: userEmail }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (resultEl) resultEl.innerHTML = '<span style="color:#10b981">Test email sent! Check your inbox.</span>';
+        if (badge) { badge.textContent = 'Connected'; badge.style.background = '#10b98120'; badge.style.color = '#10b981'; }
+      } else {
+        if (resultEl) resultEl.innerHTML = '<span style="color:#ef4444">Failed: ' + esc(data.error || 'Unknown error') + '</span>';
+        if (badge) { badge.textContent = 'Error'; badge.style.background = '#ef444420'; badge.style.color = '#ef4444'; }
+      }
+    } catch (err) {
+      if (resultEl) resultEl.innerHTML = '<span style="color:#ef4444">Error: ' + esc(err.message) + '</span>';
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Test Email'; }
+  };
+
+  // Load email status and history on settings load
+  async function loadEmailSettings() {
+    try {
+      const [statusRes, historyRes] = await Promise.all([
+        fetch('/api/email/status', { credentials: 'same-origin' }),
+        fetch('/api/email/history?limit=20', { credentials: 'same-origin' }),
+      ]);
+      const status = await statusRes.json();
+      const history = await historyRes.json();
+
+      // Status badge
+      const badge = $('#emailStatusBadge');
+      if (badge) {
+        if (status.configured) {
+          badge.textContent = 'Connected';
+          badge.style.background = '#10b98120';
+          badge.style.color = '#10b981';
+        } else {
+          badge.textContent = 'Not configured';
+          badge.style.background = '#f59e0b20';
+          badge.style.color = '#f59e0b';
+        }
+      }
+
+      // Stats
+      const statsEl = $('#emailHistoryStats');
+      if (statsEl && status) {
+        statsEl.innerHTML = `
+          <div style="padding:8px 16px;background:var(--bg3);border-radius:8px;font-size:13px">
+            <strong>${status.sent_this_month || 0}</strong> sent this month
+          </div>
+          <div style="padding:8px 16px;background:var(--bg3);border-radius:8px;font-size:13px">
+            <strong>${status.failed_this_month || 0}</strong> failed
+          </div>
+        `;
+      }
+
+      // History table
+      const tableEl = $('#emailHistoryTable');
+      if (tableEl && history.emails) {
+        if (history.emails.length === 0) {
+          tableEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0">No emails sent yet.</div>';
+        } else {
+          tableEl.innerHTML = '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
+            '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:8px">Date</th><th style="text-align:left;padding:8px">To</th><th style="text-align:left;padding:8px">Subject</th><th style="text-align:left;padding:8px">Sent By</th><th style="text-align:left;padding:8px">Status</th></tr>' +
+            history.emails.map(e => `
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px;color:var(--text3)">${timeAgo(e.created_at)}</td>
+                <td style="padding:8px">${esc(e.to_email)}</td>
+                <td style="padding:8px">${esc(e.subject)}</td>
+                <td style="padding:8px"><span style="text-transform:capitalize">${esc(e.sent_by)}</span></td>
+                <td style="padding:8px"><span style="color:${e.status === 'sent' ? '#10b981' : '#ef4444'}">${e.status}</span></td>
+              </tr>
+            `).join('') +
+            '</table>';
+        }
+      }
+    } catch (err) {
+      // silent
+    }
+  }
+
+  // Load email settings whenever settings section becomes visible
+  const _emailSettingsObserver = new MutationObserver(() => {
+    const sec = $('#sec-settings');
+    if (sec && sec.classList.contains('active')) {
+      loadEmailSettings();
+    }
+  });
+  const _mainContent = $('#content');
+  if (_mainContent) _emailSettingsObserver.observe(_mainContent, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {
@@ -4960,6 +5376,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateConnectedAccountStatus('#caFacebook', '#caFacebookStatus', data.facebook_url, 'facebook');
     updateConnectedAccountStatus('#caTiktok', '#caTiktokStatus', data.tiktok_handle, 'tiktok');
     updateConnectedAccountStatus('#caEmail', '#caEmailStatus', data.email_list_size ? String(data.email_list_size) : '', 'email');
+    // Load email settings
+    loadEmailSettings();
   };
 
   // ── Enhanced save settings with social accounts ──
