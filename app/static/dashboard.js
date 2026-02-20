@@ -463,9 +463,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const tbody = $('#productsTableFull tbody');
-    tbody.innerHTML = data.top_products.map((p, i) =>
-      `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.category || '-')}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td><td>${fmt(p.avg_price)}</td><td>${p.margin != null ? p.margin + '%' : '-'}</td></tr>`
-    ).join('');
+    tbody.innerHTML = data.top_products.map((p, i) => {
+      const pEditJson = esc(JSON.stringify({id:p.id,name:p.name,price:p.avg_price,cost:p.cost||null,category:p.category,sku:p.sku||'',stock_quantity:p.stock_quantity||null}));
+      return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.category || '-')}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td><td>${fmt(p.avg_price)}</td><td>${p.margin != null ? p.margin + '%' : '-'}</td><td style="white-space:nowrap"><button class="edit-icon-btn" onclick="openProductModal(JSON.parse(this.dataset.edit))" data-edit="${pEditJson}" title="Edit">&#9998;</button><button class="delete-icon-btn" onclick="deleteProduct('${p.id}','${esc(p.name)}')" title="Remove">&times;</button></td></tr>`;
+    }).join('');
 
     loadProductRecommendations();
     loadProductPerformance(data.top_products);
@@ -531,9 +532,10 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#custAvgRev').textContent = fmt(data.avg_revenue_per_customer);
 
     const tbody = $('#topCustomersTable tbody');
-    tbody.innerHTML = data.top_customers.map((c, i) =>
-      `<tr><td>${i + 1}</td><td>Customer ${c.id.slice(0, 8)}</td><td>${c.visit_count}</td><td>${fmt(c.total_spent)}</td><td>${c.last_seen ? c.last_seen.split('T')[0] : '-'}</td></tr>`
-    ).join('');
+    tbody.innerHTML = data.top_customers.map((c, i) => {
+      const cEditJson = esc(JSON.stringify({id:c.id,email:c.email||'',segment:c.segment||'regular'}));
+      return `<tr><td>${i + 1}</td><td>Customer ${c.id.slice(0, 8)}</td><td>${c.visit_count}</td><td>${fmt(c.total_spent)}</td><td>${c.last_seen ? c.last_seen.split('T')[0] : '-'}</td><td><button class="edit-icon-btn" onclick="openCustomerModal(JSON.parse(this.dataset.edit))" data-edit="${cEditJson}" title="Edit">&#9998;</button></td></tr>`;
+    }).join('');
 
     // Load customer segments visualization
     loadCustomerSegments();
@@ -656,7 +658,8 @@ document.addEventListener('DOMContentLoaded', () => {
               ${esc(c.name)}
               ${c.is_own ? '<span class="own-tag">YOUR SHOP</span>' : ''}
             </div>
-            ${!c.is_own ? `<span class="threat-badge ${(c.threat_level || '').toLowerCase()}">${esc(c.threat_level)}</span>` : ''}
+            ${!c.is_own ? `<span class="threat-badge ${(c.threat_level || '').toLowerCase()}">${esc(c.threat_level)}</span>
+              <button class="delete-icon-btn" onclick="deleteCompetitor('${c.id}','${esc(c.name)}')" title="Remove" style="margin-left:4px">&times;</button>` : ''}
           </div>
           <div class="comp-card-rating">
             <span class="rating-num">${c.rating || '--'}</span>
@@ -1543,11 +1546,16 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = goals.goals.map(g => {
           const valueStr = g.unit === '$' ? fmt(g.current_value) : fmtInt(g.current_value);
           const targetStr = g.unit === '$' ? fmt(g.target_value) : fmtInt(g.target_value);
+          const editJson = esc(JSON.stringify({id:g.id,title:g.title,target_value:g.target_value,unit:g.unit,period:g.period,period_key:g.period_key,goal_type:g.goal_type}));
           return `
             <div class="goal-card">
               <div class="goal-card-header">
                 <div class="goal-card-title">${esc(g.title)}</div>
-                <span class="goal-pacing ${g.pacing}">${g.pacing === 'on_track' ? 'On Track' : g.pacing === 'behind' ? 'Behind' : 'At Risk'}</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="goal-pacing ${g.pacing}">${g.pacing === 'on_track' ? 'On Track' : g.pacing === 'behind' ? 'Behind' : 'At Risk'}</span>
+                  <button class="edit-icon-btn" onclick="openGoalModal(JSON.parse(this.dataset.edit))" data-edit="${editJson}" title="Edit">&#9998;</button>
+                  <button class="delete-icon-btn" onclick="deleteGoal('${g.id}','${esc(g.title)}')" title="Delete">&times;</button>
+                </div>
               </div>
               <div class="goal-value">${valueStr} <span class="goal-target">/ ${targetStr}</span></div>
               <div class="goal-progress">
@@ -1621,25 +1629,29 @@ document.addEventListener('DOMContentLoaded', () => {
       if (strategy.strategies.length === 0) {
         container.innerHTML = '<div class="empty-state"><p>No quarterly strategies set yet.</p></div>';
       } else {
-        container.innerHTML = strategy.strategies.map(s => `
+        container.innerHTML = strategy.strategies.map(s => {
+          const sEditJson = esc(JSON.stringify({id:s.id,quarter:s.quarter,title:s.title,objectives:s.objectives,key_results:s.key_results,notes:s.notes,status:s.status}));
+          return `
           <div class="strategy-card">
-            <div class="strategy-quarter">${esc(s.quarter)} <span class="strategy-status ${s.status}">${s.status}</span></div>
+            <div class="strategy-quarter">${esc(s.quarter)} <span class="strategy-status ${s.status}">${s.status}</span>
+              <button class="edit-icon-btn" onclick="openStrategyModal(JSON.parse(this.dataset.edit))" data-edit="${sEditJson}" title="Edit" style="margin-left:auto">&#9998;</button>
+            </div>
             <div class="strategy-title">${esc(s.title)}</div>
             ${s.objectives && s.objectives.length > 0 ? `
               <div class="strategy-section">
                 <div class="strategy-section-label">Objectives</div>
-                <ul class="strategy-list">${s.objectives.map(o => `<li>${esc(o)}</li>`).join('')}</ul>
+                <ul class="strategy-list">${s.objectives.map(o => '<li>' + esc(o) + '</li>').join('')}</ul>
               </div>
             ` : ''}
             ${s.key_results && s.key_results.length > 0 ? `
               <div class="strategy-section">
                 <div class="strategy-section-label">Key Results</div>
-                <ul class="strategy-list">${s.key_results.map(kr => `<li>${esc(kr)}</li>`).join('')}</ul>
+                <ul class="strategy-list">${s.key_results.map(kr => '<li>' + esc(kr) + '</li>').join('')}</ul>
               </div>
             ` : ''}
-            ${s.notes ? `<div class="strategy-section"><div class="strategy-section-label">Notes</div><p style="font-size:13px;color:var(--text2);line-height:1.6;">${esc(s.notes)}</p></div>` : ''}
+            ${s.notes ? '<div class="strategy-section"><div class="strategy-section-label">Notes</div><p style="font-size:13px;color:var(--text2);line-height:1.6;">' + esc(s.notes) + '</p></div>' : ''}
           </div>
-        `).join('');
+        `}).join('');
       }
     }
   }
@@ -5063,6 +5075,515 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container.querySelector('.posting-tracker')) {
       container.innerHTML = trackerHtml + existingContent;
     }
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // UNIVERSAL EDIT MODAL SYSTEM + CRUD OPERATIONS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── Helper: fetch with JSON body ──
+  async function apiFetch(path, method, body) {
+    try {
+      const res = await fetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
+      });
+      if (res.status === 401) { window.location.href = '/login'; return null; }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || 'Something went wrong', 'error');
+        return null;
+      }
+      return await res.json();
+    } catch (e) {
+      console.error('[Forge] apiFetch error', e);
+      showToast('Network error', 'error');
+      return null;
+    }
+  }
+
+  // ── Modal open / close ──
+  let _forgeModalSaveHandler = null;
+
+  window.closeForgeModal = function() {
+    const m = document.getElementById('forgeEditModal');
+    if (m) { m.hidden = true; m.style.display = 'none'; }
+  };
+
+  window.closeForgeConfirm = function() {
+    const m = document.getElementById('forgeConfirmModal');
+    if (m) { m.hidden = true; m.style.display = 'none'; }
+  };
+
+  function openForgeModal(title, bodyHtml, saveCallback) {
+    const m = document.getElementById('forgeEditModal');
+    document.getElementById('forgeModalTitle').textContent = title;
+    document.getElementById('forgeModalBody').innerHTML = bodyHtml;
+    const saveBtn = document.getElementById('forgeModalSave');
+    // Remove old listener
+    if (_forgeModalSaveHandler) saveBtn.removeEventListener('click', _forgeModalSaveHandler);
+    _forgeModalSaveHandler = saveCallback;
+    saveBtn.addEventListener('click', _forgeModalSaveHandler);
+    m.hidden = false;
+    m.style.display = '';
+    // Focus first input
+    const firstInput = m.querySelector('input,textarea,select');
+    if (firstInput) setTimeout(() => firstInput.focus(), 100);
+  }
+
+  let _forgeConfirmYesHandler = null;
+
+  function openForgeConfirm(title, message, onConfirm) {
+    const m = document.getElementById('forgeConfirmModal');
+    document.getElementById('forgeConfirmTitle').textContent = title;
+    document.getElementById('forgeConfirmMsg').textContent = message;
+    const yesBtn = document.getElementById('forgeConfirmYes');
+    if (_forgeConfirmYesHandler) yesBtn.removeEventListener('click', _forgeConfirmYesHandler);
+    _forgeConfirmYesHandler = async function() {
+      await onConfirm();
+      window.closeForgeConfirm();
+    };
+    yesBtn.addEventListener('click', _forgeConfirmYesHandler);
+    m.hidden = false;
+    m.style.display = '';
+  }
+
+  // Helper: get current quarter string
+  function currentQuarter() {
+    const now = new Date();
+    const q = Math.ceil((now.getMonth() + 1) / 3);
+    return now.getFullYear() + '-Q' + q;
+  }
+
+  // Helper: get current period key
+  function currentPeriodKey() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // GOAL MODALS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  window.openGoalModal = function(editData) {
+    const isEdit = !!editData;
+    const title = isEdit ? 'Edit Goal' : 'Add New Goal';
+    const html = `
+      <div class="fm-field">
+        <label>Goal Title</label>
+        <input id="fmGoalTitle" type="text" value="${isEdit ? esc(editData.title) : ''}" placeholder="e.g. Monthly Revenue Target">
+      </div>
+      <div class="fm-row">
+        <div class="fm-field">
+          <label>Target Value</label>
+          <input id="fmGoalTarget" type="number" value="${isEdit ? editData.target_value : ''}" placeholder="50000">
+        </div>
+        <div class="fm-field">
+          <label>Unit</label>
+          <select id="fmGoalUnit">
+            <option value="$" ${!isEdit || editData.unit === '$' ? 'selected' : ''}>$ (Revenue)</option>
+            <option value="units" ${isEdit && editData.unit === 'units' ? 'selected' : ''}>Units</option>
+            <option value="%" ${isEdit && editData.unit === '%' ? 'selected' : ''}>%</option>
+          </select>
+        </div>
+      </div>
+      <div class="fm-row">
+        <div class="fm-field">
+          <label>Period</label>
+          <select id="fmGoalPeriod">
+            <option value="monthly" ${!isEdit || editData.period === 'monthly' ? 'selected' : ''}>Monthly</option>
+            <option value="quarterly" ${isEdit && editData.period === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+            <option value="yearly" ${isEdit && editData.period === 'yearly' ? 'selected' : ''}>Yearly</option>
+          </select>
+        </div>
+        <div class="fm-field">
+          <label>Period Key</label>
+          <input id="fmGoalPeriodKey" type="text" value="${isEdit ? esc(editData.period_key) : currentPeriodKey()}" placeholder="2026-02">
+        </div>
+      </div>
+      <div class="fm-field">
+        <label>Type</label>
+        <select id="fmGoalType">
+          <option value="revenue" ${!isEdit || editData.goal_type === 'revenue' ? 'selected' : ''}>Revenue</option>
+          <option value="transactions" ${isEdit && editData.goal_type === 'transactions' ? 'selected' : ''}>Transactions</option>
+          <option value="customers" ${isEdit && editData.goal_type === 'customers' ? 'selected' : ''}>New Customers</option>
+        </select>
+      </div>
+    `;
+    openForgeModal(title, html, async function() {
+      const goalTitle = document.getElementById('fmGoalTitle').value.trim();
+      const target = parseFloat(document.getElementById('fmGoalTarget').value);
+      if (!goalTitle || isNaN(target)) { showToast('Please fill in all fields', 'warning'); return; }
+      const body = {
+        title: goalTitle,
+        target_value: target,
+        unit: document.getElementById('fmGoalUnit').value,
+        period: document.getElementById('fmGoalPeriod').value,
+        period_key: document.getElementById('fmGoalPeriodKey').value,
+        goal_type: document.getElementById('fmGoalType').value,
+      };
+      let result;
+      if (isEdit) {
+        result = await apiFetch('/api/dashboard/goals/' + editData.id, 'PUT', body);
+      } else {
+        result = await apiFetch('/api/dashboard/goals', 'POST', body);
+      }
+      if (result && result.ok) {
+        showToast(isEdit ? 'Goal updated!' : 'Goal created!', 'success');
+        window.closeForgeModal();
+        await loadGoals();
+      }
+    });
+  };
+
+  window.deleteGoal = function(goalId, goalTitle) {
+    openForgeConfirm('Delete Goal', 'Are you sure you want to delete "' + goalTitle + '"? This cannot be undone.', async function() {
+      const result = await apiFetch('/api/dashboard/goals/' + goalId, 'DELETE', {});
+      if (result && result.ok) {
+        showToast('Goal deleted', 'success');
+        await loadGoals();
+      }
+    });
+  };
+
+  // ── Strategy Modal ──
+  window.openStrategyModal = function(editData) {
+    const isEdit = !!editData;
+    const title = isEdit ? 'Edit Strategy' : 'Add Quarterly Strategy';
+    const html = `
+      <div class="fm-row">
+        <div class="fm-field">
+          <label>Quarter</label>
+          <input id="fmStratQuarter" type="text" value="${isEdit ? esc(editData.quarter) : currentQuarter()}" placeholder="2026-Q1">
+        </div>
+        <div class="fm-field">
+          <label>Status</label>
+          <select id="fmStratStatus">
+            <option value="active" ${!isEdit || editData.status === 'active' ? 'selected' : ''}>Active</option>
+            <option value="completed" ${isEdit && editData.status === 'completed' ? 'selected' : ''}>Completed</option>
+            <option value="draft" ${isEdit && editData.status === 'draft' ? 'selected' : ''}>Draft</option>
+          </select>
+        </div>
+      </div>
+      <div class="fm-field">
+        <label>Strategy Title</label>
+        <input id="fmStratTitle" type="text" value="${isEdit ? esc(editData.title) : ''}" placeholder="e.g. Expand Premium Product Line">
+      </div>
+      <div class="fm-field">
+        <label>Objectives (one per line)</label>
+        <textarea id="fmStratObjectives" rows="3" placeholder="Increase premium SKUs by 30%&#10;Launch 2 exclusive collections">${isEdit && editData.objectives ? editData.objectives.join('\n') : ''}</textarea>
+      </div>
+      <div class="fm-field">
+        <label>Key Results (one per line)</label>
+        <textarea id="fmStratKeyResults" rows="3" placeholder="Premium revenue reaches $15k/month&#10;Average order value increases 20%">${isEdit && editData.key_results ? editData.key_results.join('\n') : ''}</textarea>
+      </div>
+      <div class="fm-field">
+        <label>Notes</label>
+        <textarea id="fmStratNotes" rows="2" placeholder="Additional context...">${isEdit && editData.notes ? esc(editData.notes) : ''}</textarea>
+      </div>
+    `;
+    openForgeModal(title, html, async function() {
+      const stratTitle = document.getElementById('fmStratTitle').value.trim();
+      const quarter = document.getElementById('fmStratQuarter').value.trim();
+      if (!stratTitle || !quarter) { showToast('Please fill in title and quarter', 'warning'); return; }
+      const objectives = document.getElementById('fmStratObjectives').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const keyResults = document.getElementById('fmStratKeyResults').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const body = {
+        quarter: quarter,
+        title: stratTitle,
+        objectives: objectives,
+        key_results: keyResults,
+        notes: document.getElementById('fmStratNotes').value.trim(),
+        status: document.getElementById('fmStratStatus').value,
+      };
+      let result;
+      if (isEdit) {
+        result = await apiFetch('/api/dashboard/goals/strategy/' + editData.id, 'PUT', body);
+      } else {
+        result = await apiFetch('/api/dashboard/goals/strategy', 'POST', body);
+      }
+      if (result && result.ok) {
+        showToast(isEdit ? 'Strategy updated!' : 'Strategy created!', 'success');
+        window.closeForgeModal();
+        await loadGoals();
+      }
+    });
+  };
+
+  // ── Product Target Modal ──
+  window.openProductTargetModal = function() {
+    const html = `
+      <div class="fm-field">
+        <label>Product</label>
+        <select id="fmPtProduct">
+          <option value="">Loading products...</option>
+        </select>
+      </div>
+      <div class="fm-field">
+        <label>Target Units</label>
+        <input id="fmPtUnits" type="number" placeholder="100">
+      </div>
+      <div class="fm-field">
+        <label>Period</label>
+        <input id="fmPtPeriod" type="text" value="${currentPeriodKey()}" placeholder="2026-02">
+      </div>
+    `;
+    openForgeModal('Set Product Sales Target', html, async function() {
+      const productId = document.getElementById('fmPtProduct').value;
+      const units = parseInt(document.getElementById('fmPtUnits').value);
+      if (!productId || isNaN(units)) { showToast('Please select a product and enter units', 'warning'); return; }
+      const result = await apiFetch('/api/dashboard/goals/product-goals', 'POST', {
+        product_id: productId,
+        target_units: units,
+        period: document.getElementById('fmPtPeriod').value,
+      });
+      if (result && result.ok) {
+        showToast('Product target set!', 'success');
+        window.closeForgeModal();
+        await loadGoals();
+      }
+    });
+    // Load products into the dropdown
+    api('/api/dashboard/products?days=30').then(data => {
+      const sel = document.getElementById('fmPtProduct');
+      if (!sel) return;
+      if (data && data.top_products && data.top_products.length > 0) {
+        sel.innerHTML = '<option value="">Select a product</option>' +
+          data.top_products.map(p => '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>').join('');
+      } else {
+        sel.innerHTML = '<option value="">No products found</option>';
+      }
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PRODUCT MODAL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  window.openProductModal = function(editData) {
+    const isEdit = !!editData;
+    const title = isEdit ? 'Edit Product' : 'Add New Product';
+    const html = `
+      <div class="fm-field">
+        <label>Product Name</label>
+        <input id="fmProdName" type="text" value="${isEdit ? esc(editData.name) : ''}" placeholder="e.g. Artisan Candle Set">
+      </div>
+      <div class="fm-row">
+        <div class="fm-field">
+          <label>Price ($)</label>
+          <input id="fmProdPrice" type="number" step="0.01" value="${isEdit ? editData.price : ''}" placeholder="29.99">
+        </div>
+        <div class="fm-field">
+          <label>Cost ($)</label>
+          <input id="fmProdCost" type="number" step="0.01" value="${isEdit && editData.cost ? editData.cost : ''}" placeholder="12.00">
+        </div>
+      </div>
+      <div class="fm-row">
+        <div class="fm-field">
+          <label>Category</label>
+          <input id="fmProdCategory" type="text" value="${isEdit ? esc(editData.category || '') : ''}" placeholder="e.g. Home & Living">
+        </div>
+        <div class="fm-field">
+          <label>SKU</label>
+          <input id="fmProdSku" type="text" value="${isEdit ? esc(editData.sku || '') : ''}" placeholder="e.g. CND-001">
+        </div>
+      </div>
+      <div class="fm-field">
+        <label>Stock Quantity</label>
+        <input id="fmProdStock" type="number" value="${isEdit && editData.stock_quantity != null ? editData.stock_quantity : ''}" placeholder="50">
+      </div>
+    `;
+    openForgeModal(title, html, async function() {
+      const name = document.getElementById('fmProdName').value.trim();
+      const price = parseFloat(document.getElementById('fmProdPrice').value);
+      if (!name || isNaN(price)) { showToast('Please enter name and price', 'warning'); return; }
+      const body = {
+        name: name,
+        price: price,
+        cost: parseFloat(document.getElementById('fmProdCost').value) || null,
+        category: document.getElementById('fmProdCategory').value.trim(),
+        sku: document.getElementById('fmProdSku').value.trim(),
+        stock_quantity: parseInt(document.getElementById('fmProdStock').value) || null,
+      };
+      let result;
+      if (isEdit) {
+        result = await apiFetch('/api/dashboard/products/' + editData.id, 'PUT', body);
+      } else {
+        result = await apiFetch('/api/dashboard/products', 'POST', body);
+      }
+      if (result && result.ok) {
+        showToast(isEdit ? 'Product updated!' : 'Product added!', 'success');
+        window.closeForgeModal();
+        await loadProducts();
+      }
+    });
+  };
+
+  window.deleteProduct = function(productId, productName) {
+    openForgeConfirm('Remove Product', 'Are you sure you want to remove "' + productName + '"?', async function() {
+      const result = await apiFetch('/api/dashboard/products/' + productId, 'DELETE', {});
+      if (result && result.ok) {
+        showToast('Product removed', 'success');
+        await loadProducts();
+      }
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CUSTOMER MODAL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  window.openCustomerModal = function(editData) {
+    const isEdit = !!editData;
+    const title = isEdit ? 'Edit Customer' : 'Add New Customer';
+    const html = `
+      <div class="fm-field">
+        <label>Email</label>
+        <input id="fmCustEmail" type="email" value="${isEdit ? esc(editData.email || '') : ''}" placeholder="customer@example.com">
+      </div>
+      <div class="fm-field">
+        <label>Segment</label>
+        <select id="fmCustSegment">
+          <option value="regular" ${!isEdit || editData.segment === 'regular' ? 'selected' : ''}>Regular</option>
+          <option value="vip" ${isEdit && editData.segment === 'vip' ? 'selected' : ''}>VIP</option>
+          <option value="new" ${isEdit && editData.segment === 'new' ? 'selected' : ''}>New</option>
+          <option value="at_risk" ${isEdit && editData.segment === 'at_risk' ? 'selected' : ''}>At Risk</option>
+          <option value="lost" ${isEdit && editData.segment === 'lost' ? 'selected' : ''}>Lost</option>
+        </select>
+      </div>
+    `;
+    openForgeModal(title, html, async function() {
+      const email = document.getElementById('fmCustEmail').value.trim();
+      if (!email) { showToast('Please enter an email', 'warning'); return; }
+      const body = { email: email, segment: document.getElementById('fmCustSegment').value };
+      let result;
+      if (isEdit) {
+        result = await apiFetch('/api/dashboard/customers/' + editData.id, 'PUT', body);
+      } else {
+        result = await apiFetch('/api/dashboard/customers', 'POST', body);
+      }
+      if (result && result.ok) {
+        showToast(isEdit ? 'Customer updated!' : 'Customer added!', 'success');
+        window.closeForgeModal();
+        await loadCustomers();
+      }
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // COMPETITOR MODAL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  window.openCompetitorModal = function(editData) {
+    const isEdit = !!editData;
+    const title = isEdit ? 'Edit Competitor' : 'Add New Competitor';
+    const html = `
+      <div class="fm-field">
+        <label>Business Name</label>
+        <input id="fmCompName" type="text" value="${isEdit ? esc(editData.name) : ''}" placeholder="e.g. Local Rival Shop">
+      </div>
+      <div class="fm-field">
+        <label>Address</label>
+        <input id="fmCompAddress" type="text" value="${isEdit ? esc(editData.address || '') : ''}" placeholder="123 Main St, City">
+      </div>
+      <div class="fm-row">
+        <div class="fm-field">
+          <label>Category</label>
+          <input id="fmCompCategory" type="text" value="${isEdit ? esc(editData.category || '') : ''}" placeholder="e.g. Boutique">
+        </div>
+        <div class="fm-field">
+          <label>Google Place ID (optional)</label>
+          <input id="fmCompPlaceId" type="text" value="${isEdit ? esc(editData.google_place_id || '') : ''}" placeholder="ChIJ...">
+        </div>
+      </div>
+    `;
+    openForgeModal(title, html, async function() {
+      const name = document.getElementById('fmCompName').value.trim();
+      if (!name) { showToast('Please enter a business name', 'warning'); return; }
+      const body = {
+        name: name,
+        address: document.getElementById('fmCompAddress').value.trim(),
+        category: document.getElementById('fmCompCategory').value.trim(),
+        google_place_id: document.getElementById('fmCompPlaceId').value.trim() || null,
+      };
+      let result;
+      if (isEdit) {
+        result = await apiFetch('/api/dashboard/competitors/' + editData.id, 'PUT', body);
+      } else {
+        result = await apiFetch('/api/dashboard/competitors', 'POST', body);
+      }
+      if (result && result.ok) {
+        showToast(isEdit ? 'Competitor updated!' : 'Competitor added!', 'success');
+        window.closeForgeModal();
+        await loadCompetitors();
+      }
+    });
+  };
+
+  window.deleteCompetitor = function(compId, compName) {
+    openForgeConfirm('Delete Competitor', 'Are you sure you want to remove "' + compName + '" from your competitor list?', async function() {
+      const result = await apiFetch('/api/dashboard/competitors/' + compId, 'DELETE', {});
+      if (result && result.ok) {
+        showToast('Competitor removed', 'success');
+        await loadCompetitors();
+      }
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // RUN ALL AGENTS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  window.runAgent = async function(agentType) {
+    const agentNames = {marketing:'Maya',competitor:'Scout',customer:'Emma',strategy:'Alex',sales:'Max'};
+    const name = agentNames[agentType] || agentType;
+    showToast('Running ' + name + '...', 'info', 3000);
+    try {
+      const res = await fetch('/api/ai/agent/' + agentType + '/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ message: 'Run your analysis and provide an actionable summary report.' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(name + ' completed!', 'success');
+        // Show the result in a modal
+        if (data && data.response) {
+          openForgeModal(name + ' Report', '<div style="white-space:pre-wrap;font-size:13px;line-height:1.7;color:var(--text2);max-height:400px;overflow-y:auto">' + esc(data.response) + '</div>', function() { window.closeForgeModal(); });
+        }
+      } else {
+        showToast(name + ' encountered an error', 'error');
+      }
+    } catch (e) {
+      console.warn('[Forge] Agent run failed:', agentType, e);
+      showToast('Failed to run ' + name, 'error');
+    }
+  };
+
+  window.runAllAgents = async function() {
+    showToast('Running all agents...', 'info', 4000);
+    const agentTypes = ['marketing', 'competitor', 'customer', 'strategy', 'sales'];
+    let completed = 0;
+    for (const agentType of agentTypes) {
+      try {
+        const res = await fetch('/api/ai/agent/' + agentType + '/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ message: 'Run your daily analysis and provide a summary report.' }),
+        });
+        if (res.ok) completed++;
+      } catch (e) {
+        console.warn('[Forge] Agent run failed:', agentType, e);
+      }
+    }
+    showToast('All agents completed! (' + completed + '/' + agentTypes.length + ')', 'success');
+    // Refresh overview to show new data
+    const activeNav = document.querySelector('.nav-item.active');
+    if (activeNav) loadSection(activeNav.dataset.section);
   };
 
   // ── Sage Error Handling Enhancement ──

@@ -1,7 +1,9 @@
 """AI Assistant (Sage) API endpoints with streaming support."""
 
+import json
 import logging
 import os
+import re
 from datetime import datetime, date, timedelta
 
 from fastapi import APIRouter, Depends, Body
@@ -13,7 +15,8 @@ from app.dependencies import get_current_user, get_db
 from app.models import (
     User, Shop, ShopSettings, ChatMessage, DailySnapshot, Customer,
     Product, TransactionItem, Transaction, Competitor, Review,
-    RevenueGoal, HourlySnapshot,
+    RevenueGoal, HourlySnapshot, Goal, ProductGoal, Agent, AgentTask,
+    StrategyNote,
 )
 from app.services.ai_assistant import (
     chat, chat_stream, rewrite_email, generate_content,
@@ -382,6 +385,98 @@ def _get_api_key(db: Session, shop: Shop) -> str:
     return ""
 
 
+# ── Sage Action Detection ─────────────────────────────────────────────────────
+
+import uuid as _uuid
+
+def _detect_sage_action(message: str, db: Session, shop: Shop):
+    """Detect if user's message is asking Sage to perform an action.
+    Returns (action_result, action_message) or (None, None) if no action detected."""
+    msg = message.lower().strip()
+    now = datetime.utcnow()
+
+    # "set ... goal to ..."
+    m = re.search(r'set\s+(?:my\s+)?(?:(\w+)\s+)?(?:(\d{4})[- ]?(?:q(\d))?)?.*?(?:revenue\s+)?goal\s+(?:to\s+)?\$?([\d,]+)', msg)
+    if m:
+        period_type = m.group(1) or ""
+        year = m.group(2) or str(now.year)
+        quarter = m.group(3)
+        target = float(m.group(4).replace(",", ""))
+        if quarter:
+            pk = f"{year}-Q{quarter}"
+            period = "quarterly"
+        else:
+            pk = now.strftime("%Y-%m")
+            period = "monthly"
+        title = f"Revenue Target ({pk})"
+        goal = Goal(id=str(_uuid.uuid4()), shop_id=shop.id, goal_type="revenue",
+                     title=title, target_value=target, unit="$", period=period, period_key=pk)
+        db.add(goal)
+        db.commit()
+        return True, f"Done! I've set your {pk} revenue goal to ${target:,.0f}. You can see it on your Goals page."
+
+    # "add ... as a competitor" or "add competitor ..."
+    m = re.search(r'add\s+(?:(.+?)\s+as\s+a?\s*competitor|competitor\s+(.+?)(?:\s*$|\.))', msg)
+    if m:
+        name = (m.group(1) or m.group(2) or "").strip().title()
+        if name:
+            comp = Competitor(id=str(_uuid.uuid4()), shop_id=shop.id, name=name)
+            db.add(comp)
+            db.commit()
+            return True, f"Done! I've added **{name}** as a competitor. Scout will start monitoring them. Check your Competitors page."
+
+    # "add ... product" or "add product ..."
+    m = re.search(r'add\s+(?:a\s+)?(?:new\s+)?product[:\s]+(.+?)(?:,\s*\$?([\d.]+))?(?:,\s*(\w[\w\s]*))?$', msg)
+    if not m:
+        m = re.search(r'add\s+(?:a\s+)?(?:new\s+)?product[:\s]+(.+?)(?:\s+(?:at|for|price)\s+\$?([\d.]+))?(?:\s*,\s*(\w[\w\s]*))?$', msg)
+    if m:
+        pname = m.group(1).strip().title()
+        price = float(m.group(2)) if m.group(2) else 0
+        cat = (m.group(3) or "").strip().title()
+        product = Product(id=str(_uuid.uuid4()), shop_id=shop.id, name=pname, price=price, category=cat)
+        db.add(product)
+        db.commit()
+        price_str = f" at ${price:.2f}" if price else ""
+        return True, f"Done! I've added **{pname}**{price_str} to your products. Check the Products page."
+
+    # "pause/activate ... agent"
+    m = re.search(r'(pause|stop|deactivate|activate|start|resume|unpause)\s+(?:the\s+)?(?:(\w+)\s+)?(?:agent\s*)?(\w+)?', msg)
+    if m:
+        verb = m.group(1)
+        name1 = (m.group(2) or "").lower()
+        name2 = (m.group(3) or "").lower()
+        agent_name = name1 or name2
+        agent_map = {"maya": "maya", "scout": "scout", "emma": "emma", "alex": "alex", "max": "max",
+                     "marketing": "maya", "competitor": "scout", "customer": "emma", "strategy": "alex", "sales": "max"}
+        atype = agent_map.get(agent_name)
+        if atype:
+            agent = db.query(Agent).filter(Agent.shop_id == shop.id, Agent.agent_type == atype).first()
+            if agent:
+                active = verb in ("activate", "start", "resume", "unpause")
+                agent.is_active = active
+                db.commit()
+                display_name = {"maya": "Maya", "scout": "Scout", "emma": "Emma", "alex": "Alex", "max": "Max"}[atype]
+                return True, f"Done! I've {'activated' if active else 'paused'} **{display_name}**. {'She' if atype in ('maya','emma') else 'He'}'ll {'get right back to work' if active else 'take a break'}."
+
+    # "set ... target to N units"
+    m = re.search(r'set\s+(.+?)\s+target\s+(?:to\s+)?(\d+)\s*units?', msg)
+    if m:
+        pname = m.group(1).strip()
+        target = int(m.group(2))
+        product = db.query(Product).filter(Product.shop_id == shop.id, Product.name.ilike(f"%{pname}%")).first()
+        if product:
+            period = now.strftime("%Y-%m")
+            existing = db.query(ProductGoal).filter(ProductGoal.shop_id == shop.id, ProductGoal.product_id == product.id, ProductGoal.period == period).first()
+            if existing:
+                existing.target_units = target
+            else:
+                db.add(ProductGoal(id=str(_uuid.uuid4()), shop_id=shop.id, product_id=product.id, target_units=target, period=period))
+            db.commit()
+            return True, f"Done! I've set **{product.name}** target to {target} units for {period}. Check your Goals page."
+
+    return None, None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/chat")
@@ -394,6 +489,14 @@ async def ai_chat(
     shop = _get_shop(db, user)
     if not shop:
         return {"response": "Please complete onboarding first.", "source": "error", "remaining": 0}
+
+    # Check if this is an action request (set goal, add competitor, etc.)
+    action_result, action_message = _detect_sage_action(message, db, shop)
+    if action_result is not None:
+        db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
+        db.add(ChatMessage(shop_id=shop.id, role="assistant", content=action_message))
+        db.commit()
+        return {"response": action_message, "source": "action", "action_taken": True, "remaining": get_remaining_requests(user.id)}
 
     history_rows = (
         db.query(ChatMessage)

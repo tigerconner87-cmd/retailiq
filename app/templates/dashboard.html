@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=30">
+  <link rel="stylesheet" href="/static/dashboard.css?v=31">
 </head>
 <body>
   <!-- Sidebar -->
@@ -204,6 +204,10 @@
     <div class="content" id="content">
       <!-- Daily Briefing Section -->
       <section class="section {{ 'active' if sec == 'briefing' }}" id="sec-briefing">
+        <div class="section-toolbar">
+          <button class="agent-run-btn" onclick="runAgent('strategy')">&#9654; Run Alex</button>
+          <button class="ask-sage-inline" onclick="askSage('Give me a comprehensive daily briefing with top priorities and action items')"><span class="sage-mini-avatar">S</span> Ask Sage</button>
+        </div>
         <div class="briefing-hero" id="briefingHero">
           <div class="briefing-greeting" id="briefingGreeting">Good morning!</div>
           <div class="briefing-date" id="briefingDate"></div>
@@ -461,6 +465,40 @@
           <div class="agent-config-footer">
             <button class="btn-secondary" id="acResetBtn">Reset to Default</button>
             <button class="btn-primary" id="acSaveBtn">Save Configuration</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Universal Edit Modal -->
+      <div class="forge-modal-overlay" id="forgeEditModal" hidden style="display:none" onclick="if(event.target===this)closeForgeModal()">
+        <div class="forge-modal">
+          <div class="forge-modal-header">
+            <h3 id="forgeModalTitle">Edit</h3>
+            <button class="forge-modal-close" onclick="closeForgeModal()">&times;</button>
+          </div>
+          <div class="forge-modal-body" id="forgeModalBody">
+            <!-- Dynamically rendered form fields -->
+          </div>
+          <div class="forge-modal-footer">
+            <button class="btn-secondary" onclick="closeForgeModal()">Cancel</button>
+            <button class="btn-primary" id="forgeModalSave">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm Dialog -->
+      <div class="forge-modal-overlay" id="forgeConfirmModal" hidden style="display:none" onclick="if(event.target===this)closeForgeConfirm()">
+        <div class="forge-modal" style="max-width:400px">
+          <div class="forge-modal-header">
+            <h3 id="forgeConfirmTitle">Confirm</h3>
+            <button class="forge-modal-close" onclick="closeForgeConfirm()">&times;</button>
+          </div>
+          <div class="forge-modal-body">
+            <p id="forgeConfirmMsg" style="font-size:14px;color:var(--text2);line-height:1.6"></p>
+          </div>
+          <div class="forge-modal-footer">
+            <button class="btn-secondary" onclick="closeForgeConfirm()">Cancel</button>
+            <button class="btn-primary" id="forgeConfirmYes" style="background:var(--danger)">Delete</button>
           </div>
         </div>
       </div>
@@ -784,6 +822,8 @@
           <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;competitors&quot;]').click()">&#128269; Check Competitors</button>
           <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;briefing&quot;]').click()">&#128202; View Report</button>
           <button class="qa-btn" onclick="document.querySelector('.nav-item[data-section=&quot;goals&quot;]').click()">&#127919; Update Goals</button>
+          <button class="qa-btn" onclick="openGoalModal()">&#127919; Set Goal</button>
+          <button class="qa-btn" onclick="runAllAgents()">&#129302; Run All Agents</button>
           <button class="qa-btn ask-sage-btn" onclick="askSage('Give me a quick summary of my business performance and what I should focus on today')"><span class="sage-mini-avatar">S</span> Ask Sage</button>
         </div>
 
@@ -897,7 +937,8 @@
       <!-- Products Section -->
       <section class="section {{ 'active' if sec == 'products' }}" id="sec-products">
         <div class="section-toolbar">
-          <button class="ask-sage-inline" onclick="askSage('Which products should I promote more? Any slow movers I should bundle or discount?')"><span class="sage-mini-avatar">S</span> Ask Sage</button>
+          <button class="mke-btn primary" onclick="openProductModal()">+ Add Product</button>
+          <button class="ask-sage-inline" onclick="askSage('Which products should I promote more? Any slow movers I should bundle or discount?')"><span class="sage-mini-avatar">S</span> Ask Max</button>
           <button class="export-btn" onclick="exportCSV('products')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export CSV
@@ -907,7 +948,7 @@
           <div class="card-header"><h3>Product Performance Rankings</h3></div>
           <div class="card-body">
             <table class="data-table" id="productsTableFull">
-              <thead><tr><th>#</th><th>Product</th><th>Category</th><th>Revenue</th><th>Units Sold</th><th>Avg Price</th><th>Margin</th></tr></thead>
+              <thead><tr><th>#</th><th>Product</th><th>Category</th><th>Revenue</th><th>Units Sold</th><th>Avg Price</th><th>Margin</th><th></th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -931,6 +972,8 @@
       <!-- Customers Section -->
       <section class="section {{ 'active' if sec == 'customers' }}" id="sec-customers">
         <div class="section-toolbar">
+          <button class="mke-btn primary" onclick="openCustomerModal()">+ Add Customer</button>
+          <button class="ask-sage-inline" onclick="askSage('Which customers are most at risk of leaving? What can I do to retain them?')"><span class="sage-mini-avatar">S</span> Ask Emma</button>
           <button class="export-btn" onclick="exportCSV('customers')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export CSV
@@ -946,7 +989,7 @@
           <div class="card-header"><h3>Top Customers by Spend</h3></div>
           <div class="card-body">
             <table class="data-table" id="topCustomersTable">
-              <thead><tr><th>#</th><th>Customer</th><th>Visits</th><th>Total Spent</th><th>Last Seen</th></tr></thead>
+              <thead><tr><th>#</th><th>Customer</th><th>Visits</th><th>Total Spent</th><th>Last Seen</th><th></th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -968,7 +1011,8 @@
           <div style="display:flex;align-items:center;gap:12px">
             <span class="comp-sync-status" id="compSyncStatus" style="font-size:12px;color:var(--text-secondary)"></span>
           </div>
-          <button class="ask-sage-inline" onclick="askSage('How are my competitors performing? What opportunities do I have based on their weaknesses?')"><span class="sage-mini-avatar">S</span> Ask Sage</button>
+          <button class="mke-btn primary" onclick="openCompetitorModal()">+ Add Competitor</button>
+          <button class="ask-sage-inline" onclick="askSage('How are my competitors performing? What opportunities do I have based on their weaknesses?')"><span class="sage-mini-avatar">S</span> Ask Scout</button>
           <button class="btn-primary" id="compRefreshReviews" style="font-size:13px;padding:6px 14px;display:flex;align-items:center;gap:6px" title="Sync competitor reviews from Google">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Refresh Reviews
@@ -1126,7 +1170,9 @@
       <!-- Goals & Strategy Section -->
       <section class="section {{ 'active' if sec == 'goals' }}" id="sec-goals">
         <div class="section-toolbar">
-          <button class="ask-sage-inline" onclick="askSage('Based on my current performance, what goals should I set for next month? What strategies will help me hit them?')"><span class="sage-mini-avatar">S</span> Ask Sage</button>
+          <button class="mke-btn primary" onclick="openGoalModal()">+ Add Goal</button>
+          <button class="mke-btn" onclick="openStrategyModal()">+ Add Strategy</button>
+          <button class="ask-sage-inline" onclick="askSage('Based on my current performance, what goals should I set for next month? What strategies will help me hit them?')"><span class="sage-mini-avatar">S</span> Ask Alex</button>
         </div>
         <!-- AI Strategy Recommendations -->
         <div class="ai-actions-card" id="goalRecsCard">
@@ -1150,7 +1196,7 @@
         <div class="grid-2 mt">
           <!-- Product Goals -->
           <div class="card">
-            <div class="card-header"><h3>Product Sales Targets</h3></div>
+            <div class="card-header"><h3>Product Sales Targets</h3><button class="mke-btn" onclick="openProductTargetModal()" style="font-size:12px;padding:4px 12px">+ Set Target</button></div>
             <div class="card-body">
               <table class="data-table" id="productGoalsTable">
                 <thead><tr><th>Product</th><th>Category</th><th>Target</th><th>Sold</th><th>Progress</th></tr></thead>
@@ -1173,7 +1219,7 @@
 
         <!-- Quarterly Strategy -->
         <div class="card mt">
-          <div class="card-header"><h3>Quarterly Strategy</h3></div>
+          <div class="card-header"><h3>Quarterly Strategy</h3><button class="mke-btn" onclick="openStrategyModal()" style="font-size:12px;padding:4px 12px">+ Add Strategy</button></div>
           <div class="card-body" id="strategyNotes">
             <div class="ai-loading">Loading strategy...</div>
           </div>
@@ -1183,6 +1229,7 @@
       <!-- Marketing Content Engine -->
       <section class="section {{ 'active' if sec == 'marketing' }}" id="sec-marketing">
         <div class="section-toolbar">
+          <button class="agent-run-btn" onclick="runAgent('marketing')">&#9654; Run Maya</button>
           <button class="ask-sage-inline" onclick="askSage('Create a full week of social media content based on my trending products and competitor weaknesses')"><span class="sage-mini-avatar">S</span> Create content with Sage</button>
         </div>
         <div class="mke-tabs" id="mkeTabs">
@@ -1368,6 +1415,7 @@
       <!-- Win-Back Campaigns Section -->
       <section class="section {{ 'active' if sec == 'winback' }}" id="sec-winback">
         <div class="section-toolbar">
+          <button class="agent-run-btn" onclick="runAgent('customer')">&#9654; Run Emma</button>
           <button class="ask-sage-inline" onclick="askSage('What strategies can I use to win back my at-risk and lost customers? Give me specific email ideas.')"><span class="sage-mini-avatar">S</span> Ask Sage</button>
         </div>
         <!-- Customer Status Overview -->
@@ -1832,7 +1880,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=30"></script>
+  <script src="/static/dashboard.js?v=31"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

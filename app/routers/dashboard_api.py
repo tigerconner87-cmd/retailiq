@@ -13,6 +13,7 @@ from app.models import (
     User, Alert, Shop, Recommendation, ShopSettings, Expense,
     RevenueGoal, MarketingCampaign, PlanInterest, WinBackCampaign,
     PostedContent, Agent, AgentActivity, AgentTask,
+    Goal, ProductGoal, Product, Customer, Competitor, StrategyNote,
 )
 from app.schemas import (
     AlertsResponse,
@@ -1698,3 +1699,470 @@ async def update_agent_task_status(
     db.commit()
 
     return {"ok": True, "status": task.status}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CRUD — Goals, Products, Customers, Competitors
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Goals CRUD ──
+
+@router.post("/goals")
+async def create_goal(
+    goal_type: str = Body(...),
+    title: str = Body(...),
+    target_value: float = Body(...),
+    unit: str = Body("$"),
+    period: str = Body("monthly"),
+    period_key: str = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    goal = Goal(
+        id=str(uuid.uuid4()),
+        shop_id=shop.id,
+        goal_type=goal_type,
+        title=title,
+        target_value=target_value,
+        unit=unit,
+        period=period,
+        period_key=period_key,
+    )
+    db.add(goal)
+    db.commit()
+    return {"ok": True, "id": goal.id, "title": goal.title}
+
+
+@router.put("/goals/{goal_id}")
+async def update_goal(
+    goal_id: str,
+    title: str = Body(None),
+    target_value: float = Body(None),
+    period_key: str = Body(None),
+    status: str = Body(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    goal = db.query(Goal).filter(Goal.id == goal_id, Goal.shop_id == shop.id).first()
+    if not goal:
+        raise HTTPException(404, "Goal not found")
+    if title is not None:
+        goal.title = title
+    if target_value is not None:
+        goal.target_value = target_value
+    if period_key is not None:
+        goal.period_key = period_key
+    if status is not None:
+        goal.status = status
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/goals/{goal_id}")
+async def delete_goal(
+    goal_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    goal = db.query(Goal).filter(Goal.id == goal_id, Goal.shop_id == shop.id).first()
+    if not goal:
+        raise HTTPException(404, "Goal not found")
+    db.delete(goal)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Product Goals CRUD ──
+
+@router.post("/goals/product-goals")
+async def create_product_goal(
+    product_id: str = Body(...),
+    target_units: int = Body(...),
+    period: str = Body(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    now = datetime.utcnow()
+    p = period or now.strftime("%Y-%m")
+    existing = db.query(ProductGoal).filter(
+        ProductGoal.shop_id == shop.id,
+        ProductGoal.product_id == product_id,
+        ProductGoal.period == p,
+    ).first()
+    if existing:
+        existing.target_units = target_units
+    else:
+        db.add(ProductGoal(
+            id=str(uuid.uuid4()),
+            shop_id=shop.id,
+            product_id=product_id,
+            target_units=target_units,
+            period=p,
+        ))
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/goals/product-goals/{pg_id}")
+async def delete_product_goal(
+    pg_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    pg = db.query(ProductGoal).filter(ProductGoal.id == pg_id, ProductGoal.shop_id == shop.id).first()
+    if not pg:
+        raise HTTPException(404, "Product goal not found")
+    db.delete(pg)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Strategy Notes CRUD ──
+
+@router.post("/goals/strategy")
+async def create_strategy(
+    quarter: str = Body(...),
+    title: str = Body(...),
+    objectives: list = Body(None),
+    key_results: list = Body(None),
+    notes: str = Body(""),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    sn = StrategyNote(
+        id=str(uuid.uuid4()),
+        shop_id=shop.id,
+        quarter=quarter,
+        title=title,
+        objectives=objectives or [],
+        key_results=key_results or [],
+        notes=notes,
+    )
+    db.add(sn)
+    db.commit()
+    return {"ok": True, "id": sn.id}
+
+
+@router.put("/goals/strategy/{strategy_id}")
+async def update_strategy(
+    strategy_id: str,
+    title: str = Body(None),
+    objectives: list = Body(None),
+    key_results: list = Body(None),
+    notes: str = Body(None),
+    status: str = Body(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    sn = db.query(StrategyNote).filter(StrategyNote.id == strategy_id, StrategyNote.shop_id == shop.id).first()
+    if not sn:
+        raise HTTPException(404, "Strategy not found")
+    if title is not None:
+        sn.title = title
+    if objectives is not None:
+        sn.objectives = objectives
+    if key_results is not None:
+        sn.key_results = key_results
+    if notes is not None:
+        sn.notes = notes
+    if status is not None:
+        sn.status = status
+    db.commit()
+    return {"ok": True}
+
+
+# ── Products CRUD ──
+
+@router.post("/products")
+async def create_product(
+    name: str = Body(...),
+    price: float = Body(...),
+    cost: float = Body(None),
+    category: str = Body(""),
+    sku: str = Body(""),
+    stock_quantity: int = Body(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    product = Product(
+        id=str(uuid.uuid4()),
+        shop_id=shop.id,
+        name=name,
+        price=price,
+        cost=cost,
+        category=category,
+        sku=sku,
+        stock_quantity=stock_quantity,
+    )
+    db.add(product)
+    db.commit()
+    return {"ok": True, "id": product.id, "name": product.name}
+
+
+@router.put("/products/{product_id}")
+async def update_product(
+    product_id: str,
+    name: str = Body(None),
+    price: float = Body(None),
+    cost: float = Body(None),
+    category: str = Body(None),
+    sku: str = Body(None),
+    stock_quantity: int = Body(None),
+    is_active: bool = Body(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop.id).first()
+    if not product:
+        raise HTTPException(404, "Product not found")
+    for field, val in [("name", name), ("price", price), ("cost", cost), ("category", category), ("sku", sku), ("stock_quantity", stock_quantity), ("is_active", is_active)]:
+        if val is not None:
+            setattr(product, field, val)
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/products/{product_id}")
+async def delete_product(
+    product_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop.id).first()
+    if not product:
+        raise HTTPException(404, "Product not found")
+    product.is_active = False
+    db.commit()
+    return {"ok": True}
+
+
+# ── Customers CRUD ──
+
+@router.post("/customers")
+async def create_customer(
+    email: str = Body(...),
+    segment: str = Body("regular"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    customer = Customer(
+        id=str(uuid.uuid4()),
+        shop_id=shop.id,
+        email=email,
+        segment=segment,
+        first_seen=datetime.utcnow(),
+        last_seen=datetime.utcnow(),
+        visit_count=1,
+    )
+    db.add(customer)
+    db.commit()
+    return {"ok": True, "id": customer.id}
+
+
+@router.put("/customers/{customer_id}")
+async def update_customer(
+    customer_id: str,
+    email: str = Body(None),
+    segment: str = Body(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    customer = db.query(Customer).filter(Customer.id == customer_id, Customer.shop_id == shop.id).first()
+    if not customer:
+        raise HTTPException(404, "Customer not found")
+    if email is not None:
+        customer.email = email
+    if segment is not None:
+        customer.segment = segment
+    db.commit()
+    return {"ok": True}
+
+
+# ── Competitors CRUD ──
+
+@router.post("/competitors")
+async def create_competitor(
+    name: str = Body(...),
+    address: str = Body(""),
+    category: str = Body(""),
+    google_place_id: str = Body(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    comp = Competitor(
+        id=str(uuid.uuid4()),
+        shop_id=shop.id,
+        name=name,
+        address=address,
+        category=category,
+        google_place_id=google_place_id,
+    )
+    db.add(comp)
+    db.commit()
+    return {"ok": True, "id": comp.id, "name": comp.name}
+
+
+@router.delete("/competitors/{competitor_id}")
+async def delete_competitor(
+    competitor_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    comp = db.query(Competitor).filter(Competitor.id == competitor_id, Competitor.shop_id == shop.id).first()
+    if not comp:
+        raise HTTPException(404, "Competitor not found")
+    db.delete(comp)
+    db.commit()
+    return {"ok": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SAGE ACTION ENDPOINT — unified action API for Sage AI
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/sage/action")
+async def sage_action(
+    action: str = Body(...),
+    params: dict = Body({}),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Unified endpoint for Sage to perform actions on behalf of the user."""
+    shop = _get_shop(db, user)
+    now = datetime.utcnow()
+
+    try:
+        if action == "create_goal":
+            goal = Goal(
+                id=str(uuid.uuid4()), shop_id=shop.id,
+                goal_type=params.get("goal_type", "revenue"),
+                title=params.get("title", "Revenue Goal"),
+                target_value=float(params.get("target_value", 0)),
+                unit=params.get("unit", "$"),
+                period=params.get("period", "monthly"),
+                period_key=params.get("period_key", now.strftime("%Y-%m")),
+            )
+            db.add(goal)
+            db.commit()
+            return {"ok": True, "message": f"Created goal: {goal.title} ({goal.period_key})"}
+
+        elif action == "add_competitor":
+            comp = Competitor(
+                id=str(uuid.uuid4()), shop_id=shop.id,
+                name=params.get("name", "Unnamed"),
+                address=params.get("address", ""),
+                category=params.get("category", ""),
+            )
+            db.add(comp)
+            db.commit()
+            return {"ok": True, "message": f"Added competitor: {comp.name}"}
+
+        elif action == "create_product":
+            product = Product(
+                id=str(uuid.uuid4()), shop_id=shop.id,
+                name=params.get("name", "New Product"),
+                price=float(params.get("price", 0)),
+                cost=float(params.get("cost", 0)) if params.get("cost") else None,
+                category=params.get("category", ""),
+            )
+            db.add(product)
+            db.commit()
+            return {"ok": True, "message": f"Added product: {product.name} at ${product.price}"}
+
+        elif action == "set_product_target":
+            product_name = params.get("product_name", "")
+            product = db.query(Product).filter(
+                Product.shop_id == shop.id,
+                Product.name.ilike(f"%{product_name}%"),
+            ).first()
+            if not product:
+                return {"ok": False, "message": f"Product '{product_name}' not found"}
+            period = params.get("period", now.strftime("%Y-%m"))
+            existing = db.query(ProductGoal).filter(
+                ProductGoal.shop_id == shop.id,
+                ProductGoal.product_id == product.id,
+                ProductGoal.period == period,
+            ).first()
+            target = int(params.get("target_units", 0))
+            if existing:
+                existing.target_units = target
+            else:
+                db.add(ProductGoal(
+                    id=str(uuid.uuid4()), shop_id=shop.id,
+                    product_id=product.id, target_units=target, period=period,
+                ))
+            db.commit()
+            return {"ok": True, "message": f"Set {product.name} target to {target} units for {period}"}
+
+        elif action == "toggle_agent":
+            agent_type = params.get("agent_type", "")
+            agent = db.query(Agent).filter(Agent.shop_id == shop.id, Agent.agent_type == agent_type).first()
+            if not agent:
+                return {"ok": False, "message": f"Agent '{agent_type}' not found"}
+            active = params.get("active", not agent.is_active)
+            agent.is_active = active
+            db.commit()
+            name = AGENT_DEFAULTS.get(agent_type, {}).get("name", agent_type)
+            return {"ok": True, "message": f"{'Activated' if active else 'Paused'} agent {name}"}
+
+        elif action == "create_task":
+            agent_type = params.get("agent_type", "alex")
+            task = AgentTask(
+                id=str(uuid.uuid4()), shop_id=shop.id,
+                agent_type=agent_type,
+                title=params.get("title", "New Task"),
+                description=params.get("description", ""),
+                priority=params.get("priority", "medium"),
+            )
+            db.add(task)
+            db.commit()
+            name = AGENT_DEFAULTS.get(agent_type, {}).get("name", agent_type)
+            return {"ok": True, "message": f"Created task for {name}: {task.title}"}
+
+        elif action == "update_customer":
+            email = params.get("email", "")
+            customer = db.query(Customer).filter(
+                Customer.shop_id == shop.id,
+                Customer.email.ilike(f"%{email}%"),
+            ).first()
+            if not customer:
+                return {"ok": False, "message": f"Customer '{email}' not found"}
+            segment = params.get("segment")
+            if segment:
+                customer.segment = segment
+            db.commit()
+            return {"ok": True, "message": f"Updated customer {customer.email}"}
+
+        elif action == "create_strategy":
+            sn = StrategyNote(
+                id=str(uuid.uuid4()), shop_id=shop.id,
+                quarter=params.get("quarter", f"{now.year}-Q{(now.month - 1) // 3 + 1}"),
+                title=params.get("title", "Quarterly Strategy"),
+                objectives=params.get("objectives", []),
+                key_results=params.get("key_results", []),
+                notes=params.get("notes", ""),
+            )
+            db.add(sn)
+            db.commit()
+            return {"ok": True, "message": f"Created strategy for {sn.quarter}: {sn.title}"}
+
+        else:
+            return {"ok": False, "message": f"Unknown action: {action}"}
+
+    except Exception as e:
+        db.rollback()
+        return {"ok": False, "message": f"Action failed: {str(e)}"}

@@ -1102,6 +1102,44 @@ svg.spin{animation:spin .8s linear infinite}
 .btn-primary:disabled{opacity:.6;cursor:not-allowed}
 .settings-saved-msg{font-size:13px;color:var(--success);font-weight:600}
 
+/* ── Universal Edit Modal ── */
+.forge-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.forge-modal-overlay[hidden]{display:none!important}
+.forge-modal{background:var(--bg1);border:1px solid var(--border);border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.forge-modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
+.forge-modal-header h3{font-size:18px;font-weight:700}
+.forge-modal-close{background:none;border:none;color:var(--text3);font-size:24px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:.2s}
+.forge-modal-close:hover{background:var(--surface);color:var(--text)}
+.forge-modal-body{padding:24px}
+.forge-modal-footer{display:flex;gap:10px;padding:16px 24px;border-top:1px solid var(--border);justify-content:flex-end}
+.forge-modal-footer .btn-secondary{padding:10px 20px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);color:var(--text2);font-weight:600;cursor:pointer;transition:.2s}
+.forge-modal-footer .btn-secondary:hover{border-color:var(--primary);color:var(--text)}
+.forge-modal-footer .btn-primary{padding:10px 20px;border-radius:var(--radius-sm);background:linear-gradient(135deg,#6366f1,#818cf8);border:none;color:#fff;font-weight:600;cursor:pointer;transition:.2s}
+.forge-modal-footer .btn-primary:hover{box-shadow:0 4px 20px rgba(99,102,241,.3)}
+.fm-field{margin-bottom:16px}
+.fm-field label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.fm-field input,.fm-field select,.fm-field textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box}
+.fm-field input:focus,.fm-field select:focus,.fm-field textarea:focus{border-color:var(--primary);outline:none}
+.fm-field textarea{resize:vertical;min-height:80px}
+.fm-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── Inline Edit Icons ── */
+.edit-icon-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:4px;transition:.2s;opacity:0}
+.edit-icon-btn:hover{color:var(--primary);background:rgba(99,102,241,.1)}
+.goal-card:hover .edit-icon-btn,.data-table tr:hover .edit-icon-btn,.strategy-card:hover .edit-icon-btn{opacity:1}
+.delete-icon-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:4px;transition:.2s;opacity:0}
+.delete-icon-btn:hover{color:var(--danger);background:rgba(239,68,68,.1)}
+.goal-card:hover .delete-icon-btn,.data-table tr:hover .delete-icon-btn,.strategy-card:hover .delete-icon-btn{opacity:1}
+
+/* ── Save flash animation ── */
+@keyframes saveFlash{0%{box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{box-shadow:0 0 0 4px rgba(16,185,129,.2)}100%{box-shadow:none}}
+.save-flash{animation:saveFlash .6s ease}
+
+/* ── Agent Run Button ── */
+.agent-run-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:.2s}
+.agent-run-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,.06)}
+.agent-run-btn.running{opacity:.7;pointer-events:none}
+
 /* ── Help Tooltip Button ── */
 .help-tooltip-btn{position:fixed;bottom:24px;right:24px;width:44px;height:44px;border-radius:50%;background:var(--bg-2);border:1px solid var(--border);color:var(--text2);font-size:20px;font-weight:700;cursor:pointer;z-index:200;transition:.2s;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.15)}
 .help-tooltip-btn:hover{border-color:var(--primary);color:var(--primary)}
