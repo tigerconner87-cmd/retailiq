@@ -463,9 +463,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const tbody = $('#productsTableFull tbody');
+    window._prodEditCache = {};
     tbody.innerHTML = data.top_products.map((p, i) => {
-      const pEditJson = esc(JSON.stringify({id:p.id,name:p.name,price:p.avg_price,cost:p.cost||null,category:p.category,sku:p.sku||'',stock_quantity:p.stock_quantity||null}));
-      return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.category || '-')}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td><td>${fmt(p.avg_price)}</td><td>${p.margin != null ? p.margin + '%' : '-'}</td><td style="white-space:nowrap"><button class="edit-icon-btn" onclick="openProductModal(JSON.parse(this.dataset.edit))" data-edit="${pEditJson}" title="Edit">&#9998;</button><button class="delete-icon-btn" onclick="deleteProduct('${p.id}','${esc(p.name)}')" title="Remove">&times;</button></td></tr>`;
+      window._prodEditCache[p.id] = {id:p.id,name:p.name,price:p.avg_price,cost:p.cost||null,category:p.category,sku:p.sku||'',stock_quantity:p.stock_quantity||null};
+      return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.category || '-')}</td><td>${fmt(p.revenue)}</td><td>${fmtInt(p.units_sold)}</td><td>${fmt(p.avg_price)}</td><td>${p.margin != null ? p.margin + '%' : '-'}</td><td style="white-space:nowrap"><button class="edit-icon-btn" onclick="openProductModal(window._prodEditCache['${p.id}'])" title="Edit">&#9998;</button><button class="delete-icon-btn" onclick="deleteProduct('${p.id}','${esc(p.name)}')" title="Remove">&times;</button></td></tr>`;
     }).join('');
 
     loadProductRecommendations();
@@ -532,9 +533,10 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#custAvgRev').textContent = fmt(data.avg_revenue_per_customer);
 
     const tbody = $('#topCustomersTable tbody');
+    window._custEditCache = {};
     tbody.innerHTML = data.top_customers.map((c, i) => {
-      const cEditJson = esc(JSON.stringify({id:c.id,email:c.email||'',segment:c.segment||'regular'}));
-      return `<tr><td>${i + 1}</td><td>Customer ${c.id.slice(0, 8)}</td><td>${c.visit_count}</td><td>${fmt(c.total_spent)}</td><td>${c.last_seen ? c.last_seen.split('T')[0] : '-'}</td><td><button class="edit-icon-btn" onclick="openCustomerModal(JSON.parse(this.dataset.edit))" data-edit="${cEditJson}" title="Edit">&#9998;</button></td></tr>`;
+      window._custEditCache[c.id] = {id:c.id,email:c.email||'',segment:c.segment||'regular'};
+      return `<tr><td>${i + 1}</td><td>Customer ${c.id.slice(0, 8)}</td><td>${c.visit_count}</td><td>${fmt(c.total_spent)}</td><td>${c.last_seen ? c.last_seen.split('T')[0] : '-'}</td><td><button class="edit-icon-btn" onclick="openCustomerModal(window._custEditCache['${c.id}'])" title="Edit">&#9998;</button></td></tr>`;
     }).join('');
 
     // Load customer segments visualization
@@ -1540,20 +1542,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Goal Cards
     if (goals && goals.goals) {
       const grid = $('#goalsGrid');
+      window._goalEditCache = {};
       if (goals.goals.length === 0) {
         grid.innerHTML = '<div class="empty-state"><p>No active goals. Set goals to track your progress!</p></div>';
       } else {
         grid.innerHTML = goals.goals.map(g => {
           const valueStr = g.unit === '$' ? fmt(g.current_value) : fmtInt(g.current_value);
           const targetStr = g.unit === '$' ? fmt(g.target_value) : fmtInt(g.target_value);
-          const editJson = esc(JSON.stringify({id:g.id,title:g.title,target_value:g.target_value,unit:g.unit,period:g.period,period_key:g.period_key,goal_type:g.goal_type}));
+          window._goalEditCache[g.id] = {id:g.id,title:g.title,target_value:g.target_value,unit:g.unit,period:g.period,period_key:g.period_key,goal_type:g.goal_type};
           return `
             <div class="goal-card">
               <div class="goal-card-header">
                 <div class="goal-card-title">${esc(g.title)}</div>
                 <div style="display:flex;align-items:center;gap:6px">
                   <span class="goal-pacing ${g.pacing}">${g.pacing === 'on_track' ? 'On Track' : g.pacing === 'behind' ? 'Behind' : 'At Risk'}</span>
-                  <button class="edit-icon-btn" onclick="openGoalModal(JSON.parse(this.dataset.edit))" data-edit="${editJson}" title="Edit">&#9998;</button>
+                  <button class="edit-icon-btn" onclick="openGoalModal(window._goalEditCache['${g.id}'])" title="Edit">&#9998;</button>
                   <button class="delete-icon-btn" onclick="deleteGoal('${g.id}','${esc(g.title)}')" title="Delete">&times;</button>
                 </div>
               </div>
@@ -1626,15 +1629,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Strategy Notes
     if (strategy && strategy.strategies) {
       const container = $('#strategyNotes');
+      window._stratEditCache = {};
       if (strategy.strategies.length === 0) {
         container.innerHTML = '<div class="empty-state"><p>No quarterly strategies set yet.</p></div>';
       } else {
         container.innerHTML = strategy.strategies.map(s => {
-          const sEditJson = esc(JSON.stringify({id:s.id,quarter:s.quarter,title:s.title,objectives:s.objectives,key_results:s.key_results,notes:s.notes,status:s.status}));
+          window._stratEditCache[s.id] = {id:s.id,quarter:s.quarter,title:s.title,objectives:s.objectives,key_results:s.key_results,notes:s.notes,status:s.status};
           return `
           <div class="strategy-card">
             <div class="strategy-quarter">${esc(s.quarter)} <span class="strategy-status ${s.status}">${s.status}</span>
-              <button class="edit-icon-btn" onclick="openStrategyModal(JSON.parse(this.dataset.edit))" data-edit="${sEditJson}" title="Edit" style="margin-left:auto">&#9998;</button>
+              <button class="edit-icon-btn" onclick="openStrategyModal(window._stratEditCache['${s.id}'])" title="Edit" style="margin-left:auto">&#9998;</button>
             </div>
             <div class="strategy-title">${esc(s.title)}</div>
             ${s.objectives && s.objectives.length > 0 ? `

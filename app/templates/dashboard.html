@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=31">
+  <link rel="stylesheet" href="/static/dashboard.css?v=32">
 </head>
 <body>
   <!-- Sidebar -->
@@ -1171,7 +1171,7 @@
       <section class="section {{ 'active' if sec == 'goals' }}" id="sec-goals">
         <div class="section-toolbar">
           <button class="mke-btn primary" onclick="openGoalModal()">+ Add Goal</button>
-          <button class="mke-btn" onclick="openStrategyModal()">+ Add Strategy</button>
+          <button class="mke-btn outline" onclick="openStrategyModal()">+ Add Strategy</button>
           <button class="ask-sage-inline" onclick="askSage('Based on my current performance, what goals should I set for next month? What strategies will help me hit them?')"><span class="sage-mini-avatar">S</span> Ask Alex</button>
         </div>
         <!-- AI Strategy Recommendations -->
@@ -1196,7 +1196,7 @@
         <div class="grid-2 mt">
           <!-- Product Goals -->
           <div class="card">
-            <div class="card-header"><h3>Product Sales Targets</h3><button class="mke-btn" onclick="openProductTargetModal()" style="font-size:12px;padding:4px 12px">+ Set Target</button></div>
+            <div class="card-header"><h3>Product Sales Targets</h3><button class="mke-btn outline" onclick="openProductTargetModal()" style="font-size:12px;padding:4px 12px">+ Set Target</button></div>
             <div class="card-body">
               <table class="data-table" id="productGoalsTable">
                 <thead><tr><th>Product</th><th>Category</th><th>Target</th><th>Sold</th><th>Progress</th></tr></thead>
@@ -1219,7 +1219,7 @@
 
         <!-- Quarterly Strategy -->
         <div class="card mt">
-          <div class="card-header"><h3>Quarterly Strategy</h3><button class="mke-btn" onclick="openStrategyModal()" style="font-size:12px;padding:4px 12px">+ Add Strategy</button></div>
+          <div class="card-header"><h3>Quarterly Strategy</h3><button class="mke-btn outline" onclick="openStrategyModal()" style="font-size:12px;padding:4px 12px">+ Add Strategy</button></div>
           <div class="card-body" id="strategyNotes">
             <div class="ai-loading">Loading strategy...</div>
           </div>
@@ -1880,7 +1880,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=31"></script>
+  <script src="/static/dashboard.js?v=32"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

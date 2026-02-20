@@ -38,8 +38,11 @@ def get_goals_overview(db: Session, shop_id: str) -> dict:
         pct = round(current_value / target * 100, 1) if target > 0 else 0
 
         period_start, period_end = _parse_period(g.period_key, g.period)
-        days_elapsed = max(1, (today - period_start).days)
-        days_total = max(1, (period_end - period_start).days)
+        # Use goal creation date as effective start for pacing calculation
+        goal_created = g.created_at.date() if g.created_at else period_start
+        effective_start = max(period_start, goal_created)
+        days_elapsed = max(1, (today - effective_start).days)
+        days_total = max(1, (period_end - effective_start).days)
         days_remaining = max(0, (period_end - today).days)
         expected_pct = round(days_elapsed / days_total * 100, 1)
 
@@ -324,16 +327,27 @@ def get_strategy_recommendations(db: Session, shop_id: str) -> dict:
 
 
 def _calculate_progress(db: Session, shop_id: str, goal, ref_date: date) -> float:
-    """Calculate current progress for a goal up to ref_date."""
+    """Calculate current progress for a goal up to ref_date.
+
+    Only counts data from after the goal was created, so newly created goals
+    start at $0 / 0 instead of inheriting pre-existing period data.
+    """
     period_start, period_end = _parse_period(goal.period_key, goal.period)
     end = min(ref_date, period_end)
+
+    # Only count data from after the goal was created
+    goal_created = goal.created_at.date() if goal.created_at else period_start
+    start = max(period_start, goal_created)
+
+    if start > end:
+        return 0.0
 
     if goal.goal_type == "revenue":
         result = (
             db.query(func.coalesce(func.sum(DailySnapshot.total_revenue), 0))
             .filter(
                 DailySnapshot.shop_id == shop_id,
-                DailySnapshot.date >= period_start,
+                DailySnapshot.date >= start,
                 DailySnapshot.date <= end,
             )
             .scalar()
@@ -345,7 +359,7 @@ def _calculate_progress(db: Session, shop_id: str, goal, ref_date: date) -> floa
             db.query(func.coalesce(func.sum(DailySnapshot.transaction_count), 0))
             .filter(
                 DailySnapshot.shop_id == shop_id,
-                DailySnapshot.date >= period_start,
+                DailySnapshot.date >= start,
                 DailySnapshot.date <= end,
             )
             .scalar()
@@ -357,7 +371,7 @@ def _calculate_progress(db: Session, shop_id: str, goal, ref_date: date) -> floa
             db.query(func.coalesce(func.sum(DailySnapshot.new_customers), 0))
             .filter(
                 DailySnapshot.shop_id == shop_id,
-                DailySnapshot.date >= period_start,
+                DailySnapshot.date >= start,
                 DailySnapshot.date <= end,
             )
             .scalar()
@@ -369,7 +383,7 @@ def _calculate_progress(db: Session, shop_id: str, goal, ref_date: date) -> floa
             db.query(func.avg(DailySnapshot.avg_transaction_value))
             .filter(
                 DailySnapshot.shop_id == shop_id,
-                DailySnapshot.date >= period_start,
+                DailySnapshot.date >= start,
                 DailySnapshot.date <= end,
             )
             .scalar()
