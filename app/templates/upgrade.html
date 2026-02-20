@@ -182,42 +182,42 @@
         <button class="plan-btn plan-btn-outline" onclick="openModal('starter')">Choose Starter</button>
       </div>
 
-      <!-- Growth (Most Popular) -->
-      <div class="plan-card featured" data-plan="growth">
-        <span class="plan-badge">Most Popular</span>{% if user and user.plan_tier == 'growth' %}<span class="current-plan-badge">Current Plan</span>{% endif %}
+      <!-- Growth -->
+      <div class="plan-card" data-plan="growth">
+        <span class="plan-badge">Growth</span>{% if user and user.plan_tier == 'growth' %}<span class="current-plan-badge">Current Plan</span>{% endif %}
         <div class="plan-name">Growth</div>
         <div class="plan-price"><span class="price-val">$99</span><span>/month</span></div>
         <div class="plan-price-annual annual-price" style="display:none">Billed as $950/year</div>
         <div class="plan-desc">Everything you need to outpace your competitors</div>
         <ul class="plan-features">
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Everything in Starter</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> AI-powered recommendations</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Sage AI assistant</li>
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Full competitor intelligence</li>
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Marketing content engine</li>
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Win-back campaigns</li>
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Goals & strategy planner</li>
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Priority email support</li>
         </ul>
-        <button class="plan-btn plan-btn-primary" onclick="openModal('growth')">Choose Growth</button>
+        <button class="plan-btn plan-btn-outline" onclick="openModal('growth')">Choose Growth</button>
       </div>
 
-      <!-- Scale -->
-      <div class="plan-card" data-plan="scale">
-        <span class="plan-badge">Scale</span>{% if user and user.plan_tier == 'scale' %}<span class="current-plan-badge">Current Plan</span>{% endif %}
+      <!-- Scale (Most Popular) -->
+      <div class="plan-card featured" data-plan="scale">
+        <span class="plan-badge">Most Popular</span>{% if user and user.plan_tier == 'scale' %}<span class="current-plan-badge">Current Plan</span>{% endif %}
         <div class="plan-name">Scale</div>
         <div class="plan-price"><span class="price-val">$199</span><span>/month</span></div>
         <div class="plan-price-annual annual-price" style="display:none">Billed as $1,910/year</div>
-        <div class="plan-desc">For growing businesses with multiple locations</div>
+        <div class="plan-desc">Your AI team: 5 agents that work 24/7</div>
         <ul class="plan-features">
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Everything in Growth</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Multi-location support</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Advanced financial reports</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Custom integrations (API)</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Team member accounts</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Dedicated account manager</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Phone & chat support</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 5 AI Agents (Maya, Scout, Emma, Alex, Max)</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Auto-generated marketing content</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 24/7 competitor monitoring</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Automated customer win-back</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> AI pricing & sales optimization</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Daily strategy reports</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" onclick="openModal('scale')">Choose Scale</button>
+        <button class="plan-btn plan-btn-primary" onclick="openModal('scale')">Choose Scale</button>
       </div>
     </div>
 
@@ -245,11 +245,11 @@
           <tr><td>Win-Back Campaigns</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td><td class="check-mark">&#10003;</td></tr>
           <tr><td>Goals & Strategy Planner</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td><td class="check-mark">&#10003;</td></tr>
           <tr><td>Daily Briefing</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td><td class="check-mark">&#10003;</td></tr>
-          <tr><td>Multi-Location Support</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
-          <tr><td>Advanced Financial Reports</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
-          <tr><td>Custom API Integrations</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
-          <tr><td>Team Member Accounts</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
-          <tr><td>Dedicated Account Manager</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
+          <tr><td>AI Agent Fleet (5 agents)</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
+          <tr><td>Auto-Generated Marketing</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
+          <tr><td>24/7 Competitor Monitoring</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
+          <tr><td>AI Sales Optimization</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
+          <tr><td>Daily Strategy Reports</td><td class="dash-mark">&mdash;</td><td class="dash-mark">&mdash;</td><td class="check-mark">&#10003;</td></tr>
           <tr><td>Support</td><td>Email</td><td>Priority Email</td><td>Phone & Chat</td></tr>
         </tbody>
       </table>

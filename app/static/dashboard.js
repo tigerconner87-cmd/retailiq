@@ -213,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (section === 'reviews') await loadReviews();
       else if (section === 'alerts') await loadAlerts();
       else if (section === 'settings') await loadSettings();
+      else if (section === 'agents') await loadAgents();
       else if (section === 'datahub') await loadDataHub();
       // Stagger card entrance animation
       const sec = $(`#sec-${section}`);
@@ -4122,6 +4123,349 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ── End Sage AI Assistant ──
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // AI AGENT FLEET
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const AGENT_ICONS = {
+    megaphone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>',
+    binoculars: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17" r="4"/><circle cx="17" cy="17" r="4"/><path d="M7 13V5a2 2 0 012-2h0a2 2 0 012 2v8"/><path d="M13 13V5a2 2 0 012-2h0a2 2 0 012 2v8"/></svg>',
+    heart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>',
+    chess: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 3v3M9 6h6l-1 5h-4L9 6z"/><path d="M7 11h10l1 5H6l1-5z"/><path d="M5 16h14v2a1 1 0 01-1 1H6a1 1 0 01-1-1v-2z"/></svg>',
+    dollar: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+  };
+
+  let _agentsData = null;
+
+  function timeAgo(dateStr) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString();
+  }
+
+  async function loadAgents() {
+    try {
+      const res = await fetch('/api/dashboard/agents', { credentials: 'same-origin' });
+      const data = await res.json();
+      _agentsData = data;
+
+      // Lock overlay for non-Scale (but allow demo account)
+      const lockOverlay = $('#agentsLockOverlay');
+      const isDemoOrScale = data.plan_tier === 'scale' || data.plan_tier === 'demo';
+      if (lockOverlay) {
+        if (isDemoOrScale) {
+          lockOverlay.hidden = true;
+          lockOverlay.style.display = 'none';
+        } else {
+          lockOverlay.hidden = false;
+          lockOverlay.style.display = 'flex';
+        }
+      }
+
+      // Metrics
+      const m = data.metrics || {};
+      const amTotalTasks = $('#amTotalTasks');
+      if (amTotalTasks) amTotalTasks.textContent = m.total_tasks_month || 0;
+      const amContent = $('#amContent');
+      if (amContent) amContent.textContent = m.content_generated || 0;
+      const amOpportunities = $('#amOpportunities');
+      if (amOpportunities) amOpportunities.textContent = m.opportunities_found || 0;
+      const amRevenue = $('#amRevenue');
+      if (amRevenue) amRevenue.textContent = '$' + (m.estimated_revenue_impact || 0).toLocaleString();
+      const amHours = $('#amHours');
+      if (amHours) amHours.textContent = '~' + (m.hours_saved || 0) + 'h';
+
+      // Render agent cards
+      const grid = $('#agentsGrid');
+      if (!grid) return;
+      grid.innerHTML = data.agents.map(agent => `
+        <div class="agent-card" data-agent="${agent.agent_type}" style="--agent-color:${agent.color}">
+          <div class="agent-card-top">
+            <div class="agent-avatar" style="background:${agent.color}">${AGENT_ICONS[agent.icon] || ''}</div>
+            <div class="agent-toggle-wrap">
+              <span class="agent-status ${agent.is_active ? 'active' : 'paused'}">${agent.is_active ? 'Active' : 'Paused'}</span>
+              <label class="agent-switch">
+                <input type="checkbox" ${agent.is_active ? 'checked' : ''} onchange="toggleAgent('${agent.agent_type}', this)">
+                <span class="agent-slider"></span>
+              </label>
+            </div>
+          </div>
+          <h3 class="agent-name">${agent.name}</h3>
+          <div class="agent-role">${agent.role}</div>
+          <p class="agent-desc">${agent.description}</p>
+          <div class="agent-stats">
+            <div class="agent-stat"><strong>${agent.tasks_today}</strong> tasks today</div>
+            <div class="agent-stat"><strong>${agent.tasks_month}</strong> this month</div>
+          </div>
+          ${agent.last_action ? '<div class="agent-last-action">' + esc(agent.last_action) + ' <span class="agent-time">' + timeAgo(agent.last_action_at) + '</span></div>' : ''}
+          <div class="agent-card-actions">
+            <button class="agent-btn agent-btn-activity" onclick="showAgentActivity('${agent.agent_type}')">View Activity</button>
+            <button class="agent-btn agent-btn-config" onclick="openAgentConfig('${agent.agent_type}')">Configure</button>
+            <button class="agent-btn agent-btn-chat" onclick="openAgentChat('${agent.agent_type}')">Chat</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Load activity feed
+      loadAgentActivityFeed('');
+
+      // Wire filter buttons
+      $$('.agent-filter-btn').forEach(btn => {
+        btn.onclick = () => {
+          $$('.agent-filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          loadAgentActivityFeed(btn.dataset.agent);
+        };
+      });
+
+    } catch (err) {
+      console.error('[Forge] Error loading agents:', err);
+    }
+  }
+
+  async function loadAgentActivityFeed(agentFilter) {
+    const feed = $('#agentActivityFeed');
+    if (!feed) return;
+    feed.innerHTML = '<div class="agent-feed-loading">Loading activity...</div>';
+    try {
+      const url = '/api/dashboard/agents/activity/all' + (agentFilter ? '?agent_filter=' + agentFilter : '');
+      const res = await fetch(url, { credentials: 'same-origin' });
+      const data = await res.json();
+      if (!data.activities || data.activities.length === 0) {
+        feed.innerHTML = '<div class="agent-feed-empty">No activity yet. Your agents are getting started.</div>';
+        return;
+      }
+      feed.innerHTML = data.activities.map(a => `
+        <div class="agent-feed-item">
+          <div class="agent-feed-dot" style="background:${a.agent_color}"></div>
+          <div class="agent-feed-content">
+            <strong>${esc(a.agent_name)}</strong>
+            <span class="agent-feed-desc">${esc(a.description)}</span>
+          </div>
+          <span class="agent-feed-time">${timeAgo(a.created_at)}</span>
+        </div>
+      `).join('');
+    } catch (err) {
+      feed.innerHTML = '<div class="agent-feed-empty">Failed to load activity.</div>';
+    }
+  }
+
+  // Toggle agent active/paused
+  window.toggleAgent = async function(agentType, checkbox) {
+    try {
+      const res = await fetch('/api/dashboard/agents/' + agentType + '/toggle', {
+        method: 'PUT', credentials: 'same-origin',
+      });
+      const data = await res.json();
+      const card = checkbox.closest('.agent-card');
+      const status = card.querySelector('.agent-status');
+      if (data.is_active) {
+        status.className = 'agent-status active';
+        status.textContent = 'Active';
+      } else {
+        status.className = 'agent-status paused';
+        status.textContent = 'Paused';
+      }
+    } catch (err) {
+      showToast('Failed to toggle agent', 'error');
+    }
+  };
+
+  // Open agent config modal
+  window.openAgentConfig = function(agentType) {
+    if (!_agentsData) return;
+    const agent = _agentsData.agents.find(a => a.agent_type === agentType);
+    if (!agent) return;
+
+    const modal = $('#agentConfigModal');
+    modal.hidden = false;
+    modal.style.display = 'flex';
+
+    $('#acAvatar').style.background = agent.color;
+    $('#acAvatar').innerHTML = AGENT_ICONS[agent.icon] || '';
+    $('#acName').textContent = agent.name;
+    $('#acRole').textContent = agent.role;
+
+    const body = $('#acBody');
+    const cfg = agent.configuration || {};
+
+    const configFields = {
+      maya: `
+        <div class="ac-field"><label>Posting Frequency</label><select id="acf_posting_frequency"><option value="daily" ${cfg.posting_frequency==='daily'?'selected':''}>Daily</option><option value="3x_week" ${cfg.posting_frequency==='3x_week'?'selected':''}>3x per week</option><option value="weekly" ${cfg.posting_frequency==='weekly'?'selected':''}>Weekly</option></select></div>
+        <div class="ac-field"><label>Tone</label><select id="acf_tone"><option value="professional" ${cfg.tone==='professional'?'selected':''}>Professional</option><option value="casual" ${cfg.tone==='casual'?'selected':''}>Casual</option><option value="fun" ${cfg.tone==='fun'?'selected':''}>Fun</option><option value="edgy" ${cfg.tone==='edgy'?'selected':''}>Edgy</option></select></div>
+        <div class="ac-field"><label>Content Focus</label><select id="acf_focus"><option value="products" ${cfg.focus==='products'?'selected':''}>Products</option><option value="lifestyle" ${cfg.focus==='lifestyle'?'selected':''}>Lifestyle</option><option value="behind_scenes" ${cfg.focus==='behind_scenes'?'selected':''}>Behind the Scenes</option><option value="competitive" ${cfg.focus==='competitive'?'selected':''}>Competitive</option></select></div>
+        <div class="ac-field ac-toggle-field"><label>Auto-Generate Content</label><label class="agent-switch"><input type="checkbox" id="acf_auto_generate" ${cfg.auto_generate?'checked':''}><span class="agent-slider"></span></label></div>
+      `,
+      scout: `
+        <div class="ac-field"><label>Monitor Frequency</label><select id="acf_monitor_frequency"><option value="realtime" ${cfg.monitor_frequency==='realtime'?'selected':''}>Real-time</option><option value="daily" ${cfg.monitor_frequency==='daily'?'selected':''}>Daily</option><option value="weekly" ${cfg.monitor_frequency==='weekly'?'selected':''}>Weekly</option></select></div>
+        <div class="ac-field"><label>Alert Sensitivity</label><select id="acf_alert_sensitivity"><option value="all" ${cfg.alert_sensitivity==='all'?'selected':''}>All Changes</option><option value="significant" ${cfg.alert_sensitivity==='significant'?'selected':''}>Significant Only</option><option value="critical" ${cfg.alert_sensitivity==='critical'?'selected':''}>Critical Only</option></select></div>
+        <div class="ac-field ac-toggle-field"><label>Auto-Generate Responses</label><label class="agent-switch"><input type="checkbox" id="acf_auto_generate_responses" ${cfg.auto_generate_responses?'checked':''}><span class="agent-slider"></span></label></div>
+      `,
+      emma: `
+        <div class="ac-field"><label>At-Risk Threshold</label><select id="acf_at_risk_threshold"><option value="30" ${cfg.at_risk_threshold==30?'selected':''}>30 days</option><option value="45" ${cfg.at_risk_threshold==45?'selected':''}>45 days</option><option value="60" ${cfg.at_risk_threshold==60?'selected':''}>60 days</option></select></div>
+        <div class="ac-field"><label>Review Response Style</label><select id="acf_review_response_style"><option value="grateful" ${cfg.review_response_style==='grateful'?'selected':''}>Grateful</option><option value="professional" ${cfg.review_response_style==='professional'?'selected':''}>Professional</option><option value="casual" ${cfg.review_response_style==='casual'?'selected':''}>Casual</option></select></div>
+        <div class="ac-field"><label>Win-Back Discount</label><select id="acf_winback_discount"><option value="10" ${cfg.winback_discount==10?'selected':''}>10%</option><option value="15" ${cfg.winback_discount==15?'selected':''}>15%</option><option value="20" ${cfg.winback_discount==20?'selected':''}>20%</option></select></div>
+        <div class="ac-field ac-toggle-field"><label>Auto-Draft Emails</label><label class="agent-switch"><input type="checkbox" id="acf_auto_draft_emails" ${cfg.auto_draft_emails?'checked':''}><span class="agent-slider"></span></label></div>
+      `,
+      alex: `
+        <div class="ac-field"><label>Report Frequency</label><select id="acf_report_frequency"><option value="daily" ${cfg.report_frequency==='daily'?'selected':''}>Daily</option><option value="weekly" ${cfg.report_frequency==='weekly'?'selected':''}>Weekly</option><option value="monthly" ${cfg.report_frequency==='monthly'?'selected':''}>Monthly</option></select></div>
+        <div class="ac-field"><label>Alert Threshold</label><select id="acf_alert_threshold"><option value="any" ${cfg.alert_threshold==='any'?'selected':''}>Any Change</option><option value="10pct" ${cfg.alert_threshold==='10pct'?'selected':''}>10%+ Changes</option><option value="25pct" ${cfg.alert_threshold==='25pct'?'selected':''}>25%+ Changes</option></select></div>
+        <div class="ac-field ac-toggle-field"><label>Goals Auto-Adjust</label><label class="agent-switch"><input type="checkbox" id="acf_goals_auto_adjust" ${cfg.goals_auto_adjust?'checked':''}><span class="agent-slider"></span></label></div>
+      `,
+      max: `
+        <div class="ac-field"><label>Price Optimization</label><select id="acf_price_optimization"><option value="conservative" ${cfg.price_optimization==='conservative'?'selected':''}>Conservative</option><option value="moderate" ${cfg.price_optimization==='moderate'?'selected':''}>Moderate</option><option value="aggressive" ${cfg.price_optimization==='aggressive'?'selected':''}>Aggressive</option></select></div>
+        <div class="ac-field ac-toggle-field"><label>Bundle Suggestions</label><label class="agent-switch"><input type="checkbox" id="acf_bundle_suggestions" ${cfg.bundle_suggestions?'checked':''}><span class="agent-slider"></span></label></div>
+        <div class="ac-field ac-toggle-field"><label>Markdown Alerts</label><label class="agent-switch"><input type="checkbox" id="acf_markdown_alerts" ${cfg.markdown_alerts?'checked':''}><span class="agent-slider"></span></label></div>
+        <div class="ac-field ac-toggle-field"><label>Upsell Suggestions</label><label class="agent-switch"><input type="checkbox" id="acf_upsell_suggestions" ${cfg.upsell_suggestions?'checked':''}><span class="agent-slider"></span></label></div>
+      `,
+    };
+
+    body.innerHTML = configFields[agentType] || '<p>No configuration available.</p>';
+    modal.dataset.agentType = agentType;
+
+    // Save button
+    $('#acSaveBtn').onclick = async () => {
+      const newCfg = {};
+      body.querySelectorAll('select').forEach(sel => {
+        const key = sel.id.replace('acf_', '');
+        const val = sel.value;
+        newCfg[key] = isNaN(val) ? val : Number(val);
+      });
+      body.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        const key = cb.id.replace('acf_', '');
+        newCfg[key] = cb.checked;
+      });
+      try {
+        await fetch('/api/dashboard/agents/' + agentType + '/configure', {
+          method: 'PUT', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCfg),
+        });
+        showToast(agent.name + ' configuration saved!', 'success');
+        modal.hidden = true;
+        modal.style.display = 'none';
+        loadAgents();
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+    };
+
+    // Reset button
+    $('#acResetBtn').onclick = () => {
+      openAgentConfig(agentType); // Just re-render with defaults from server
+    };
+  };
+
+  // Open agent chat (redirect to Sage with agent context)
+  window.openAgentChat = function(agentType) {
+    if (!_agentsData) return;
+    const agent = _agentsData.agents.find(a => a.agent_type === agentType);
+    if (!agent) return;
+
+    // Open the Sage chat panel
+    const chatPanel = $('.ai-chat-panel');
+    if (chatPanel) chatPanel.classList.add('open');
+
+    // Update chat header to show agent identity
+    const chatHeaderName = chatPanel.querySelector('.ai-chat-title');
+    if (chatHeaderName) chatHeaderName.textContent = agent.name + ' — ' + agent.role;
+
+    // Set the chat to agent mode
+    window._activeAgentType = agentType;
+    window._activeAgentName = agent.name;
+
+    // Pre-fill with agent greeting
+    const msgs = chatPanel.querySelector('.ai-chat-messages');
+    if (msgs && msgs.children.length <= 1) {
+      const agentGreetings = {
+        maya: "Hey! I'm Maya, your Marketing Director. Want me to create some social posts, plan a campaign, or brainstorm content ideas? Just ask!",
+        scout: "I'm Scout, your Competitive Intelligence Analyst. I can brief you on competitor activity, identify opportunities, or help you craft a competitive response.",
+        emma: "Hi! I'm Emma, your Customer Success Manager. I can help with win-back emails, review responses, or identifying your VIP customers. What do you need?",
+        alex: "I'm Alex, your Chief Strategy Officer. I can analyze your business performance, set goals, forecast revenue, or provide strategic recommendations.",
+        max: "I'm Max, your Sales Director. I find ways to increase revenue — bundles, pricing optimization, upsell opportunities. Where should we start?",
+      };
+      const greeting = agentGreetings[agentType] || 'How can I help?';
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'ai-msg ai-msg-assistant';
+      msgDiv.innerHTML = '<div class="ai-msg-bubble">' + esc(greeting) + '</div>';
+      msgs.appendChild(msgDiv);
+    }
+  };
+
+  // Intercept Sage sendAiMessage to use agent chat when in agent mode
+  const _origSendAiMessage = window.sendAiMessage || null;
+  const aiSendBtn = $('#aiSendBtn');
+  const aiInput2 = $('#aiInput');
+  if (aiSendBtn && aiInput2) {
+    const origHandler = aiSendBtn.onclick;
+    aiSendBtn.onclick = async function(e) {
+      if (window._activeAgentType) {
+        e.preventDefault();
+        e.stopPropagation();
+        const msg = aiInput2.value.trim();
+        if (!msg) return;
+        aiInput2.value = '';
+        const msgs = $('.ai-chat-messages');
+        // Add user message
+        const userDiv = document.createElement('div');
+        userDiv.className = 'ai-msg ai-msg-user';
+        userDiv.innerHTML = '<div class="ai-msg-bubble">' + esc(msg) + '</div>';
+        msgs.appendChild(userDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+        // Add loading
+        const loadDiv = document.createElement('div');
+        loadDiv.className = 'ai-msg ai-msg-assistant';
+        loadDiv.innerHTML = '<div class="ai-msg-bubble"><span class="ai-typing">thinking...</span></div>';
+        msgs.appendChild(loadDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+        try {
+          const res = await fetch('/api/ai/agent-chat', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agent_type: window._activeAgentType, message: msg }),
+          });
+          const data = await res.json();
+          loadDiv.querySelector('.ai-msg-bubble').innerHTML = (data.response || 'No response.').replace(/\n/g, '<br>');
+        } catch (err) {
+          loadDiv.querySelector('.ai-msg-bubble').innerHTML = 'Something went wrong. Try again.';
+        }
+        msgs.scrollTop = msgs.scrollHeight;
+        return;
+      }
+      // Otherwise use original handler
+      if (origHandler) origHandler.call(this, e);
+    };
+  }
+
+  // Clear agent mode when chat is closed
+  const closeChatBtn = $('.ai-chat-close');
+  if (closeChatBtn) {
+    const origClose = closeChatBtn.onclick;
+    closeChatBtn.onclick = function(e) {
+      window._activeAgentType = null;
+      window._activeAgentName = null;
+      const chatHeaderName = document.querySelector('.ai-chat-title');
+      if (chatHeaderName) chatHeaderName.textContent = 'Sage';
+      if (origClose) origClose.call(this, e);
+    };
+  }
+
+  // Show agent activity in a filtered view
+  window.showAgentActivity = function(agentType) {
+    // Scroll to activity feed and filter
+    const filterBtn = document.querySelector('.agent-filter-btn[data-agent="' + agentType + '"]');
+    if (filterBtn) filterBtn.click();
+    const feedSection = document.querySelector('.agents-activity-section');
+    if (feedSection) feedSection.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // ── End Agent Fleet ──
 
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {

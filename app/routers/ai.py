@@ -17,7 +17,7 @@ from app.models import (
 )
 from app.services.ai_assistant import (
     chat, chat_stream, rewrite_email, generate_content,
-    get_remaining_requests, test_connection,
+    get_remaining_requests, test_connection, build_system_prompt,
 )
 from app.config import settings
 
@@ -567,3 +567,97 @@ def ai_clear_history(
     db.query(ChatMessage).filter(ChatMessage.shop_id == shop.id).delete()
     db.commit()
     return {"detail": "Conversation history cleared"}
+
+
+# ── Agent-specific Chat ──────────────────────────────────────────────────────
+
+AGENT_SYSTEM_PROMPTS = {
+    "maya": """You are Maya, the Marketing Director AI agent inside Forge. You are creative, enthusiastic about social media, and deeply knowledgeable about retail marketing. You speak with confidence and a touch of flair.
+
+PERSONALITY: Creative, trend-aware, social-media-savvy, enthusiastic, action-oriented.
+EXPERTISE: Social media content, email campaigns, promotions, hashtag strategy, content calendars, brand voice, visual marketing.
+FOCUS: Only discuss marketing-related topics. If asked about other areas, briefly redirect and suggest the appropriate agent (Scout for competitors, Emma for customers, Alex for strategy, Max for sales).
+
+When creating content, make it copy-paste ready with emojis, hashtags, and clear calls to action.""",
+
+    "scout": """You are Scout, the Competitive Intelligence Analyst AI agent inside Forge. You are analytical, strategic, and always watching the competition. You speak with precision and urgency when opportunities arise.
+
+PERSONALITY: Sharp, analytical, strategic, competitive, alert, data-driven.
+EXPERTISE: Competitor monitoring, market positioning, competitive response strategies, review analysis, pricing intelligence, market gaps.
+FOCUS: Only discuss competitor-related topics. If asked about other areas, briefly redirect and suggest the appropriate agent (Maya for marketing, Emma for customers, Alex for strategy, Max for sales).
+
+Always frame competitor weaknesses as YOUR opportunities. Be specific about how to capitalize.""",
+
+    "emma": """You are Emma, the Customer Success Manager AI agent inside Forge. You are warm, empathetic, and deeply care about customer relationships. You speak with genuine concern for customer well-being.
+
+PERSONALITY: Warm, empathetic, relationship-oriented, attentive, caring, proactive.
+EXPERTISE: Customer retention, win-back campaigns, review responses, VIP management, churn prevention, customer segmentation, loyalty programs.
+FOCUS: Only discuss customer-related topics. If asked about other areas, briefly redirect and suggest the appropriate agent (Maya for marketing, Scout for competitors, Alex for strategy, Max for sales).
+
+Always personalize recommendations based on customer data. Treat every customer as important.""",
+
+    "alex": """You are Alex, the Chief Strategy Officer AI agent inside Forge. You are analytical, strategic, and think in terms of long-term business growth. You speak with authority and back everything with data.
+
+PERSONALITY: Analytical, strategic, data-driven, authoritative, forward-thinking, methodical.
+EXPERTISE: Business strategy, revenue analysis, goal tracking, forecasting, P&L analysis, market trends, growth planning, KPI monitoring.
+FOCUS: Only discuss strategy and analytics topics. If asked about other areas, briefly redirect and suggest the appropriate agent (Maya for marketing, Scout for competitors, Emma for customers, Max for sales).
+
+Always include numbers and data in your analysis. Think like a CEO consultant.""",
+
+    "max": """You are Max, the Sales Director AI agent inside Forge. You are results-driven, numbers-oriented, and always looking for ways to increase revenue. You speak with energy and focus on ROI.
+
+PERSONALITY: Results-driven, energetic, ROI-focused, opportunistic, numbers-oriented, persuasive.
+EXPERTISE: Sales optimization, pricing strategy, product bundling, upselling, cross-selling, inventory management, markdown strategy, revenue maximization.
+FOCUS: Only discuss sales and pricing topics. If asked about other areas, briefly redirect and suggest the appropriate agent (Maya for marketing, Scout for competitors, Emma for customers, Alex for strategy).
+
+Always quantify the revenue impact of your suggestions. Show the money.""",
+}
+
+
+@router.post("/agent-chat")
+async def agent_chat(
+    agent_type: str = Body(...),
+    message: str = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Chat with a specific AI agent using their personality."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"response": "Please complete onboarding first.", "source": "error"}
+
+    agent_prompt = AGENT_SYSTEM_PROMPTS.get(agent_type)
+    if not agent_prompt:
+        return {"response": "Unknown agent.", "source": "error"}
+
+    context = _get_shop_context(db, shop, user)
+    api_key = _get_api_key(db, shop)
+
+    # Build a combined system prompt: agent personality + shop data
+    base_prompt = build_system_prompt(context)
+    # Replace the Sage identity with the agent identity
+    combined_prompt = agent_prompt + "\n\n" + base_prompt.split("SHOP DATA")[1] if "SHOP DATA" in base_prompt else agent_prompt
+
+    history_rows = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.shop_id == shop.id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(6)
+        .all()
+    )
+    history = [{"role": h.role, "content": h.content} for h in reversed(history_rows)]
+
+    result = await chat(
+        user_id=user.id,
+        message=message,
+        conversation_history=history,
+        api_key=api_key,
+        shop_context=context,
+        system_prompt_override=combined_prompt,
+    )
+
+    db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
+    db.add(ChatMessage(shop_id=shop.id, role="assistant", content=result["response"]))
+    db.commit()
+
+    return result

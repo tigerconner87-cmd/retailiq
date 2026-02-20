@@ -77,6 +77,7 @@ class Shop(Base):
     product_goals = relationship("ProductGoal", back_populates="shop", cascade="all, delete-orphan")
     strategy_notes = relationship("StrategyNote", back_populates="shop", cascade="all, delete-orphan")
     posted_contents = relationship("PostedContent", back_populates="shop", cascade="all, delete-orphan")
+    agents = relationship("Agent", back_populates="shop", cascade="all, delete-orphan")
 
 
 # ── Shop Settings ─────────────────────────────────────────────────────────────
@@ -521,3 +522,34 @@ class PostedContent(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop", back_populates="posted_contents")
+
+
+# ── AI Agent Fleet ─────────────────────────────────────────────────────────
+
+class Agent(Base):
+    __tablename__ = "agents"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False)  # maya, scout, emma, alex, max
+    is_active = Column(Boolean, default=True)
+    configuration = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop", back_populates="agents")
+    activities = relationship("AgentActivity", back_populates="agent", cascade="all, delete-orphan")
+
+
+class AgentActivity(Base):
+    __tablename__ = "agent_activities"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False, index=True)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    action_type = Column(String(50), nullable=False)  # content_generated, alert_sent, analysis_complete, etc.
+    description = Column(Text, nullable=False)
+    details = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    agent = relationship("Agent", back_populates="activities")
+    shop = relationship("Shop")

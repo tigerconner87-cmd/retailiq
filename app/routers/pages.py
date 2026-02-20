@@ -189,6 +189,13 @@ def briefing_page(
     return _dashboard_section(request, db, user, "briefing")
 
 
+@router.get("/dashboard/agents", response_class=HTMLResponse)
+def agents_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),
+):
+    return _dashboard_section(request, db, user, "agents")
+
+
 @router.get("/dashboard/win-back", response_class=HTMLResponse)
 def winback_page(
     request: Request, db: Session = Depends(get_db), user=Depends(get_current_user_optional),

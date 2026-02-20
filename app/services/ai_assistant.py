@@ -186,6 +186,7 @@ async def chat(
     conversation_history: list[dict] | None = None,
     api_key: str = "",
     shop_context: dict | None = None,
+    system_prompt_override: str | None = None,
 ) -> dict:
     """Process a chat message and return AI response."""
     if not _check_rate_limit(user_id):
@@ -200,7 +201,7 @@ async def chat(
     key = (api_key or os.environ.get("ANTHROPIC_API_KEY", "")).strip()
     if key:
         try:
-            result = await _call_anthropic(message, conversation_history or [], key, shop_context)
+            result = await _call_anthropic(message, conversation_history or [], key, shop_context, system_override=system_prompt_override)
             return {"response": result, "source": "anthropic", "remaining": remaining}
         except anthropic.AuthenticationError:
             return {

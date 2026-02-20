@@ -1,8 +1,10 @@
 import csv
 import io
-from datetime import datetime
+import random
+import uuid
+from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -10,7 +12,7 @@ from app.dependencies import get_current_user, get_db
 from app.models import (
     User, Alert, Shop, Recommendation, ShopSettings, Expense,
     RevenueGoal, MarketingCampaign, PlanInterest, WinBackCampaign,
-    PostedContent,
+    PostedContent, Agent, AgentActivity,
 )
 from app.schemas import (
     AlertsResponse,
@@ -1197,4 +1199,346 @@ def get_posted_stats(user: User = Depends(get_current_user), db: Session = Depen
             }
             for p in recent
         ],
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AI AGENT FLEET
+# ══════════════════════════════════════════════════════════════════════════════
+
+AGENT_DEFAULTS = {
+    "maya": {
+        "name": "Maya",
+        "role": "Marketing Director",
+        "description": "Maya creates your social media posts, email campaigns, and promotions. She knows your products, your customers, and your competitors' weaknesses.",
+        "color": "#8b5cf6",
+        "icon": "megaphone",
+        "config_defaults": {
+            "posting_frequency": "daily",
+            "tone": "casual",
+            "focus": "products",
+            "auto_generate": True,
+        },
+    },
+    "scout": {
+        "name": "Scout",
+        "role": "Competitive Intelligence Analyst",
+        "description": "Scout monitors your competitors around the clock. When they slip up, Scout tells you exactly how to capitalize.",
+        "color": "#ef4444",
+        "icon": "binoculars",
+        "config_defaults": {
+            "monitor_frequency": "daily",
+            "alert_sensitivity": "significant",
+            "auto_generate_responses": True,
+            "competitors_to_watch": [],
+        },
+    },
+    "emma": {
+        "name": "Emma",
+        "role": "Customer Success Manager",
+        "description": "Emma keeps your customers coming back. She writes win-back emails, responds to reviews, and identifies VIPs who deserve special attention.",
+        "color": "#10b981",
+        "icon": "heart",
+        "config_defaults": {
+            "at_risk_threshold": 30,
+            "auto_draft_emails": True,
+            "review_response_style": "grateful",
+            "winback_discount": 15,
+        },
+    },
+    "alex": {
+        "name": "Alex",
+        "role": "Chief Strategy Officer",
+        "description": "Alex analyzes your data every day and gives you CEO-level strategic advice. Think of Alex as your business consultant who never sleeps.",
+        "color": "#3b82f6",
+        "icon": "chess",
+        "config_defaults": {
+            "report_frequency": "daily",
+            "focus_areas": ["revenue", "customers"],
+            "alert_threshold": "10pct",
+            "goals_auto_adjust": False,
+        },
+    },
+    "max": {
+        "name": "Max",
+        "role": "Sales Director",
+        "description": "Max finds ways to increase your revenue. Bundle suggestions, pricing optimization, upsell opportunities — Max spots money you're leaving on the table.",
+        "color": "#f59e0b",
+        "icon": "dollar",
+        "config_defaults": {
+            "bundle_suggestions": True,
+            "price_optimization": "moderate",
+            "markdown_alerts": True,
+            "upsell_suggestions": True,
+        },
+    },
+}
+
+
+def _seed_agent_activities(db: Session, shop_id: str, agents: list[Agent]):
+    """Generate realistic mock activity data for demo accounts."""
+    now = datetime.utcnow()
+    agent_map = {a.agent_type: a for a in agents}
+
+    activities_data = [
+        # Maya - Marketing
+        ("maya", "content_generated", "Created 7 Instagram posts for this week", -0.5),
+        ("maya", "content_generated", "Drafted Valentine's Day email campaign — subject line: 'Our hearts are full (and so are our shelves)'", -2.1),
+        ("maya", "content_generated", "Generated 15 hashtag sets for your top products", -4.5),
+        ("maya", "content_generated", "Created weekend flash sale promotion — 20% off accessories", -18.3),
+        ("maya", "analysis_complete", "Content performance review: Lifestyle posts get 2.3x more engagement than product-only posts", -26.7),
+        ("maya", "content_generated", "Wrote 3 Instagram stories for behind-the-scenes content", -43.2),
+        ("maya", "content_generated", "Created email sequence for new customer onboarding (3 emails)", -51.0),
+        ("maya", "content_generated", "Generated TikTok script for trending product: Canvas Tote Bag", -72.5),
+        ("maya", "analysis_complete", "Best posting time analysis: Your audience is most active Tue & Thu 11am-1pm", -96.0),
+        ("maya", "content_generated", "Created 5 promotional graphics copy for Spring Collection launch", -120.4),
+        # Scout - Competitor Intelligence
+        ("scout", "alert_sent", "Style Hub received 2 negative reviews about slow service — opportunity alert sent", -1.2),
+        ("scout", "analysis_complete", "Neighborhood Finds rating dropped from 3.4 to 3.1 — generated competitive response campaign", -8.0),
+        ("scout", "report_generated", "Weekly competitor report generated — you're #1 in your area", -24.0),
+        ("scout", "alert_sent", "Urban Threads launched a 30% off sale — counter-promotion suggested", -36.5),
+        ("scout", "analysis_complete", "Competitor review sentiment analysis: Style Hub has 34% negative mentions about 'pricing'", -52.0),
+        ("scout", "alert_sent", "New competitor detected: 'The Modern Boutique' opened 0.8mi away — monitoring started", -74.3),
+        ("scout", "report_generated", "Monthly competitive landscape report ready — 3 new opportunities identified", -120.0),
+        ("scout", "analysis_complete", "Price comparison: You're 12% below market avg on accessories — room to increase margins", -168.0),
+        # Emma - Customer Care
+        ("emma", "email_drafted", "Drafted win-back emails for 8 at-risk customers who haven't visited in 30+ days", -1.8),
+        ("emma", "review_response", "Generated review response for 5-star review from Emery T. — 'Amazing boutique!'", -5.5),
+        ("emma", "customer_alert", "Identified 3 VIP customers for appreciation outreach — total lifetime value: $4,200", -12.0),
+        ("emma", "email_drafted", "Created 'We miss you' campaign for 12 lapsed customers with personalized product picks", -28.0),
+        ("emma", "review_response", "Drafted empathetic response for 3-star review mentioning wait times", -48.0),
+        ("emma", "customer_alert", "Churn risk alert: 5 regular customers haven't returned in 25+ days", -72.5),
+        ("emma", "email_drafted", "Birthday email template created for this month's 4 customer birthdays", -96.0),
+        ("emma", "analysis_complete", "Customer satisfaction trend: NPS improved from 62 to 71 this month", -144.0),
+        # Alex - Strategy
+        ("alex", "analysis_complete", "Daily analysis: Revenue up 12% vs last week. Beanie Hats driving growth.", -0.8),
+        ("alex", "alert_sent", "Alert: At current pace, you'll miss your monthly goal by $3,200. Recommended actions sent.", -6.0),
+        ("alex", "report_generated", "Weekly strategy brief ready — 3 action items for revenue growth", -24.0),
+        ("alex", "analysis_complete", "Product mix analysis: Accessories margin is 62% vs apparel at 45%. Recommend increasing accessory floor space.", -48.0),
+        ("alex", "alert_sent", "Break-even alert: You need $420/day to cover fixed costs. Today's pace: $580. On track.", -72.5),
+        ("alex", "report_generated", "Q1 2026 strategy review prepared — focus areas: foot traffic, AOV, accessory expansion", -168.0),
+        ("alex", "analysis_complete", "Revenue forecasting: Projecting $18,400 for this month based on current trends (+8% vs last month)", -192.0),
+        # Max - Sales
+        ("max", "opportunity_found", "Bundle opportunity: Customers who buy Slim Fit Jeans often buy Canvas Tote Bag. Suggested bundle saves 15%.", -2.0),
+        ("max", "alert_sent", "Price alert: Cotton Hoodie demand is strong. Test raising price by $5 — projected +$380/month revenue.", -7.5),
+        ("max", "alert_sent", "Slow mover: Linen Summer Dress hasn't sold in 14 days. Suggested 20% markdown to move inventory.", -16.0),
+        ("max", "opportunity_found", "Upsell opportunity: 67% of Scarf buyers also browse Gloves. Cross-sell display recommended.", -32.0),
+        ("max", "analysis_complete", "Promotion effectiveness: 'Buy 2 Get 1' outperforms '25% off' by 2.1x in your category", -56.0),
+        ("max", "opportunity_found", "New bundle suggestion: 'Date Night Kit' — Slim Fit Jeans + Leather Belt + Canvas Tote = $127 (save $18)", -96.0),
+        ("max", "alert_sent", "Inventory alert: Beanie Hat stock down to 4 units. Reorder recommended — it's your #2 seller.", -120.0),
+        ("max", "analysis_complete", "Weekly revenue optimization report: 5 pricing adjustments suggested, est. impact +$1,200/month", -168.0),
+    ]
+
+    for agent_type, action_type, desc, hours_ago in activities_data:
+        agent = agent_map.get(agent_type)
+        if not agent:
+            continue
+        db.add(AgentActivity(
+            id=str(uuid.uuid4()),
+            agent_id=agent.id,
+            shop_id=shop_id,
+            action_type=action_type,
+            description=desc,
+            details={},
+            created_at=now + timedelta(hours=hours_ago),
+        ))
+
+
+@router.get("/agents")
+async def get_agents(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all agents for the current shop, creating defaults if needed."""
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+
+    agents = db.query(Agent).filter(Agent.shop_id == shop.id).all()
+
+    # Auto-create agents on first access
+    if not agents:
+        for atype, meta in AGENT_DEFAULTS.items():
+            agent = Agent(
+                id=str(uuid.uuid4()),
+                shop_id=shop.id,
+                agent_type=atype,
+                is_active=True,
+                configuration=meta["config_defaults"],
+            )
+            db.add(agent)
+            agents.append(agent)
+        db.flush()
+        # Seed mock activity for demo
+        _seed_agent_activities(db, shop.id, agents)
+        db.commit()
+
+    # Get activity counts
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    result = []
+    for agent in agents:
+        meta = AGENT_DEFAULTS.get(agent.agent_type, {})
+        today_count = db.query(AgentActivity).filter(
+            AgentActivity.agent_id == agent.id,
+            AgentActivity.created_at >= today_start,
+        ).count()
+        month_count = db.query(AgentActivity).filter(
+            AgentActivity.agent_id == agent.id,
+            AgentActivity.created_at >= month_start,
+        ).count()
+        last_activity = db.query(AgentActivity).filter(
+            AgentActivity.agent_id == agent.id,
+        ).order_by(AgentActivity.created_at.desc()).first()
+
+        result.append({
+            "id": agent.id,
+            "agent_type": agent.agent_type,
+            "name": meta.get("name", agent.agent_type.title()),
+            "role": meta.get("role", ""),
+            "description": meta.get("description", ""),
+            "color": meta.get("color", "#6366f1"),
+            "icon": meta.get("icon", "bot"),
+            "is_active": agent.is_active,
+            "configuration": agent.configuration or meta.get("config_defaults", {}),
+            "tasks_today": today_count,
+            "tasks_month": month_count,
+            "last_action": last_activity.description if last_activity else None,
+            "last_action_at": last_activity.created_at.isoformat() if last_activity else None,
+        })
+
+    # Aggregate metrics
+    total_month = db.query(AgentActivity).filter(
+        AgentActivity.shop_id == shop.id,
+        AgentActivity.created_at >= month_start,
+    ).count()
+
+    content_count = db.query(AgentActivity).filter(
+        AgentActivity.shop_id == shop.id,
+        AgentActivity.action_type == "content_generated",
+        AgentActivity.created_at >= month_start,
+    ).count()
+
+    opps_count = db.query(AgentActivity).filter(
+        AgentActivity.shop_id == shop.id,
+        AgentActivity.action_type.in_(["opportunity_found", "alert_sent"]),
+        AgentActivity.created_at >= month_start,
+    ).count()
+
+    return {
+        "agents": result,
+        "metrics": {
+            "total_tasks_month": total_month,
+            "content_generated": content_count,
+            "opportunities_found": opps_count,
+            "estimated_revenue_impact": round(total_month * 28.5, -1),
+            "hours_saved": round(total_month * 0.3, 1),
+        },
+        "plan_tier": user.plan_tier,
+    }
+
+
+@router.put("/agents/{agent_type}/toggle")
+async def toggle_agent(
+    agent_type: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+    agent = db.query(Agent).filter(Agent.shop_id == shop.id, Agent.agent_type == agent_type).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    agent.is_active = not agent.is_active
+    db.commit()
+    return {"ok": True, "is_active": agent.is_active}
+
+
+@router.put("/agents/{agent_type}/configure")
+async def configure_agent(
+    agent_type: str,
+    config: dict = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+    agent = db.query(Agent).filter(Agent.shop_id == shop.id, Agent.agent_type == agent_type).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    agent.configuration = config
+    db.commit()
+    return {"ok": True, "configuration": agent.configuration}
+
+
+@router.get("/agents/{agent_type}/activity")
+async def get_agent_activity(
+    agent_type: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+    agent = db.query(Agent).filter(Agent.shop_id == shop.id, Agent.agent_type == agent_type).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    activities = (
+        db.query(AgentActivity)
+        .filter(AgentActivity.agent_id == agent.id)
+        .order_by(AgentActivity.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return {
+        "activities": [
+            {
+                "id": a.id,
+                "action_type": a.action_type,
+                "description": a.description,
+                "details": a.details,
+                "created_at": a.created_at.isoformat(),
+            }
+            for a in activities
+        ]
+    }
+
+
+@router.get("/agents/activity/all")
+async def get_all_agent_activity(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    agent_filter: str = Query(None),
+):
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+
+    q = (
+        db.query(AgentActivity, Agent.agent_type)
+        .join(Agent, Agent.id == AgentActivity.agent_id)
+        .filter(AgentActivity.shop_id == shop.id)
+    )
+    if agent_filter:
+        q = q.filter(Agent.agent_type == agent_filter)
+
+    rows = q.order_by(AgentActivity.created_at.desc()).limit(50).all()
+
+    return {
+        "activities": [
+            {
+                "id": a.id,
+                "agent_type": atype,
+                "agent_name": AGENT_DEFAULTS.get(atype, {}).get("name", atype),
+                "agent_color": AGENT_DEFAULTS.get(atype, {}).get("color", "#6366f1"),
+                "action_type": a.action_type,
+                "description": a.description,
+                "created_at": a.created_at.isoformat(),
+            }
+            for a, atype in rows
+        ]
     }
