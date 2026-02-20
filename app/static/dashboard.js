@@ -4399,18 +4399,15 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Intercept Sage sendAiMessage to use agent chat when in agent mode
-  const _origSendAiMessage = window.sendAiMessage || null;
-  const aiSendBtn = $('#aiSendBtn');
-  const aiInput2 = $('#aiInput');
-  if (aiSendBtn && aiInput2) {
+  if (aiSendBtn && aiInput) {
     const origHandler = aiSendBtn.onclick;
     aiSendBtn.onclick = async function(e) {
       if (window._activeAgentType) {
         e.preventDefault();
         e.stopPropagation();
-        const msg = aiInput2.value.trim();
+        const msg = aiInput.value.trim();
         if (!msg) return;
-        aiInput2.value = '';
+        aiInput.value = '';
         const msgs = $('.ai-chat-messages');
         // Add user message
         const userDiv = document.createElement('div');
