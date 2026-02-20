@@ -6,6 +6,7 @@ editing using the Anthropic Python SDK with data-aware fallback responses.
 
 import json
 import logging
+import os
 import time
 from datetime import datetime
 
@@ -196,9 +197,10 @@ async def chat(
 
     remaining = get_remaining_requests(user_id)
 
-    if api_key:
+    key = (api_key or os.environ.get("ANTHROPIC_API_KEY", "")).strip()
+    if key:
         try:
-            result = await _call_anthropic(message, conversation_history or [], api_key, shop_context)
+            result = await _call_anthropic(message, conversation_history or [], key, shop_context)
             return {"response": result, "source": "anthropic", "remaining": remaining}
         except anthropic.AuthenticationError:
             return {
@@ -243,7 +245,8 @@ async def chat_stream(
 
     remaining = get_remaining_requests(user_id)
 
-    if not api_key:
+    key = (api_key or os.environ.get("ANTHROPIC_API_KEY", "")).strip()
+    if not key:
         response = _get_fallback_response(message, shop_context)
         yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': response, 'source': 'fallback', 'remaining': remaining})}\n\n"
         return
@@ -251,16 +254,25 @@ async def chat_stream(
     ctx = shop_context or {}
     system = build_system_prompt(ctx)
 
+    # Build messages with alternating roles
     messages = []
+    last_role = None
     for h in (conversation_history or [])[-10:]:
-        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+        role = h.get("role", "user")
+        content = h.get("content", "")
+        if role == last_role:
+            continue
+        messages.append({"role": role, "content": content})
+        last_role = role
+    if last_role == "user":
+        messages.pop()
     messages.append({"role": "user", "content": message})
 
     try:
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = anthropic.AsyncAnthropic(api_key=key)
         full_text = ""
         async with client.messages.stream(
-            model="claude-sonnet-4-20250514",
+            model="claude-haiku-4-5-20251001",
             max_tokens=2048,
             system=system,
             messages=messages,
@@ -293,17 +305,32 @@ async def _call_anthropic(
     system_override: str | None = None,
 ) -> str:
     """Call the Anthropic API using the official SDK."""
+    key = (api_key or os.environ.get("ANTHROPIC_API_KEY", "")).strip()
+    if not key:
+        raise ValueError("No Anthropic API key available")
+
     ctx = shop_context or {}
     system = system_override or build_system_prompt(ctx)
 
+    # Build messages with alternating roles
     messages = []
+    last_role = None
     for h in history[-10:]:
-        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+        role = h.get("role", "user")
+        content = h.get("content", "")
+        if role == last_role:
+            continue  # skip consecutive same-role messages
+        messages.append({"role": role, "content": content})
+        last_role = role
+    # Ensure the final user message is added
+    if last_role == "user":
+        messages.pop()  # remove last user msg, we'll add the new one
     messages.append({"role": "user", "content": message})
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
+    log.info("Calling Anthropic API (model=claude-haiku-4-5-20251001, messages=%d)", len(messages))
+    client = anthropic.AsyncAnthropic(api_key=key)
     response = await client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-haiku-4-5-20251001",
         max_tokens=2048,
         system=system,
         messages=messages,
@@ -373,12 +400,13 @@ async def generate_content(
 
 async def test_connection(api_key: str) -> dict:
     """Test if the Anthropic API key is valid."""
-    if not api_key:
+    key = (api_key or os.environ.get("ANTHROPIC_API_KEY", "")).strip()
+    if not key:
         return {"ok": False, "message": "No API key provided"}
     try:
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = anthropic.AsyncAnthropic(api_key=key)
         response = await client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-haiku-4-5-20251001",
             max_tokens=50,
             messages=[{"role": "user", "content": "Say 'Connected!' in one word."}],
         )

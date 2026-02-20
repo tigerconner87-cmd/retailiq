@@ -1,5 +1,7 @@
 """AI Assistant (Sage) API endpoints with streaming support."""
 
+import logging
+import os
 from datetime import datetime, date, timedelta
 
 from fastapi import APIRouter, Depends, Body
@@ -18,6 +20,8 @@ from app.services.ai_assistant import (
     get_remaining_requests, test_connection,
 )
 from app.config import settings
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -359,10 +363,23 @@ def _get_shop_context(db: Session, shop: Shop, user: User) -> dict:
 
 
 def _get_api_key(db: Session, shop: Shop) -> str:
-    """Get Anthropic API key from shop settings or env."""
-    s = db.query(ShopSettings).filter(ShopSettings.shop_id == shop.id).first()
-    key = (s.anthropic_api_key if s and hasattr(s, 'anthropic_api_key') and s.anthropic_api_key else "") or settings.ANTHROPIC_API_KEY
-    return key or ""
+    """Get Anthropic API key from shop settings, config, or env."""
+    # 1. Try shop-level setting
+    try:
+        s = db.query(ShopSettings).filter(ShopSettings.shop_id == shop.id).first()
+        if s and hasattr(s, 'anthropic_api_key') and s.anthropic_api_key:
+            return s.anthropic_api_key.strip()
+    except Exception:
+        pass
+    # 2. Try pydantic config (reads .env)
+    if settings.ANTHROPIC_API_KEY:
+        return settings.ANTHROPIC_API_KEY.strip()
+    # 3. Direct env var fallback
+    env_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if env_key:
+        return env_key
+    log.warning("No Anthropic API key found in settings, config, or environment")
+    return ""
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -389,6 +406,7 @@ async def ai_chat(
 
     context = _get_shop_context(db, shop, user)
     api_key = _get_api_key(db, shop)
+    log.info("AI chat — user=%s, shop=%s, api_key=%s", user.id, shop.name, "set" if api_key else "MISSING")
 
     result = await chat(
         user_id=user.id,
@@ -397,6 +415,7 @@ async def ai_chat(
         api_key=api_key,
         shop_context=context,
     )
+    log.info("AI chat response — source=%s", result.get("source"))
 
     db.add(ChatMessage(shop_id=shop.id, role="user", content=message))
     db.add(ChatMessage(shop_id=shop.id, role="assistant", content=result["response"]))

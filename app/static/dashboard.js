@@ -3855,7 +3855,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return html;
   }
 
-  // ── Send Message with Streaming ──
+  // ── Send Message ──
   async function sendAiMessage() {
     const text = aiInput.value.trim();
     if (!text || aiStreaming) return;
@@ -3874,7 +3874,7 @@ document.addEventListener('DOMContentLoaded', () => {
     typingEl.className = 'sage-thinking';
     typingEl.innerHTML = `
       <div class="sage-avatar-sm">S</div>
-      <span>Sage is thinking</span>
+      <span>Sage is thinking...</span>
       <div class="ai-typing-dot"></div>
       <div class="ai-typing-dot"></div>
       <div class="ai-typing-dot"></div>`;
@@ -3882,108 +3882,25 @@ document.addEventListener('DOMContentLoaded', () => {
     aiMessages.scrollTop = aiMessages.scrollHeight;
 
     try {
-      const res = await fetch('/api/ai/chat/stream', {
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'same-origin',
         body: JSON.stringify({message: text}),
       });
-
-      if (!res.ok) throw new Error('Stream request failed');
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let fullText = '';
-      let streamDiv = null;
-      let bubbleEl = null;
-
-      while (true) {
-        const {done, value} = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, {stream: true});
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-
-            if (data.done) {
-              // Final message — use full_text if available
-              if (data.full_text && !fullText) {
-                fullText = data.full_text;
-              }
-              if (data.remaining !== undefined) {
-                aiRemaining.textContent = `${data.remaining} messages remaining today`;
-              }
-            } else if (data.text) {
-              // Streaming chunk
-              if (!streamDiv) {
-                typingEl.remove();
-                // Create streaming message bubble
-                streamDiv = document.createElement('div');
-                streamDiv.className = 'ai-msg assistant';
-                streamDiv.innerHTML = `
-                  <div class="sage-avatar-sm">S</div>
-                  <div class="ai-msg-content">
-                    <div class="ai-msg-bubble"></div>
-                  </div>`;
-                aiMessages.appendChild(streamDiv);
-                bubbleEl = streamDiv.querySelector('.ai-msg-bubble');
-              }
-              fullText += data.text;
-              // Re-render markdown as text streams in
-              bubbleEl.innerHTML = formatAiMarkdown(fullText) + '<span class="ai-stream-cursor"></span>';
-              aiMessages.scrollTop = aiMessages.scrollHeight;
-            }
-          } catch (e) { /* skip parse errors */ }
-        }
-      }
-
-      // Finalize: remove cursor, add actions
-      if (streamDiv && bubbleEl) {
-        bubbleEl.innerHTML = formatAiMarkdown(fullText);
-        const contentDiv = streamDiv.querySelector('.ai-msg-content');
-        // Add action buttons
-        const actionsHtml = buildMsgActions(fullText);
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'ai-msg-time';
-        timeDiv.textContent = formatMsgTime();
-        contentDiv.appendChild(timeDiv);
-        if (actionsHtml) {
-          const actDiv = document.createElement('div');
-          actDiv.className = 'ai-msg-actions';
-          actDiv.innerHTML = actionsHtml;
-          contentDiv.appendChild(actDiv);
-          bindActionButtons(actDiv, fullText);
-        }
-      } else if (fullText) {
-        // Non-streamed response (fallback)
-        typingEl.remove();
-        appendAiMessage('assistant', fullText);
+      const data = await res.json();
+      typingEl.remove();
+      if (data.response) {
+        appendAiMessage('assistant', data.response);
       } else {
-        typingEl.remove();
+        appendAiMessage('assistant', 'Sorry, something went wrong. Please try again.');
       }
-
+      if (data.remaining !== undefined) {
+        aiRemaining.textContent = `${data.remaining} messages remaining today`;
+      }
     } catch (err) {
       typingEl.remove();
-      // Fall back to non-streaming
-      try {
-        const res = await fetch('/api/ai/chat', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          credentials: 'same-origin',
-          body: JSON.stringify({message: text}),
-        });
-        const data = await res.json();
-        if (data.response) appendAiMessage('assistant', data.response);
-        if (data.remaining !== undefined) {
-          aiRemaining.textContent = `${data.remaining} messages remaining today`;
-        }
-      } catch (e2) {
-        appendAiMessage('assistant', 'Sorry, I encountered an error. Please try again.');
-      }
+      appendAiMessage('assistant', 'Sorry, I encountered an error. Please try again.');
     }
 
     aiSendBtn.disabled = false;
