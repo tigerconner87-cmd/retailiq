@@ -237,7 +237,8 @@ async def chat_stream(
 ):
     """Yield SSE-formatted chunks for streaming chat responses."""
     if not _check_rate_limit(user_id):
-        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'I\\'ve reached my thinking limit for today. I\\'ll be back tomorrow!', 'source': 'rate_limit', 'remaining': 0})}\n\n"
+        msg = {"text": "", "done": True, "full_text": "I've reached my thinking limit for today. I'll be back tomorrow!", "source": "rate_limit", "remaining": 0}
+        yield f"data: {json.dumps(msg)}\n\n"
         return
 
     remaining = get_remaining_requests(user_id)
@@ -271,9 +272,11 @@ async def chat_stream(
     except anthropic.AuthenticationError:
         yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'Sage needs a valid API key to work. Go to **Settings** to update it.', 'source': 'error', 'remaining': remaining})}\n\n"
     except anthropic.RateLimitError:
-        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'I\\'ve hit the API rate limit. Try again in a moment.', 'source': 'error', 'remaining': remaining})}\n\n"
+        msg = {"text": "", "done": True, "full_text": "I've hit the API rate limit. Try again in a moment.", "source": "error", "remaining": remaining}
+        yield f"data: {json.dumps(msg)}\n\n"
     except anthropic.APIConnectionError:
-        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'I\\'m having trouble connecting right now. Try again in a moment.', 'source': 'error', 'remaining': remaining})}\n\n"
+        msg = {"text": "", "done": True, "full_text": "I'm having trouble connecting right now. Try again in a moment.", "source": "error", "remaining": remaining}
+        yield f"data: {json.dumps(msg)}\n\n"
     except Exception as e:
         log.warning("Anthropic streaming error: %s", e)
         response = _get_fallback_response(message, shop_context)
