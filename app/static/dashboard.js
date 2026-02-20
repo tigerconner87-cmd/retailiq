@@ -3739,7 +3739,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── End Data Hub ──
 
   // ══════════════════════════════════════════════════════════════════════════
-  // AI ASSISTANT
+  // SAGE AI ASSISTANT — Streaming + Rich Markdown
   // ══════════════════════════════════════════════════════════════════════════
 
   const aiFab = $('#aiFab');
@@ -3750,6 +3750,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const aiWelcome = $('#aiWelcome');
   const aiRemaining = $('#aiRemaining');
   let aiChatOpen = false;
+  let aiStreaming = false;
 
   // Toggle chat panel
   if (aiFab) aiFab.addEventListener('click', () => {
@@ -3758,7 +3759,6 @@ document.addEventListener('DOMContentLoaded', () => {
     aiFab.classList.toggle('active', aiChatOpen);
     if (aiChatOpen) {
       aiInput.focus();
-      // Load history on first open
       if (!aiPanel.dataset.loaded) {
         aiPanel.dataset.loaded = '1';
         loadAiHistory();
@@ -3766,9 +3766,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Close button
+  // Close & minimize buttons
   const aiCloseBtn = $('#aiCloseBtn');
+  const aiMinBtn = $('#aiMinBtn');
   if (aiCloseBtn) aiCloseBtn.addEventListener('click', () => {
+    aiChatOpen = false;
+    aiPanel.classList.remove('open');
+    aiFab.classList.remove('active');
+  });
+  if (aiMinBtn) aiMinBtn.addEventListener('click', () => {
     aiChatOpen = false;
     aiPanel.classList.remove('open');
     aiFab.classList.remove('active');
@@ -3777,7 +3783,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Clear history
   const aiClearBtn = $('#aiClearBtn');
   if (aiClearBtn) aiClearBtn.addEventListener('click', async () => {
-    if (!confirm('Clear all AI conversation history?')) return;
+    if (!confirm('Clear all conversation history with Sage?')) return;
     await fetch('/api/ai/history', {method: 'DELETE', credentials: 'same-origin'});
     aiMessages.innerHTML = '';
     if (aiWelcome) {
@@ -3798,27 +3804,77 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   setupQuickPrompts();
 
-  // Send message
+  // Format timestamp
+  function formatMsgTime(d) {
+    const date = d || new Date();
+    const h = date.getHours();
+    const m = date.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+  }
+
+  // ── Enhanced Markdown Renderer ──
+  function formatAiMarkdown(text) {
+    if (!text) return '';
+    // Process code blocks first (preserve them from other transforms)
+    let html = text;
+    // Code blocks (```)
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+      return `<pre><code>${esc(code.trim())}</code></pre>`;
+    });
+    // Split into segments: code blocks vs rest
+    const parts = html.split(/(<pre><code>[\s\S]*?<\/code><\/pre>)/g);
+    html = parts.map(part => {
+      if (part.startsWith('<pre>')) return part; // Don't process code blocks
+      let s = esc(part);
+      // Headers
+      s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      // Bold & italic
+      s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      // Inline code
+      s = s.replace(/`(.+?)`/g, '<code>$1</code>');
+      // Blockquotes
+      s = s.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+      // Lists
+      s = s.replace(/^- (.+)$/gm, '<li>$1</li>');
+      s = s.replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>');
+      // Wrap consecutive <li> in <ul>
+      s = s.replace(/((?:<li>.*?<\/li>\n?)+)/g, '<ul>$1</ul>');
+      // Links: [text](url)
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+      // Paragraphs
+      s = s.replace(/\n\n/g, '</p><p>');
+      s = s.replace(/\n/g, '<br>');
+      s = '<p>' + s + '</p>';
+      s = s.replace(/<p><\/p>/g, '');
+      return s;
+    }).join('');
+    return html;
+  }
+
+  // ── Send Message with Streaming ──
   async function sendAiMessage() {
     const text = aiInput.value.trim();
-    if (!text) return;
+    if (!text || aiStreaming) return;
 
-    // Hide welcome
     const welcome = $('.ai-welcome', aiMessages);
     if (welcome) welcome.remove();
 
-    // Add user message
     appendAiMessage('user', text);
     aiInput.value = '';
     aiInput.style.height = 'auto';
     aiSendBtn.disabled = true;
+    aiStreaming = true;
 
-    // Show "Sage is thinking" indicator
+    // Show thinking indicator
     const typingEl = document.createElement('div');
     typingEl.className = 'sage-thinking';
     typingEl.innerHTML = `
       <div class="sage-avatar-sm">S</div>
-      <span>Sage is thinking...</span>
+      <span>Sage is thinking</span>
       <div class="ai-typing-dot"></div>
       <div class="ai-typing-dot"></div>
       <div class="ai-typing-dot"></div>`;
@@ -3826,64 +3882,172 @@ document.addEventListener('DOMContentLoaded', () => {
     aiMessages.scrollTop = aiMessages.scrollHeight;
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch('/api/ai/chat/stream', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'same-origin',
         body: JSON.stringify({message: text}),
       });
-      const data = await res.json();
-      typingEl.remove();
 
-      if (data.response) {
-        appendAiMessage('assistant', data.response);
+      if (!res.ok) throw new Error('Stream request failed');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      let streamDiv = null;
+      let bubbleEl = null;
+
+      while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, {stream: true});
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.done) {
+              // Final message — use full_text if available
+              if (data.full_text && !fullText) {
+                fullText = data.full_text;
+              }
+              if (data.remaining !== undefined) {
+                aiRemaining.textContent = `${data.remaining} messages remaining today`;
+              }
+            } else if (data.text) {
+              // Streaming chunk
+              if (!streamDiv) {
+                typingEl.remove();
+                // Create streaming message bubble
+                streamDiv = document.createElement('div');
+                streamDiv.className = 'ai-msg assistant';
+                streamDiv.innerHTML = `
+                  <div class="sage-avatar-sm">S</div>
+                  <div class="ai-msg-content">
+                    <div class="ai-msg-bubble"></div>
+                  </div>`;
+                aiMessages.appendChild(streamDiv);
+                bubbleEl = streamDiv.querySelector('.ai-msg-bubble');
+              }
+              fullText += data.text;
+              // Re-render markdown as text streams in
+              bubbleEl.innerHTML = formatAiMarkdown(fullText) + '<span class="ai-stream-cursor"></span>';
+              aiMessages.scrollTop = aiMessages.scrollHeight;
+            }
+          } catch (e) { /* skip parse errors */ }
+        }
       }
-      if (data.remaining !== undefined) {
-        aiRemaining.textContent = `${data.remaining} requests remaining today`;
+
+      // Finalize: remove cursor, add actions
+      if (streamDiv && bubbleEl) {
+        bubbleEl.innerHTML = formatAiMarkdown(fullText);
+        const contentDiv = streamDiv.querySelector('.ai-msg-content');
+        // Add action buttons
+        const actionsHtml = buildMsgActions(fullText);
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'ai-msg-time';
+        timeDiv.textContent = formatMsgTime();
+        contentDiv.appendChild(timeDiv);
+        if (actionsHtml) {
+          const actDiv = document.createElement('div');
+          actDiv.className = 'ai-msg-actions';
+          actDiv.innerHTML = actionsHtml;
+          contentDiv.appendChild(actDiv);
+          bindActionButtons(actDiv, fullText);
+        }
+      } else if (fullText) {
+        // Non-streamed response (fallback)
+        typingEl.remove();
+        appendAiMessage('assistant', fullText);
+      } else {
+        typingEl.remove();
       }
+
     } catch (err) {
       typingEl.remove();
-      appendAiMessage('assistant', '⚠️ Sorry, I encountered an error. Please try again.');
+      // Fall back to non-streaming
+      try {
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
+          body: JSON.stringify({message: text}),
+        });
+        const data = await res.json();
+        if (data.response) appendAiMessage('assistant', data.response);
+        if (data.remaining !== undefined) {
+          aiRemaining.textContent = `${data.remaining} messages remaining today`;
+        }
+      } catch (e2) {
+        appendAiMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+      }
     }
+
     aiSendBtn.disabled = false;
+    aiStreaming = false;
     aiInput.focus();
   }
 
-  // Append message to chat
-  function appendAiMessage(role, content) {
+  // Build action buttons for a message
+  function buildMsgActions(text) {
+    let html = `<button class="ai-msg-action-btn" data-action="copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy</button>`;
+    // Detect email content
+    if (text.match(/subject[:\s]/i) && text.match(/(dear|hi |hello|hey )/i)) {
+      html += `<button class="ai-msg-action-btn" data-action="copy-email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Copy Email</button>`;
+    }
+    // Detect social post
+    if (text.match(/#\w+/) && text.length < 1500) {
+      html += `<button class="ai-msg-action-btn" data-action="copy-post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/></svg> Copy Post</button>`;
+    }
+    return html;
+  }
+
+  // Bind click handlers for action buttons
+  function bindActionButtons(container, text) {
+    container.querySelectorAll('.ai-msg-action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(text).then(() => {
+          const orig = btn.innerHTML;
+          btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+          setTimeout(() => btn.innerHTML = orig, 2000);
+        });
+      });
+    });
+  }
+
+  // Append message to chat (non-streaming)
+  function appendAiMessage(role, content, timestamp) {
     const div = document.createElement('div');
     div.className = `ai-msg ${role}`;
-    const avatar = role === 'assistant' ? '<div class="sage-avatar-sm">S</div>' : '<div class="ai-msg-avatar" style="background:var(--bg-3);color:var(--text2)">You</div>';
+    const time = timestamp ? formatMsgTime(new Date(timestamp)) : formatMsgTime();
+
     if (role === 'assistant') {
+      const actionsHtml = buildMsgActions(content);
       div.innerHTML = `
-        ${avatar}
-        <div class="ai-msg-wrap">
+        <div class="sage-avatar-sm">S</div>
+        <div class="ai-msg-content">
           <div class="ai-msg-bubble">${formatAiMarkdown(content)}</div>
-          <button class="ai-msg-copy" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ai-msg-bubble').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
+          <div class="ai-msg-time">${time}</div>
+          <div class="ai-msg-actions">${actionsHtml}</div>
         </div>`;
+      // Bind buttons after append
+      setTimeout(() => {
+        const actDiv = div.querySelector('.ai-msg-actions');
+        if (actDiv) bindActionButtons(actDiv, content);
+      }, 0);
     } else {
       div.innerHTML = `
-        ${avatar}
-        <div class="ai-msg-bubble">${esc(content)}</div>`;
+        <div class="ai-msg-avatar" style="background:var(--bg-3);color:var(--text2)">You</div>
+        <div class="ai-msg-content">
+          <div class="ai-msg-bubble">${esc(content)}</div>
+          <div class="ai-msg-time">${time}</div>
+        </div>`;
     }
     aiMessages.appendChild(div);
     aiMessages.scrollTop = aiMessages.scrollHeight;
-  }
-
-  // Simple markdown formatter
-  function formatAiMarkdown(text) {
-    return esc(text)
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code>$1</code>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
-      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>')
-      .replace(/^/, '<p>')
-      .replace(/$/, '</p>')
-      .replace(/<p><\/p>/g, '');
   }
 
   // Load conversation history
@@ -3894,10 +4058,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.messages && data.messages.length > 0) {
         const welcome = $('.ai-welcome', aiMessages);
         if (welcome) welcome.remove();
-        data.messages.forEach(m => appendAiMessage(m.role, m.content));
+        data.messages.forEach(m => appendAiMessage(m.role, m.content, m.created_at));
       }
       if (data.remaining !== undefined) {
-        aiRemaining.textContent = `${data.remaining} requests remaining today`;
+        aiRemaining.textContent = `${data.remaining} messages remaining today`;
       }
     } catch (err) {
       console.error('[Forge] Error loading AI history:', err);
@@ -3922,16 +4086,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (aiSendBtn) aiSendBtn.addEventListener('click', () => sendAiMessage());
 
   // ── AI Email Rewrite ──
-  // Dynamically add AI rewrite buttons to email campaigns after they load
   const origLoadMkeEmails = loadMkeEmails;
   loadMkeEmails = async function() {
     await origLoadMkeEmails();
-    // Add AI rewrite button to each email card
     $$('.mke-email-actions', $('#mkeEmailList')).forEach(actions => {
       if (actions.querySelector('.mke-ai-rewrite')) return;
       const btn = document.createElement('button');
       btn.className = 'mke-ai-rewrite';
-      btn.innerHTML = '🧠 AI Rewrite';
+      btn.innerHTML = '<span class="sage-mini-avatar" style="width:14px;height:14px;font-size:7px">S</span> Sage Rewrite';
       btn.addEventListener('click', async () => {
         const card = btn.closest('.mke-email-card');
         const campIdEl = card.querySelector('[data-camp-id]');
@@ -3953,18 +4115,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const bodyEl = card.querySelector('.mke-email-body');
             if (subjectEl && data.subject) subjectEl.textContent = data.subject;
             if (bodyEl && data.body) bodyEl.innerHTML = esc(data.body).replace(/\n/g, '<br>');
-            // Update cached data
             if (window.__mkeEmailData[campId]) {
               if (data.subject) window.__mkeEmailData[campId].subject = data.subject;
               if (data.body) window.__mkeEmailData[campId].body = data.body;
             }
-            showToast('Email rewritten with AI!', 'success', 2000);
+            showToast('Email rewritten by Sage!', 'success', 2000);
           }
         } catch (err) {
-          showToast('AI rewrite failed', 'error', 2000);
+          showToast('Sage rewrite failed', 'error', 2000);
         }
         btn.disabled = false;
-        btn.innerHTML = '🧠 AI Rewrite';
+        btn.innerHTML = '<span class="sage-mini-avatar" style="width:14px;height:14px;font-size:7px">S</span> Sage Rewrite';
       });
       actions.appendChild(btn);
     });
@@ -3977,7 +4138,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const aiGenCopy = $('#aiGenCopy');
   let aiGenType = 'social';
 
-  // Type selection
   $$('.ai-gen-type').forEach(btn => {
     btn.addEventListener('click', () => {
       $$('.ai-gen-type').forEach(b => b.classList.remove('active'));
@@ -3986,12 +4146,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Generate button
   if (aiGenBtn) aiGenBtn.addEventListener('click', async () => {
     const prompt = $('#aiGenPrompt')?.value.trim();
     if (!prompt) { showToast('Enter a description first', 'warning', 2000); return; }
     aiGenBtn.disabled = true;
-    aiGenBtn.textContent = 'Generating...';
+    aiGenBtn.textContent = 'Sage is writing...';
     aiGenResult.hidden = true;
     aiGenCopy.hidden = true;
     try {
@@ -4011,12 +4170,43 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Content generation failed', 'error', 2000);
     }
     aiGenBtn.disabled = false;
-    aiGenBtn.textContent = 'Generate with AI';
+    aiGenBtn.textContent = 'Generate with Sage';
+  });
+
+  // ── Test Connection Button ──
+  const testConnBtn = $('#testConnectionBtn');
+  if (testConnBtn) testConnBtn.addEventListener('click', async () => {
+    testConnBtn.disabled = true;
+    testConnBtn.textContent = 'Testing...';
+    const resultEl = $('#testConnectionResult');
+    try {
+      const res = await fetch('/api/ai/test-connection', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--success)">Connected! Sage is ready.</span>`;
+        showToast('Sage connected successfully!', 'success');
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--danger)">${esc(data.message || 'Connection failed')}</span>`;
+      }
+    } catch (err) {
+      resultEl.innerHTML = `<span style="color:var(--danger)">Connection test failed</span>`;
+    }
+    testConnBtn.disabled = false;
+    testConnBtn.textContent = 'Test Connection';
+  });
+
+  // ── Toggle API Key Visibility ──
+  const toggleVis = $('#toggleApiKeyVis');
+  if (toggleVis) toggleVis.addEventListener('click', () => {
+    const inp = $('#setAnthropicApiKey');
+    if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
   });
 
   // ── Ask Sage global function (for inline buttons) ──
   window.askSage = function(prompt) {
-    // Open the chat panel if not already open
     if (!aiChatOpen) {
       aiChatOpen = true;
       aiPanel.classList.add('open');
@@ -4026,12 +4216,11 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAiHistory();
       }
     }
-    // Set the prompt and send
     aiInput.value = prompt;
     sendAiMessage();
   };
 
-  // ── End AI Assistant ──
+  // ── End Sage AI Assistant ──
 
   // Auto-refresh every 60 seconds
   refreshTimer = setInterval(() => {

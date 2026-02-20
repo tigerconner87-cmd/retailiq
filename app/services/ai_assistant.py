@@ -1,7 +1,7 @@
 """Forge AI Assistant Service (Sage).
 
-Provides AI-powered chat, content generation, and email editing
-using the Anthropic API with smart data-aware fallback responses.
+Provides AI-powered chat with streaming, content generation, and email
+editing using the Anthropic Python SDK with data-aware fallback responses.
 """
 
 import json
@@ -9,13 +9,13 @@ import logging
 import time
 from datetime import datetime
 
-import httpx
+import anthropic
 
 log = logging.getLogger(__name__)
 
-# Rate limit: 50 requests per user per day
+# Rate limit: 100 requests per user per day
 _rate_limits: dict[str, list[float]] = {}
-DAILY_LIMIT = 50
+DAILY_LIMIT = 100
 
 
 def _check_rate_limit(user_id: str) -> bool:
@@ -41,30 +41,118 @@ def get_remaining_requests(user_id: str) -> int:
     return max(0, DAILY_LIMIT - len(active))
 
 
-SYSTEM_PROMPT = """You are Sage, the AI assistant built into Forge — a sales intelligence platform for retail shop owners.
+# ── System Prompt Builder ────────────────────────────────────────────────────
 
-You are knowledgeable, friendly, and practical. You speak like a smart friend who happens to be an expert in retail business, marketing, and customer engagement. You're not a generic chatbot — you have access to the shop's actual data and use it to give specific, actionable advice.
+def build_system_prompt(ctx: dict) -> str:
+    """Build the dynamic system prompt injected with real shop data."""
 
-Your personality:
-- Warm but efficient — respect the owner's time
-- Data-driven — reference real numbers whenever possible
-- Encouraging — celebrate wins, frame challenges as opportunities
-- Practical — suggest actions that a small shop owner can actually do today
-- Natural — don't sound robotic. Use contractions, conversational language
-- Concise — aim for 100-200 words unless the user asks for detail
+    # Top products
+    top_products = ctx.get("top_products", [])
+    top_5_str = "\n".join(
+        f"  {i+1}. {p['name']} ({p.get('category','')}) — ${p['revenue']:,.0f} revenue, {p['units']} units"
+        for i, p in enumerate(top_products[:5])
+    ) or "  No product data yet"
 
-You can help with ANYTHING, but you specialize in:
-- Sales analysis, pricing strategy, and revenue growth
-- Customer retention, segmentation, and win-back strategies
-- Marketing copy: social posts, emails, promotions, ad copy
-- Competitor analysis and market positioning
-- Product merchandising and inventory decisions
-- Local SEO and Google review management
-- Goal setting and business planning
+    # Trending products
+    trending_up = ctx.get("trending_up", [])
+    trending_up_str = ", ".join(trending_up[:3]) if trending_up else "Not enough data yet"
+    trending_down = ctx.get("trending_down", [])
+    trending_down_str = ", ".join(trending_down[:3]) if trending_down else "Not enough data yet"
 
-When you have shop data in your context, USE IT. Reference their actual revenue, top products, customer counts, competitor ratings. Don't give generic advice when you have specific numbers.
+    # Competitors
+    competitors = ctx.get("competitors", [])
+    comp_details = "\n".join(
+        f"  - {c['name']}: {c['rating']}/5 ({c['reviews']} reviews)"
+        for c in competitors
+    ) or "  No competitors tracked yet"
 
-Format responses with markdown: **bold** for emphasis, bullet lists for multiple items, and numbered lists for steps. Keep it scannable."""
+    # Review sentiment
+    neg_reviews = ctx.get("recent_negative_reviews", [])
+    own_count = ctx.get("own_review_count", 0)
+    if own_count == 0:
+        sentiment_str = "No reviews yet"
+    elif not neg_reviews:
+        sentiment_str = "100% positive (recent)"
+    else:
+        pos_pct = max(0, 100 - len(neg_reviews) * 20)
+        sentiment_str = f"~{pos_pct}% positive (recent)"
+
+    # Goal data
+    goal_target = ctx.get("monthly_goal", 0)
+    goal_progress = ctx.get("goal_progress", 0)
+    goal_pct = round((goal_progress / goal_target * 100) if goal_target else 0, 1)
+    now = datetime.now()
+    days_in_month = 30
+    day_progress = now.day / days_in_month * 100
+    on_track = "Yes" if goal_pct >= day_progress * 0.85 else "Needs attention"
+
+    return f"""You are Sage, the AI business advisor inside Forge — a marketing intelligence platform for retail shop owners. You are incredibly smart, warm, and helpful. Think of yourself as the user's brilliant business partner who also happens to know everything.
+
+CORE PERSONALITY:
+- You can answer ANY question — business, math, general knowledge, creative writing, anything. You are not limited to business topics.
+- When questions ARE about business, you give specific, actionable advice using the shop's real data.
+- You're conversational and natural, never robotic or salesy.
+- You're honest — if something is going wrong, you say it clearly but constructively.
+- You're concise — get to the point, then offer to go deeper if they want.
+- When writing content (posts, emails, promotions), make it ready to copy and use immediately.
+- Use the shop's actual product names, revenue figures, and competitor data in your responses.
+- Format responses with markdown when helpful (bold, lists, headers) but don't over-format casual answers.
+
+SHOP DATA (use this to personalize every response):
+Shop Name: {ctx.get("shop_name", "Your Shop")}
+Owner: {ctx.get("owner_name", "there")}
+Category: {ctx.get("category", "retail")}
+Location: {ctx.get("city", "Unknown")}
+
+REVENUE:
+- Today: ${ctx.get("revenue_today", 0):,.2f}
+- Yesterday: ${ctx.get("revenue_yesterday", 0):,.2f}
+- This month: ${ctx.get("revenue_month", 0):,.2f}
+- Last month: ${ctx.get("revenue_last_month", 0):,.2f}
+- Average daily: ${ctx.get("avg_daily_revenue", 0):,.2f}
+- Best day this month: {ctx.get("best_day", "N/A")} (${ctx.get("best_day_revenue", 0):,.2f})
+- Worst day this month: {ctx.get("worst_day", "N/A")} (${ctx.get("worst_day_revenue", 0):,.2f})
+- Month-over-month change: {ctx.get("mom_change", 0):+.1f}%
+
+PRODUCTS:
+- Total products: {ctx.get("product_count", 0)}
+- Top sellers:
+{top_5_str}
+- Trending up: {trending_up_str}
+- Trending down: {trending_down_str}
+- Average order value: ${ctx.get("aov", 0):,.2f}
+
+CUSTOMERS:
+- Total customers: {ctx.get("total_customers", 0)}
+- Repeat rate: {ctx.get("repeat_rate", 0):.1f}%
+- New this month: {ctx.get("new_customers_month", 0)}
+- At-risk (30+ days inactive): {ctx.get("at_risk_customers", 0)}
+- Lost (60+ days inactive): {ctx.get("lost_customers", 0)}
+- VIP customers (top 10%): {ctx.get("vip_customers", 0)}
+- Average customer lifetime value: ${ctx.get("avg_clv", 0):,.2f}
+
+COMPETITORS:
+{comp_details}
+
+YOUR REVIEWS:
+- Google rating: {ctx.get("own_avg_rating", 0)}/5
+- Total reviews: {own_count}
+- Recent sentiment: {sentiment_str}
+
+GOALS:
+- Monthly revenue target: ${goal_target:,.2f}
+- Progress: ${goal_progress:,.2f} ({goal_pct}%)
+- On track: {on_track}
+
+CALENDAR CONTEXT:
+- Today is: {ctx.get("today_date", now.strftime("%B %d, %Y"))}
+- Day of week: {ctx.get("day_of_week", now.strftime("%A"))}
+- Strongest day: {ctx.get("strongest_day", "Saturday")}
+- Weakest day: {ctx.get("weakest_day", "Monday")}
+- Peak hours: {ctx.get("peak_hours", "11am-2pm")}"""
+
+
+# ── Specialized Prompts ──────────────────────────────────────────────────────
 
 EMAIL_REWRITE_PROMPT = """You are Sage, Forge's expert email copywriter for retail businesses.
 
@@ -89,27 +177,233 @@ For promotions: include headline, description, terms, and urgency element.
 For ad copy: include headline, body, and call-to-action."""
 
 
-# ── Data-aware fallback responses ─────────────────────────────────────────────
+# ── Core Chat (non-streaming) ────────────────────────────────────────────────
+
+async def chat(
+    user_id: str,
+    message: str,
+    conversation_history: list[dict] | None = None,
+    api_key: str = "",
+    shop_context: dict | None = None,
+) -> dict:
+    """Process a chat message and return AI response."""
+    if not _check_rate_limit(user_id):
+        return {
+            "response": "I've reached my thinking limit for today. I'll be back tomorrow!",
+            "source": "rate_limit",
+            "remaining": 0,
+        }
+
+    remaining = get_remaining_requests(user_id)
+
+    if api_key:
+        try:
+            result = await _call_anthropic(message, conversation_history or [], api_key, shop_context)
+            return {"response": result, "source": "anthropic", "remaining": remaining}
+        except anthropic.AuthenticationError:
+            return {
+                "response": "Sage needs a valid API key to work. Go to **Settings** to update it.",
+                "source": "error",
+                "remaining": remaining,
+            }
+        except anthropic.RateLimitError:
+            return {
+                "response": "I've hit the API rate limit. Try again in a moment.",
+                "source": "error",
+                "remaining": remaining,
+            }
+        except anthropic.APIConnectionError:
+            return {
+                "response": "I'm having trouble connecting right now. Try again in a moment.",
+                "source": "error",
+                "remaining": remaining,
+            }
+        except Exception as e:
+            log.warning("Anthropic API error: %s — falling back", e)
+
+    # Data-aware fallback
+    response = _get_fallback_response(message, shop_context)
+    return {"response": response, "source": "fallback", "remaining": remaining}
+
+
+# ── Streaming Chat ────────────────────────────────────────────────────────────
+
+async def chat_stream(
+    user_id: str,
+    message: str,
+    conversation_history: list[dict] | None = None,
+    api_key: str = "",
+    shop_context: dict | None = None,
+):
+    """Yield SSE-formatted chunks for streaming chat responses."""
+    if not _check_rate_limit(user_id):
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'I\\'ve reached my thinking limit for today. I\\'ll be back tomorrow!', 'source': 'rate_limit', 'remaining': 0})}\n\n"
+        return
+
+    remaining = get_remaining_requests(user_id)
+
+    if not api_key:
+        response = _get_fallback_response(message, shop_context)
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': response, 'source': 'fallback', 'remaining': remaining})}\n\n"
+        return
+
+    ctx = shop_context or {}
+    system = build_system_prompt(ctx)
+
+    messages = []
+    for h in (conversation_history or [])[-10:]:
+        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    messages.append({"role": "user", "content": message})
+
+    try:
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        full_text = ""
+        async with client.messages.stream(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2048,
+            system=system,
+            messages=messages,
+        ) as stream:
+            async for text in stream.text_stream:
+                full_text += text
+                yield f"data: {json.dumps({'text': text, 'done': False})}\n\n"
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': full_text, 'source': 'anthropic', 'remaining': remaining})}\n\n"
+    except anthropic.AuthenticationError:
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'Sage needs a valid API key to work. Go to **Settings** to update it.', 'source': 'error', 'remaining': remaining})}\n\n"
+    except anthropic.RateLimitError:
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'I\\'ve hit the API rate limit. Try again in a moment.', 'source': 'error', 'remaining': remaining})}\n\n"
+    except anthropic.APIConnectionError:
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': 'I\\'m having trouble connecting right now. Try again in a moment.', 'source': 'error', 'remaining': remaining})}\n\n"
+    except Exception as e:
+        log.warning("Anthropic streaming error: %s", e)
+        response = _get_fallback_response(message, shop_context)
+        yield f"data: {json.dumps({'text': '', 'done': True, 'full_text': response, 'source': 'fallback', 'remaining': remaining})}\n\n"
+
+
+# ── Non-streaming API call ────────────────────────────────────────────────────
+
+async def _call_anthropic(
+    message: str,
+    history: list[dict],
+    api_key: str,
+    shop_context: dict | None = None,
+    system_override: str | None = None,
+) -> str:
+    """Call the Anthropic API using the official SDK."""
+    ctx = shop_context or {}
+    system = system_override or build_system_prompt(ctx)
+
+    messages = []
+    for h in history[-10:]:
+        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    messages.append({"role": "user", "content": message})
+
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    response = await client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2048,
+        system=system,
+        messages=messages,
+    )
+    return response.content[0].text
+
+
+# ── Email Rewrite ─────────────────────────────────────────────────────────────
+
+async def rewrite_email(
+    subject: str,
+    body: str,
+    api_key: str = "",
+    shop_name: str = "",
+) -> dict:
+    """Rewrite an email campaign to be more engaging."""
+    if api_key:
+        try:
+            prompt = f"Shop name: {shop_name}\n\nOriginal subject: {subject}\n\nOriginal body:\n{body}"
+            result = await _call_anthropic(prompt, [], api_key, system_override=EMAIL_REWRITE_PROMPT)
+            try:
+                parsed = json.loads(result)
+                return {"subject": parsed["subject"], "body": parsed["body"], "source": "anthropic"}
+            except (json.JSONDecodeError, KeyError):
+                return {"subject": subject, "body": result, "source": "anthropic"}
+        except Exception as e:
+            log.warning("Anthropic API error on email rewrite: %s", e)
+
+    # Fallback
+    improved_subject = subject
+    if not subject.endswith(("!", "?", "...")):
+        improved_subject = subject.rstrip(".") + " — Don't miss out!"
+    improved_body = body
+    if "{{first_name}}" not in body.lower() and "{first_name}" not in body.lower():
+        improved_body = f"Hi {{{{first_name}}}},\n\n{body}"
+    if not any(cta in body.lower() for cta in ["visit", "shop now", "click", "grab", "don't miss"]):
+        improved_body += "\n\nVisit us today — we'd love to see you!"
+    return {"subject": improved_subject, "body": improved_body, "source": "fallback"}
+
+
+# ── Content Generation ────────────────────────────────────────────────────────
+
+async def generate_content(
+    content_type: str,
+    prompt: str,
+    api_key: str = "",
+    shop_name: str = "",
+) -> dict:
+    """Generate marketing content (social post, promotion, ad copy)."""
+    if api_key:
+        try:
+            full_prompt = f"Shop: {shop_name}\nContent type: {content_type}\nRequest: {prompt}"
+            result = await _call_anthropic(full_prompt, [], api_key, system_override=CONTENT_GEN_PROMPT)
+            return {"content": result, "source": "anthropic"}
+        except Exception as e:
+            log.warning("Anthropic API error on content gen: %s", e)
+
+    fallbacks = {
+        "social": f"New arrivals just dropped at {shop_name or 'our shop'}! Come see what's fresh this week.\n\nTag a friend who'd love this!\n\n#ShopLocal #RetailTherapy #NewArrivals #SmallBusiness #ShopSmall\n\nBest time to post: Tuesday or Thursday, 11am-1pm",
+        "promotion": f"FLASH SALE at {shop_name or 'our shop'}!\n\n20% off everything this weekend only.\n\nNo code needed — discount applied at checkout.\n\nHurry — sale ends Sunday at close!",
+        "ad": f"Looking for something special? {shop_name or 'We'} have curated the perfect collection just for you.\n\nVisit us today and discover your new favorite finds.\n\nOpen 7 days a week",
+    }
+    return {"content": fallbacks.get(content_type, fallbacks["social"]), "source": "fallback"}
+
+
+# ── Test Connection ───────────────────────────────────────────────────────────
+
+async def test_connection(api_key: str) -> dict:
+    """Test if the Anthropic API key is valid."""
+    if not api_key:
+        return {"ok": False, "message": "No API key provided"}
+    try:
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        response = await client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=50,
+            messages=[{"role": "user", "content": "Say 'Connected!' in one word."}],
+        )
+        return {"ok": True, "message": response.content[0].text.strip()}
+    except anthropic.AuthenticationError:
+        return {"ok": False, "message": "Invalid API key"}
+    except Exception as e:
+        return {"ok": False, "message": str(e)[:100]}
+
+
+# ── Data-Aware Fallback ──────────────────────────────────────────────────────
 
 def _build_data_context_string(ctx: dict) -> str:
     """Build a readable summary of shop data for fallback responses."""
     parts = []
     name = ctx.get("shop_name", "your shop")
-
-    # Revenue
     rev_today = ctx.get("revenue_today", 0)
     rev_yesterday = ctx.get("revenue_yesterday", 0)
-    rev_30d = ctx.get("revenue_30d", 0)
+    rev_month = ctx.get("revenue_month", 0)
     avg_daily = ctx.get("avg_daily_revenue", 0)
 
     if rev_today > 0:
         parts.append(f"Today's revenue so far: **${rev_today:,.2f}**")
     if rev_yesterday > 0:
         parts.append(f"Yesterday: **${rev_yesterday:,.2f}**")
-    if rev_30d > 0:
-        parts.append(f"Last 30 days: **${rev_30d:,.2f}** (avg **${avg_daily:,.0f}/day**)")
+    if rev_month > 0:
+        parts.append(f"This month: **${rev_month:,.2f}** (avg **${avg_daily:,.0f}/day**)")
 
-    # Customers
     total = ctx.get("total_customers", 0)
     vip = ctx.get("vip_customers", 0)
     at_risk = ctx.get("at_risk_customers", 0)
@@ -117,19 +411,16 @@ def _build_data_context_string(ctx: dict) -> str:
     if total > 0:
         parts.append(f"Customers: **{total}** total — {vip} VIP, {at_risk} at-risk, {lost} lost")
 
-    # Top products
     top = ctx.get("top_products", [])
     if top:
         prod_lines = ", ".join(f"**{p['name']}** (${p['revenue']:,.0f})" for p in top[:3])
         parts.append(f"Top sellers (30d): {prod_lines}")
 
-    # Reviews
     own_rating = ctx.get("own_avg_rating", 0)
     own_count = ctx.get("own_review_count", 0)
     if own_count > 0:
         parts.append(f"Your rating: **{own_rating}**/5 ({own_count} reviews)")
 
-    # Competitors
     comps = ctx.get("competitors", [])
     if comps:
         comp_lines = ", ".join(f"{c['name']} ({c['rating']})" for c in comps[:3])
@@ -139,7 +430,7 @@ def _build_data_context_string(ctx: dict) -> str:
 
 
 def _get_fallback_response(message: str, shop_context: dict | None = None) -> str:
-    """Return a data-aware response based on message and available shop data."""
+    """Return a data-aware response when no API key is configured."""
     category = _classify_query(message)
     ctx = shop_context or {}
     name = ctx.get("shop_name", "your shop")
@@ -156,13 +447,16 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
         return resp
 
     if category == "sales":
-        rev_30d = ctx.get("revenue_30d", 0)
+        rev_month = ctx.get("revenue_month", 0)
         avg_daily = ctx.get("avg_daily_revenue", 0)
         top = ctx.get("top_products", [])
-
+        mom = ctx.get("mom_change", 0)
         resp = "Here's what I see in your sales data:\n\n"
-        if rev_30d > 0:
-            resp += f"- **30-day revenue:** ${rev_30d:,.2f} (avg ${avg_daily:,.0f}/day)\n"
+        if rev_month > 0:
+            resp += f"- **This month's revenue:** ${rev_month:,.2f} (avg ${avg_daily:,.0f}/day)\n"
+        if mom:
+            direction = "up" if mom > 0 else "down"
+            resp += f"- **Month-over-month:** {direction} {abs(mom):.1f}%\n"
         if top:
             resp += f"- **Top seller:** {top[0]['name']} with ${top[0]['revenue']:,.0f} in revenue\n"
             if len(top) >= 3:
@@ -173,7 +467,7 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
             "2. **Create urgency** — 'Only 3 left!' drives 40% more conversions\n"
             "3. **Upsell at checkout** — suggest complementary items\n"
             "4. **Track peak hours** — schedule top staff during high-traffic times\n\n"
-            "Check your **Sales** and **Overview** tabs for detailed trends!"
+            "Want me to go deeper on any of these? Or connect your Anthropic API key in **Settings** for full AI-powered analysis!"
         )
         return resp
 
@@ -199,13 +493,16 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
         at_risk = ctx.get("at_risk_customers", 0)
         lost = ctx.get("lost_customers", 0)
         vip = ctx.get("vip_customers", 0)
-
+        repeat_rate = ctx.get("repeat_rate", 0)
         resp = "Here's your customer health snapshot:\n\n"
         if total > 0:
             resp += f"- **{total}** total customers\n"
             resp += f"- **{vip}** VIPs (your best customers)\n"
             resp += f"- **{at_risk}** at-risk (haven't visited recently)\n"
-            resp += f"- **{lost}** lost (inactive 60+ days)\n\n"
+            resp += f"- **{lost}** lost (inactive 60+ days)\n"
+            if repeat_rate > 0:
+                resp += f"- **{repeat_rate:.1f}%** repeat rate\n"
+            resp += "\n"
         if at_risk > 0:
             resp += f"Those **{at_risk} at-risk customers** are your biggest opportunity. A simple 15% off 'We miss you' email can win back 10-20% of them.\n\n"
         resp += (
@@ -221,7 +518,6 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
     if category == "competitors":
         comps = ctx.get("competitors", [])
         own_rating = ctx.get("own_avg_rating", 0)
-
         resp = "Here's your competitive landscape:\n\n"
         if own_rating > 0:
             resp += f"Your rating: **{own_rating}/5**\n"
@@ -232,7 +528,7 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
             resp += "\n"
         neg = ctx.get("recent_negative_reviews", [])
         if neg:
-            resp += f"You have **{len(neg)} recent low-rated reviews** — responding to these quickly can improve your rating.\n\n"
+            resp += f"You have **{len(neg)} recent low-rated reviews** — responding quickly can improve your rating.\n\n"
         resp += (
             "**Competitive moves:**\n"
             "1. **Monitor their reviews** — negative reviews reveal your opportunities\n"
@@ -271,7 +567,8 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
         "- **\"How are my competitors doing?\"** — competitive analysis\n"
         "- **\"Help me win back customers\"** — retention strategies\n"
         "- **\"What should I focus on this week?\"** — prioritized action items\n\n"
-        "Just ask me anything — I'm here to help!"
+        "Just ask me anything — I'm here to help!\n\n"
+        "*Connect your Anthropic API key in **Settings** for full AI-powered conversations with Sage.*"
     )
     return resp
 
@@ -279,205 +576,21 @@ def _get_fallback_response(message: str, shop_context: dict | None = None) -> st
 def _classify_query(message: str) -> str:
     """Simple keyword classifier for fallback responses."""
     msg = message.lower()
-    greetings = ["hello", "hi", "hey", "help", "what can you", "who are you", "start", "introduce"]
+    greetings = ["hello", "hi ", "hey", "help", "what can you", "who are you", "start", "introduce", "hi!"]
     if any(g in msg for g in greetings):
         return "greeting"
-    if any(w in msg for w in ["sale", "revenue", "profit", "price", "discount", "aov", "transaction", "money", "income", "earnings"]):
+    if any(w in msg for w in ["sale", "revenue", "profit", "price", "discount", "aov", "transaction",
+                               "money", "income", "earnings", "how am i doing", "performance", "numbers"]):
         return "sales"
-    if any(w in msg for w in ["market", "social", "post", "instagram", "facebook", "content", "promote", "ad ", "tiktok", "brand"]):
+    if any(w in msg for w in ["market", "social", "post", "instagram", "facebook", "content",
+                               "promote", "ad ", "tiktok", "brand", "write me", "create a"]):
         return "marketing"
-    if any(w in msg for w in ["customer", "retain", "churn", "loyal", "repeat", "segment", "win back", "winback", "at risk", "lost"]):
+    if any(w in msg for w in ["customer", "retain", "churn", "loyal", "repeat", "segment",
+                               "win back", "winback", "at risk", "lost", "vip"]):
         return "customers"
-    if any(w in msg for w in ["competitor", "competition", "rival", "nearby", "vs ", "versus", "other shop", "other store"]):
+    if any(w in msg for w in ["competitor", "competition", "rival", "nearby", "vs ",
+                               "versus", "other shop", "other store"]):
         return "competitors"
     if any(w in msg for w in ["email", "campaign", "newsletter", "subject line", "open rate"]):
         return "email"
     return "default"
-
-
-async def chat(
-    user_id: str,
-    message: str,
-    conversation_history: list[dict] | None = None,
-    api_key: str = "",
-    shop_context: dict | None = None,
-) -> dict:
-    """
-    Process a chat message and return AI response.
-
-    Uses Anthropic API if key is available, otherwise returns data-aware fallback.
-    """
-    if not _check_rate_limit(user_id):
-        return {
-            "response": "You've reached the daily limit of 50 Sage requests. Your limit resets in 24 hours.",
-            "source": "rate_limit",
-            "remaining": 0,
-        }
-
-    remaining = get_remaining_requests(user_id)
-
-    # Try Anthropic API if key is configured
-    if api_key:
-        try:
-            result = await _call_anthropic(message, conversation_history or [], api_key, shop_context)
-            return {"response": result, "source": "anthropic", "remaining": remaining}
-        except Exception as e:
-            log.warning("Anthropic API error: %s — falling back", e)
-
-    # Data-aware fallback response
-    response = _get_fallback_response(message, shop_context)
-    return {"response": response, "source": "fallback", "remaining": remaining}
-
-
-async def rewrite_email(
-    subject: str,
-    body: str,
-    api_key: str = "",
-    shop_name: str = "",
-) -> dict:
-    """Rewrite an email campaign to be more engaging."""
-    if api_key:
-        try:
-            prompt = f"Shop name: {shop_name}\n\nOriginal subject: {subject}\n\nOriginal body:\n{body}"
-            result = await _call_anthropic(prompt, [], api_key, system_override=EMAIL_REWRITE_PROMPT)
-            # Try to parse JSON response
-            try:
-                parsed = json.loads(result)
-                return {"subject": parsed["subject"], "body": parsed["body"], "source": "anthropic"}
-            except (json.JSONDecodeError, KeyError):
-                return {"subject": subject, "body": result, "source": "anthropic"}
-        except Exception as e:
-            log.warning("Anthropic API error on email rewrite: %s", e)
-
-    # Fallback: improve the email with simple transformations
-    improved_subject = subject
-    if not subject.endswith(("!", "?", "...")):
-        improved_subject = subject.rstrip(".") + " ✨"
-
-    improved_body = body
-    if "{{first_name}}" not in body.lower() and "{first_name}" not in body.lower():
-        improved_body = f"Hi {{{{first_name}}}},\n\n{body}"
-    if not any(cta in body.lower() for cta in ["visit", "shop now", "click", "grab", "don't miss"]):
-        improved_body += "\n\nVisit us today — we'd love to see you!"
-
-    return {"subject": improved_subject, "body": improved_body, "source": "fallback"}
-
-
-async def generate_content(
-    content_type: str,
-    prompt: str,
-    api_key: str = "",
-    shop_name: str = "",
-) -> dict:
-    """Generate marketing content (social post, promotion, ad copy)."""
-    if api_key:
-        try:
-            full_prompt = f"Shop: {shop_name}\nContent type: {content_type}\nRequest: {prompt}"
-            result = await _call_anthropic(full_prompt, [], api_key, system_override=CONTENT_GEN_PROMPT)
-            return {"content": result, "source": "anthropic"}
-        except Exception as e:
-            log.warning("Anthropic API error on content gen: %s", e)
-
-    # Fallback content
-    fallbacks = {
-        "social": f"New arrivals just dropped at {shop_name or 'our shop'}! Come see what's fresh this week.\n\nTag a friend who'd love this!\n\n#ShopLocal #RetailTherapy #NewArrivals #SmallBusiness #ShopSmall\n\nBest time to post: Tuesday or Thursday, 11am-1pm",
-        "promotion": f"FLASH SALE at {shop_name or 'our shop'}!\n\n20% off everything this weekend only.\n\nNo code needed — discount applied at checkout.\n\nHurry — sale ends Sunday at close!",
-        "ad": f"Looking for something special? {shop_name or 'We'} have curated the perfect collection just for you.\n\nVisit us today and discover your new favorite finds.\n\nOpen 7 days a week",
-    }
-    return {
-        "content": fallbacks.get(content_type, fallbacks["social"]),
-        "source": "fallback",
-    }
-
-
-async def _call_anthropic(
-    message: str,
-    history: list[dict],
-    api_key: str,
-    shop_context: dict | None = None,
-    system_override: str | None = None,
-) -> str:
-    """Call the Anthropic API using httpx (no SDK dependency needed)."""
-    system = system_override or SYSTEM_PROMPT
-    if shop_context and not system_override:
-        ctx_parts = []
-        name = shop_context.get("shop_name", "")
-        if name:
-            ctx_parts.append(f"Shop name: {name}")
-        cat = shop_context.get("category", "")
-        if cat:
-            ctx_parts.append(f"Category: {cat}")
-        city = shop_context.get("city", "")
-        if city:
-            ctx_parts.append(f"Location: {city}")
-
-        rev_today = shop_context.get("revenue_today", 0)
-        if rev_today:
-            ctx_parts.append(f"Today's revenue: ${rev_today:,.2f}")
-        rev_yesterday = shop_context.get("revenue_yesterday", 0)
-        if rev_yesterday:
-            ctx_parts.append(f"Yesterday's revenue: ${rev_yesterday:,.2f}")
-        rev_30d = shop_context.get("revenue_30d", 0)
-        if rev_30d:
-            ctx_parts.append(f"30-day revenue: ${rev_30d:,.2f}")
-        avg_daily = shop_context.get("avg_daily_revenue", 0)
-        if avg_daily:
-            ctx_parts.append(f"Average daily revenue: ${avg_daily:,.2f}")
-        txn_30d = shop_context.get("transactions_30d", 0)
-        if txn_30d:
-            ctx_parts.append(f"30-day transactions: {txn_30d}")
-
-        total = shop_context.get("total_customers", 0)
-        if total:
-            ctx_parts.append(f"Total customers: {total}")
-            vip = shop_context.get("vip_customers", 0)
-            at_risk = shop_context.get("at_risk_customers", 0)
-            lost = shop_context.get("lost_customers", 0)
-            ctx_parts.append(f"Customer segments: {vip} VIP, {at_risk} at-risk, {lost} lost")
-
-        top = shop_context.get("top_products", [])
-        if top:
-            prod_lines = [f"  {i+1}. {p['name']} ({p['category']}) — ${p['revenue']:,.0f} revenue, {p['units']} units" for i, p in enumerate(top)]
-            ctx_parts.append("Top products (30d):\n" + "\n".join(prod_lines))
-
-        comps = shop_context.get("competitors", [])
-        if comps:
-            comp_lines = [f"  - {c['name']}: {c['rating']}/5 ({c['reviews']} reviews)" for c in comps]
-            ctx_parts.append("Competitors:\n" + "\n".join(comp_lines))
-
-        own_rating = shop_context.get("own_avg_rating", 0)
-        own_count = shop_context.get("own_review_count", 0)
-        if own_count:
-            ctx_parts.append(f"Your Google rating: {own_rating}/5 ({own_count} reviews)")
-
-        neg = shop_context.get("recent_negative_reviews", [])
-        if neg:
-            neg_lines = [f"  - {r['rating']}/5: \"{r['text']}\"" for r in neg]
-            ctx_parts.append("Recent low-rated reviews:\n" + "\n".join(neg_lines))
-
-        if ctx_parts:
-            system += "\n\n--- CURRENT SHOP DATA ---\n" + "\n".join(ctx_parts)
-
-    messages = []
-    for h in history[-10:]:  # Last 10 messages for context
-        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
-    messages.append({"role": "user", "content": message})
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-sonnet-4-20250514",
-                "max_tokens": 1024,
-                "system": system,
-                "messages": messages,
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["content"][0]["text"]

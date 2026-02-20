@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=23">
+  <link rel="stylesheet" href="/static/dashboard.css?v=24">
 </head>
 <body>
   <!-- Sidebar -->
@@ -998,6 +998,9 @@
 
       <!-- Marketing Content Engine -->
       <section class="section {{ 'active' if sec == 'marketing' }}" id="sec-marketing">
+        <div class="section-toolbar">
+          <button class="ask-sage-inline" onclick="askSage('Create a full week of social media content based on my trending products and competitor weaknesses')"><span class="sage-mini-avatar">S</span> Create content with Sage</button>
+        </div>
         <div class="mke-tabs" id="mkeTabs">
           <button class="mke-tab active" data-tab="calendar">Content Calendar</button>
           <button class="mke-tab" data-tab="social">Social Posts</button>
@@ -1052,8 +1055,8 @@
             </div>
             <div class="mke-panel-actions">
               <button class="ai-action-btn" id="aiGenContentBtn" onclick="document.getElementById('aiGenModal').hidden=false">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/></svg>
-                AI Content Generator
+                <span class="sage-mini-avatar" style="width:16px;height:16px;font-size:8px">S</span>
+                Sage Content Generator
               </button>
             </div>
           </div>
@@ -1380,25 +1383,44 @@
             </div>
           </div>
           <div class="settings-group">
-            <h3 class="settings-group-title">AI Assistant</h3>
+            <h3 class="settings-group-title">Sage AI Assistant</h3>
             <div class="settings-grid">
               <div class="settings-field" style="grid-column:1/-1">
                 <label class="settings-label">Anthropic API Key</label>
-                <input type="password" class="settings-input" id="setAnthropicApiKey" placeholder="Enter your Anthropic API key (optional — smart fallback used if blank)">
-                <small style="color:var(--text3);margin-top:4px;display:block">Powers the AI chat assistant, email rewriting, and content generation. Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>.</small>
+                <div style="display:flex;gap:8px;align-items:start">
+                  <div style="flex:1;position:relative">
+                    <input type="password" class="settings-input" id="setAnthropicApiKey" placeholder="sk-ant-..." style="padding-right:40px">
+                    <button type="button" class="settings-eye-btn" id="toggleApiKeyVis" title="Show/hide key" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;padding:4px">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                  <button class="btn-primary" id="testConnectionBtn" style="padding:8px 16px;font-size:13px;white-space:nowrap">Test Connection</button>
+                </div>
+                <small id="testConnectionResult" style="color:var(--text3);margin-top:4px;display:block">Powers Sage — your AI chat assistant, email rewriter, and content generator. Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>.</small>
               </div>
               <div class="settings-field">
-                <label class="settings-label">AI Personality</label>
+                <label class="settings-label">AI Model</label>
+                <select class="settings-input" id="setAiModel">
+                  <option value="sonnet">Smart (Sonnet) — Best quality</option>
+                  <option value="haiku">Fast (Haiku) — Lower cost</option>
+                </select>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Sage Personality</label>
                 <select class="settings-input" id="setAiPersonality">
                   <option value="professional">Professional</option>
                   <option value="friendly">Friendly & Casual</option>
-                  <option value="concise">Ultra Concise</option>
-                  <option value="detailed">Detailed & Thorough</option>
+                  <option value="motivational">Motivational</option>
+                  <option value="direct">Direct</option>
                 </select>
+              </div>
+              <div class="settings-field">
+                <label class="settings-label">Daily Message Limit</label>
+                <input type="number" class="settings-input" id="setAiDailyLimit" value="100" min="10" max="500" step="10">
               </div>
             </div>
             <div class="settings-toggles">
-              <label class="settings-toggle"><input type="checkbox" id="setAiEnabled" checked><span>Enable AI Assistant</span></label>
+              <label class="settings-toggle"><input type="checkbox" id="setAiEnabled" checked><span>Enable Sage AI Assistant</span></label>
             </div>
           </div>
           <div class="settings-group">
@@ -1432,7 +1454,7 @@
 
   <!-- Sage AI Chat Widget -->
   <button class="ai-fab" id="aiFab" title="Ask Sage">
-    <div class="sage-fab-icon">S</div>
+    <svg class="sage-fab-sparkle" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M5 17l.75 2.25L8 20l-2.25.75L5 23l-.75-2.25L2 20l2.25-.75z" opacity=".6"/><path d="M19 14l.5 1.5L21 16l-1.5.5L19 18l-.5-1.5L17 16l1.5-.5z" opacity=".6"/></svg>
     <div class="ai-fab-badge" id="aiFabBadge" hidden></div>
   </button>
 
@@ -1443,6 +1465,9 @@
         Sage
       </div>
       <div class="ai-chat-actions">
+        <button id="aiMinBtn" title="Minimize">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
         <button id="aiClearBtn" title="Clear history">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
@@ -1456,12 +1481,23 @@
         <div class="sage-avatar-lg">S</div>
         <div class="ai-welcome-title">Meet Sage</div>
         <div class="ai-welcome-sub">Your AI business advisor. I know your sales data, customers, and competitors — ask me anything.</div>
-        <div class="ai-quick-prompts">
-          <button class="ai-quick-prompt" data-prompt="Give me a quick snapshot of how my business is doing">How's my business doing?</button>
-          <button class="ai-quick-prompt" data-prompt="What should I focus on this week to grow revenue?">What should I focus on?</button>
-          <button class="ai-quick-prompt" data-prompt="Write a social media post about my best-selling product">Write me a social post</button>
-          <button class="ai-quick-prompt" data-prompt="How are my competitors performing compared to me?">How are my competitors?</button>
-          <button class="ai-quick-prompt" data-prompt="What can I do to win back my at-risk customers?">Help me win back customers</button>
+        <div class="ai-prompt-section">
+          <div class="ai-prompt-label">Quick Actions</div>
+          <div class="ai-quick-prompts">
+            <button class="ai-quick-prompt" data-prompt="Give me a quick snapshot of how my business is doing today">&#128202; How are my sales today?</button>
+            <button class="ai-quick-prompt" data-prompt="Write me an Instagram post about my best-selling product">&#128221; Write me an Instagram post</button>
+            <button class="ai-quick-prompt" data-prompt="Draft a win-back email for my at-risk customers with a 15% discount">&#128231; Draft a win-back email</button>
+            <button class="ai-quick-prompt" data-prompt="What should I focus on this week to grow revenue?">&#127919; What should I focus on?</button>
+          </div>
+        </div>
+        <div class="ai-prompt-section">
+          <div class="ai-prompt-label">Deep Analysis</div>
+          <div class="ai-quick-prompts">
+            <button class="ai-quick-prompt" data-prompt="Give me a creative promotion idea based on my trending products and upcoming calendar events">&#128161; Give me a promotion idea</button>
+            <button class="ai-quick-prompt" data-prompt="Analyze my competitors in detail — their strengths, weaknesses, and where I can win">&#128270; Analyze my competitors</button>
+            <button class="ai-quick-prompt" data-prompt="Why are my sales trending the way they are this month? What's driving the change?">&#128200; Why are sales up/down?</button>
+            <button class="ai-quick-prompt" data-prompt="Plan my week: what should I do each day to maximize revenue based on my data?">&#128197; Plan my week</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1478,7 +1514,7 @@
   <div class="ai-gen-modal-overlay" id="aiGenModal" hidden onclick="if(event.target===this)this.hidden=true">
     <div class="ai-gen-modal">
       <div class="ai-gen-modal-header">
-        <h3>🧠 AI Content Generator</h3>
+        <h3><span class="sage-mini-avatar" style="width:22px;height:22px;font-size:11px">S</span> Sage Content Generator</h3>
         <button class="ai-gen-modal-close" onclick="document.getElementById('aiGenModal').hidden=true">&times;</button>
       </div>
       <div class="ai-gen-modal-body">
@@ -1491,7 +1527,7 @@
         <div class="ai-gen-result" id="aiGenResult" hidden></div>
         <div class="ai-gen-actions">
           <button class="btn-secondary" id="aiGenCopy" hidden onclick="navigator.clipboard.writeText(document.getElementById('aiGenResult').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
-          <button class="btn-primary" id="aiGenBtn">Generate with AI</button>
+          <button class="btn-primary" id="aiGenBtn">Generate with Sage</button>
         </div>
       </div>
     </div>
@@ -1533,7 +1569,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=23"></script>
+  <script src="/static/dashboard.js?v=24"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>
