@@ -4,23 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Page Not Found | Forge</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><text x='16' y='23' text-anchor='middle' fill='white' font-size='20' font-weight='bold' font-family='Inter,sans-serif'>F</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0f1c; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #09090b; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
         .container { text-align: center; padding: 2rem; }
-        .code { font-size: 8rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; }
+        .logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 2rem; text-decoration: none; color: #fff; font-size: 1.5rem; font-weight: 800; }
+        .code { font-size: 8rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; }
         h1 { font-size: 1.5rem; margin: 1rem 0 0.5rem; color: #e2e8f0; }
-        p { color: #94a3b8; margin-bottom: 2rem; }
-        a { display: inline-block; padding: 0.75rem 2rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border-radius: 12px; text-decoration: none; font-weight: 600; transition: transform 0.2s; }
-        a:hover { transform: translateY(-2px); }
+        p { color: #94a3b8; margin-bottom: 2rem; max-width: 400px; margin-left: auto; margin-right: auto; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        a { display: inline-block; padding: 0.75rem 2rem; background: linear-gradient(135deg, #6366f1, #818cf8); color: #fff; border-radius: 12px; text-decoration: none; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; }
+        a:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(99,102,241,0.3); }
+        .btn-ghost { background: transparent; border: 1px solid #3f3f46; color: #a1a1aa; }
+        .btn-ghost:hover { border-color: #6366f1; color: #fff; box-shadow: none; }
     </style>
 </head>
 <body>
     <div class="container">
+        <a href="/" class="logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="url(#g)"/><path d="M10 24h12M13 24v-4h6v4M11 20h10M9 14l3-2h8l3 2v3a1 1 0 01-1 1H10a1 1 0 01-1-1v-3z" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 12V9a2 2 0 014 0v3" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs></svg>
+            Forge
+        </a>
         <div class="code">404</div>
         <h1>Page Not Found</h1>
-        <p>The page you're looking for doesn't exist or has been moved.</p>
-        <a href="/dashboard">Back to Dashboard</a>
+        <p>The page you're looking for doesn't exist or has been moved. Let's get you back on track.</p>
+        <div class="actions">
+            <a href="/dashboard">Go to Dashboard</a>
+            <a href="/" class="btn-ghost">Home</a>
+        </div>
     </div>
 </body>
 </html>

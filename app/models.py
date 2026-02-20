@@ -52,6 +52,10 @@ class Shop(Base):
     staff_count = Column(Integer, default=1)
     latitude = Column(Float)
     longitude = Column(Float)
+    instagram_handle = Column(String(255), default="")
+    facebook_url = Column(String(500), default="")
+    tiktok_handle = Column(String(255), default="")
+    email_list_size = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="shops")
@@ -72,6 +76,7 @@ class Shop(Base):
     goals = relationship("Goal", back_populates="shop", cascade="all, delete-orphan")
     product_goals = relationship("ProductGoal", back_populates="shop", cascade="all, delete-orphan")
     strategy_notes = relationship("StrategyNote", back_populates="shop", cascade="all, delete-orphan")
+    posted_contents = relationship("PostedContent", back_populates="shop", cascade="all, delete-orphan")
 
 
 # ── Shop Settings ─────────────────────────────────────────────────────────────
@@ -499,3 +504,20 @@ class ChatMessage(Base):
     role = Column(String(20), nullable=False)  # user, assistant
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ── Posted Content Tracker ──────────────────────────────────────────────────
+
+class PostedContent(Base):
+    __tablename__ = "posted_contents"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    content_type = Column(String(50), nullable=False)  # calendar, social, marketing, email
+    content_text = Column(Text, nullable=False)
+    platform = Column(String(50))  # instagram, facebook, tiktok, email
+    hashtags = Column(Text, default="")
+    posted_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop", back_populates="posted_contents")

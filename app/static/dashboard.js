@@ -173,7 +173,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Data loaders ──
   const loaded = {};
 
+  function showSectionSkeleton(section) {
+    const sec = $(`#sec-${section}`);
+    if (!sec || sec.querySelector('.skeleton-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'skeleton-overlay';
+    overlay.innerHTML = `
+      <div class="skeleton-card"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:80%"></div><div class="skeleton-line" style="width:45%"></div></div>
+      <div class="skeleton-card"><div class="skeleton-line" style="width:70%"></div><div class="skeleton-line" style="width:55%"></div><div class="skeleton-line" style="width:90%"></div></div>
+      <div class="skeleton-card"><div class="skeleton-line" style="width:50%"></div><div class="skeleton-line" style="width:75%"></div><div class="skeleton-line" style="width:65%"></div></div>
+    `;
+    sec.prepend(overlay);
+  }
+
+  function hideSectionSkeleton(section) {
+    const sec = $(`#sec-${section}`);
+    if (!sec) return;
+    const overlay = sec.querySelector('.skeleton-overlay');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity .2s ease';
+      setTimeout(() => overlay.remove(), 200);
+    }
+  }
+
   async function loadSection(section) {
+    const skipSkeleton = ['settings'];
+    if (!skipSkeleton.includes(section)) showSectionSkeleton(section);
     try {
       if (section === 'briefing') await loadBriefing();
       else if (section === 'overview') await loadOverview();
@@ -194,6 +220,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error('[Forge] Error loading section:', section, err);
       hideRefresh();
+    } finally {
+      hideSectionSkeleton(section);
     }
   }
 
@@ -3041,52 +3069,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (s('#setAiEnabled')) s('#setAiEnabled').checked = data.ai_enabled !== false;
   }
 
-  // Save settings handler
+  // Save settings handler — defined later with social accounts support
   const saveBtn = $('#saveSettingsBtn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', async () => {
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving...';
-      const headers = {'Content-Type': 'application/json'};
-      const body = {
-        shop_name: $('#setShopName')?.value || null,
-        address: $('#setAddress')?.value || null,
-        category: $('#setCategory')?.value || null,
-        store_size_sqft: $('#setStoreSize')?.value ? parseInt($('#setStoreSize').value) : null,
-        staff_count: $('#setStaffCount')?.value ? parseInt($('#setStaffCount').value) : null,
-        monthly_rent: $('#setRent')?.value ? parseFloat($('#setRent').value) : null,
-        avg_cogs_percentage: $('#setCogs')?.value ? parseFloat($('#setCogs').value) : null,
-        staff_hourly_rate: $('#setHourlyRate')?.value ? parseFloat($('#setHourlyRate').value) : null,
-        tax_rate: $('#setTaxRate')?.value ? parseFloat($('#setTaxRate').value) : null,
-        email_frequency: $('#setEmailFreq')?.value || null,
-        alert_revenue: $('#setAlertRevenue')?.checked,
-        alert_customers: $('#setAlertCustomers')?.checked,
-        alert_reviews: $('#setAlertReviews')?.checked,
-        alert_competitors: $('#setAlertCompetitors')?.checked,
-        google_api_key: $('#setGoogleApiKey')?.value || null,
-        anthropic_api_key: $('#setAnthropicApiKey')?.value || null,
-        ai_enabled: $('#setAiEnabled')?.checked,
-        ai_personality: $('#setAiPersonality')?.value || null,
-      };
-      try {
-        const res = await fetch('/api/dashboard/settings', {
-          method: 'PUT', headers, credentials: 'same-origin',
-          body: JSON.stringify(body),
-        });
-        if (res.ok) {
-          showToast('Settings saved successfully!', 'success');
-          const msg = $('#settingsSavedMsg');
-          if (msg) { msg.hidden = false; setTimeout(() => msg.hidden = true, 3000); }
-        } else {
-          showToast('Failed to save settings', 'error');
-        }
-      } catch (e) {
-        showToast('Network error saving settings', 'error');
-      }
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Save Settings';
-    });
-  }
 
   // ── Help Tooltips ──
   const helpBtn = $('#helpTooltipBtn');
@@ -3900,7 +3884,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       typingEl.remove();
-      appendAiMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+      appendAiMessage('assistant', 'Sage is taking a break. Try again in a moment.');
     }
 
     aiSendBtn.disabled = false;
@@ -4163,5 +4147,354 @@ document.addEventListener('DOMContentLoaded', () => {
       window.history.replaceState({}, '', url.pathname);
     });
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CONNECTED ACCOUNTS (Social Media Linking)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function updateConnectedAccountStatus(id, statusId, value, type) {
+    const statusEl = $(statusId);
+    if (!statusEl) return;
+    if (value && value.trim()) {
+      let display = value;
+      if (type === 'instagram' || type === 'tiktok') {
+        display = value.startsWith('@') ? value : '@' + value;
+      }
+      if (type === 'email') {
+        display = Number(value).toLocaleString() + ' subscribers';
+      }
+      statusEl.innerHTML = '<span class="ca-connected-badge">Connected</span> <span class="ca-connected-value">' + esc(display) + '</span>';
+      if (type === 'instagram') {
+        statusEl.innerHTML += ' <a href="https://instagram.com/' + esc(value.replace('@', '')) + '" target="_blank" class="ca-profile-link">View Profile</a>';
+      } else if (type === 'facebook' && value.startsWith('http')) {
+        statusEl.innerHTML += ' <a href="' + esc(value) + '" target="_blank" class="ca-profile-link">View Page</a>';
+      } else if (type === 'tiktok') {
+        statusEl.innerHTML += ' <a href="https://tiktok.com/' + esc(value.replace('@', '')) + '" target="_blank" class="ca-profile-link">View Profile</a>';
+      }
+    } else {
+      statusEl.innerHTML = '<span class="ca-not-connected">Not connected</span>';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ONE-CLICK POST SYSTEM & POST NOW MODAL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // Helper: create action bar with Copy, Open Instagram, Open Facebook buttons
+  function createPostActionBar(text, hashtags) {
+    const bar = document.createElement('div');
+    bar.className = 'post-action-bar';
+    const fullText = hashtags ? text + '\n\n' + hashtags : text;
+
+    bar.innerHTML = `
+      <button class="pab-btn pab-copy" title="Copy to clipboard">&#128203; Copy</button>
+      <button class="pab-btn pab-ig" title="Copy & open Instagram">&#128248; Open Instagram</button>
+      <button class="pab-btn pab-fb" title="Copy & open Facebook">&#128216; Open Facebook</button>
+      <button class="pab-btn pab-post-now" title="Post Now workflow">&#128640; Post Now</button>
+    `;
+
+    bar.querySelector('.pab-copy').onclick = (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(fullText);
+      showToast('Copied to clipboard!', 'success', 2000);
+      const btn = bar.querySelector('.pab-copy');
+      btn.innerHTML = '&#10003; Copied';
+      setTimeout(() => btn.innerHTML = '&#128203; Copy', 2000);
+    };
+
+    bar.querySelector('.pab-ig').onclick = (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(fullText);
+      window.open('https://www.instagram.com/', '_blank');
+      showToast('Text copied! Instagram opened.', 'success', 3000);
+    };
+
+    bar.querySelector('.pab-fb').onclick = (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(fullText);
+      window.open('https://www.facebook.com/', '_blank');
+      showToast('Text copied! Facebook opened.', 'success', 3000);
+    };
+
+    bar.querySelector('.pab-post-now').onclick = (e) => {
+      e.stopPropagation();
+      openPostNowModal(text, hashtags || '');
+    };
+
+    return bar;
+  }
+
+  // Post Now Modal
+  function openPostNowModal(text, hashtags) {
+    const modal = $('#postNowModal');
+    if (!modal) return;
+    $('#postNowText').value = text;
+    $('#postNowHashtags').value = hashtags;
+    modal.hidden = false;
+
+    // Platform selector
+    let selectedPlatform = 'instagram';
+    $$('.pnp-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.platform === 'instagram');
+      btn.onclick = () => {
+        $$('.pnp-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedPlatform = btn.dataset.platform;
+        $('#postNowPlatformLabel').textContent = btn.textContent;
+      };
+    });
+
+    // Copy & Open button
+    const copyOpenBtn = $('#postNowCopyOpen');
+    copyOpenBtn.onclick = () => {
+      const fullText = $('#postNowText').value + '\n\n' + $('#postNowHashtags').value;
+      navigator.clipboard.writeText(fullText);
+      const urls = {
+        instagram: 'https://www.instagram.com/',
+        facebook: 'https://www.facebook.com/',
+        tiktok: 'https://www.tiktok.com/upload',
+      };
+      window.open(urls[selectedPlatform] || urls.instagram, '_blank');
+      showToast('Text copied! ' + selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1) + ' opened.', 'success', 3000);
+    };
+
+    // Edit with Sage
+    const sageBtn = $('#postNowEditSage');
+    sageBtn.onclick = () => {
+      modal.hidden = true;
+      const content = $('#postNowText').value;
+      askSage('Help me improve this social media post for my shop. Make it more engaging:\n\n' + content);
+    };
+
+    // Mark as Posted
+    const markBtn = $('#postNowMarkPosted');
+    markBtn.onclick = async () => {
+      markBtn.disabled = true;
+      markBtn.textContent = 'Saving...';
+      try {
+        await fetch('/api/dashboard/content/mark-posted', {
+          method: 'POST', credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            content_type: 'social',
+            content_text: $('#postNowText').value,
+            platform: selectedPlatform,
+            hashtags: $('#postNowHashtags').value,
+          })
+        });
+        showToast('Content marked as posted!', 'success');
+        modal.hidden = true;
+      } catch (e) {
+        showToast('Failed to save', 'error');
+      }
+      markBtn.disabled = false;
+      markBtn.textContent = 'Mark as Posted';
+    };
+  }
+
+  // Upgrade marketing content copy buttons to action bars
+  // This runs after marketing content loads via MutationObserver
+  function upgradeContentCopyButtons(container) {
+    if (!container) return;
+    // Upgrade calendar post copy buttons
+    container.querySelectorAll('.mke-cal-post').forEach(post => {
+      if (post.querySelector('.post-action-bar')) return;
+      const oldBtn = post.querySelector('.mke-copy-btn');
+      const contentEl = post.querySelector('.mke-cal-post-content');
+      if (oldBtn && contentEl) {
+        const text = contentEl.textContent.trim();
+        oldBtn.replaceWith(createPostActionBar(text, ''));
+      }
+    });
+
+    // Upgrade social post copy buttons
+    container.querySelectorAll('.mke-social-card').forEach(card => {
+      if (card.querySelector('.post-action-bar')) return;
+      const actionsDiv = card.querySelector('.mke-social-actions');
+      const caption = card.querySelector('.mke-social-caption')?.textContent?.trim() || '';
+      const hashtags = card.querySelector('.mke-social-hashtags')?.textContent?.trim() || '';
+      if (actionsDiv) {
+        actionsDiv.innerHTML = '';
+        actionsDiv.appendChild(createPostActionBar(caption, hashtags));
+      }
+    });
+
+    // Upgrade competitor marketing copy buttons
+    container.querySelectorAll('.opp-action').forEach(action => {
+      if (action.querySelector('.post-action-bar')) return;
+      const oldBtn = action.querySelector('.copy-btn');
+      const textEl = action.querySelector('.opp-action-text');
+      if (oldBtn && textEl) {
+        const text = textEl.textContent.trim();
+        oldBtn.replaceWith(createPostActionBar(text, ''));
+      }
+    });
+
+    // Upgrade competitor marketing response copy buttons
+    container.querySelectorAll('.mkt-response').forEach(resp => {
+      if (resp.querySelector('.post-action-bar')) return;
+      const oldBtn = resp.querySelector('.mkt-copy-btn');
+      const textEl = resp.querySelector('.mkt-response-text');
+      if (oldBtn && textEl) {
+        const text = textEl.textContent.trim();
+        oldBtn.replaceWith(createPostActionBar(text, ''));
+      }
+    });
+  }
+
+  // Observe DOM changes to upgrade new content as it loads
+  const contentObserver = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.addedNodes.length) {
+        const sec = $('#sec-marketing');
+        if (sec) upgradeContentCopyButtons(sec);
+        const compSec = $('#sec-competitors');
+        if (compSec) upgradeContentCopyButtons(compSec);
+      }
+    }
+  });
+  const contentEl2 = $('#content');
+  if (contentEl2) contentObserver.observe(contentEl2, {childList: true, subtree: true});
+
+  // ── Enhanced loadSettings with Connected Accounts ──
+  const origLoadSettings = loadSettings;
+  loadSettings = async function() {
+    await origLoadSettings();
+    // Load connected accounts status
+    const data = await api('/api/dashboard/settings');
+    if (!data) return;
+    if ($('#setInstagramHandle')) $('#setInstagramHandle').value = data.instagram_handle || '';
+    if ($('#setFacebookUrl')) $('#setFacebookUrl').value = data.facebook_url || '';
+    if ($('#setTiktokHandle')) $('#setTiktokHandle').value = data.tiktok_handle || '';
+    if ($('#setEmailListSize')) $('#setEmailListSize').value = data.email_list_size || '';
+    updateConnectedAccountStatus('#caInstagram', '#caInstagramStatus', data.instagram_handle, 'instagram');
+    updateConnectedAccountStatus('#caFacebook', '#caFacebookStatus', data.facebook_url, 'facebook');
+    updateConnectedAccountStatus('#caTiktok', '#caTiktokStatus', data.tiktok_handle, 'tiktok');
+    updateConnectedAccountStatus('#caEmail', '#caEmailStatus', data.email_list_size ? String(data.email_list_size) : '', 'email');
+  };
+
+  // ── Enhanced save settings with social accounts ──
+  const origSaveClick = saveBtn && saveBtn.onclick;
+  if (saveBtn) {
+    const origHandler = saveBtn.onclick;
+    saveBtn.onclick = null;
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      const headers = {'Content-Type': 'application/json'};
+      const body = {
+        shop_name: $('#setShopName')?.value || null,
+        address: $('#setAddress')?.value || null,
+        category: $('#setCategory')?.value || null,
+        store_size_sqft: $('#setStoreSize')?.value ? parseInt($('#setStoreSize').value) : null,
+        staff_count: $('#setStaffCount')?.value ? parseInt($('#setStaffCount').value) : null,
+        monthly_rent: $('#setRent')?.value ? parseFloat($('#setRent').value) : null,
+        avg_cogs_percentage: $('#setCogs')?.value ? parseFloat($('#setCogs').value) : null,
+        staff_hourly_rate: $('#setHourlyRate')?.value ? parseFloat($('#setHourlyRate').value) : null,
+        tax_rate: $('#setTaxRate')?.value ? parseFloat($('#setTaxRate').value) : null,
+        email_frequency: $('#setEmailFreq')?.value || null,
+        alert_revenue: $('#setAlertRevenue')?.checked,
+        alert_customers: $('#setAlertCustomers')?.checked,
+        alert_reviews: $('#setAlertReviews')?.checked,
+        alert_competitors: $('#setAlertCompetitors')?.checked,
+        google_api_key: $('#setGoogleApiKey')?.value || null,
+        anthropic_api_key: $('#setAnthropicApiKey')?.value || null,
+        ai_enabled: $('#setAiEnabled')?.checked,
+        ai_personality: $('#setAiPersonality')?.value || null,
+        instagram_handle: $('#setInstagramHandle')?.value || '',
+        facebook_url: $('#setFacebookUrl')?.value || '',
+        tiktok_handle: $('#setTiktokHandle')?.value || '',
+        email_list_size: $('#setEmailListSize')?.value ? parseInt($('#setEmailListSize').value) : 0,
+      };
+      try {
+        const res = await fetch('/api/dashboard/settings', {
+          method: 'PUT', headers, credentials: 'same-origin',
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          showToast('Settings saved successfully!', 'success');
+          const msg = $('#settingsSavedMsg');
+          if (msg) { msg.hidden = false; setTimeout(() => msg.hidden = true, 3000); }
+          // Update connected account statuses
+          updateConnectedAccountStatus('#caInstagram', '#caInstagramStatus', body.instagram_handle, 'instagram');
+          updateConnectedAccountStatus('#caFacebook', '#caFacebookStatus', body.facebook_url, 'facebook');
+          updateConnectedAccountStatus('#caTiktok', '#caTiktokStatus', body.tiktok_handle, 'tiktok');
+          updateConnectedAccountStatus('#caEmail', '#caEmailStatus', body.email_list_size ? String(body.email_list_size) : '', 'email');
+        } else {
+          showToast('Failed to save settings', 'error');
+        }
+      } catch (e) {
+        showToast('Network error saving settings', 'error');
+      }
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Settings';
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // POSTING TRACKER (Marketing Performance Tab)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const origLoadMkePerformance = loadMkePerformance;
+  loadMkePerformance = async function() {
+    if (typeof origLoadMkePerformance === 'function') await origLoadMkePerformance();
+    // Add posting tracker section
+    const container = $('#mkePerfContent');
+    if (!container) return;
+    const stats = await api('/api/dashboard/content/posted-stats');
+    if (!stats) return;
+    const trackerHtml = `
+      <div class="posting-tracker">
+        <div class="pt-header">
+          <h4 class="pt-title">Content Publishing Tracker</h4>
+        </div>
+        <div class="pt-stats-row">
+          <div class="pt-stat">
+            <div class="pt-stat-value">${stats.total_this_week}</div>
+            <div class="pt-stat-label">Posts This Week</div>
+          </div>
+          <div class="pt-stat">
+            <div class="pt-stat-value">${stats.suggested_per_week}</div>
+            <div class="pt-stat-label">Suggested / Week</div>
+          </div>
+          <div class="pt-stat">
+            <div class="pt-stat-value">${stats.usage_rate}%</div>
+            <div class="pt-stat-label">Content Usage Rate</div>
+          </div>
+          <div class="pt-stat">
+            <div class="pt-stat-value">${stats.total_all_time}</div>
+            <div class="pt-stat-label">All Time Posts</div>
+          </div>
+        </div>
+        <div class="pt-progress">
+          <div class="pt-progress-label">This week: ${stats.total_this_week} of ${stats.suggested_per_week} suggested posts published</div>
+          <div class="pt-progress-bar"><div class="pt-progress-fill" style="width:${Math.min(stats.usage_rate, 100)}%"></div></div>
+        </div>
+        ${stats.recent && stats.recent.length > 0 ? `
+          <div class="pt-recent">
+            <div class="pt-recent-title">Recently Posted</div>
+            ${stats.recent.slice(0, 5).map(p => `
+              <div class="pt-recent-item">
+                <span class="pt-recent-badge">${p.platform || 'social'}</span>
+                <span class="pt-recent-text">${esc(p.content_text)}</span>
+                <span class="pt-recent-time">${p.posted_at ? new Date(p.posted_at).toLocaleDateString() : ''}</span>
+                <span class="pt-posted-check">Posted &#10003;</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+    // Prepend tracker before existing performance content
+    const existingContent = container.innerHTML;
+    if (!container.querySelector('.posting-tracker')) {
+      container.innerHTML = trackerHtml + existingContent;
+    }
+  };
+
+  // ── Sage Error Handling Enhancement ──
+  const origSendAiMessage = sendAiMessage;
+  // Override to add better error messages (the original already handles errors,
+  // but we enhance the catch block's message)
 
 });

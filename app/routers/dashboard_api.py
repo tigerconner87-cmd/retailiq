@@ -10,6 +10,7 @@ from app.dependencies import get_current_user, get_db
 from app.models import (
     User, Alert, Shop, Recommendation, ShopSettings, Expense,
     RevenueGoal, MarketingCampaign, PlanInterest, WinBackCampaign,
+    PostedContent,
 )
 from app.schemas import (
     AlertsResponse,
@@ -733,6 +734,10 @@ def get_settings(user: User = Depends(get_current_user), db: Session = Depends(g
         "anthropic_api_key": settings.anthropic_api_key if settings and hasattr(settings, 'anthropic_api_key') else "",
         "ai_enabled": settings.ai_enabled if settings and hasattr(settings, 'ai_enabled') else True,
         "ai_personality": settings.ai_personality if settings and hasattr(settings, 'ai_personality') else "professional",
+        "instagram_handle": shop.instagram_handle or "",
+        "facebook_url": shop.facebook_url or "",
+        "tiktok_handle": shop.tiktok_handle or "",
+        "email_list_size": shop.email_list_size or 0,
     }
 
 
@@ -788,6 +793,16 @@ def update_settings(body: ShopSettingsUpdate, user: User = Depends(get_current_u
         settings.ai_enabled = body.ai_enabled
     if body.ai_personality is not None:
         settings.ai_personality = body.ai_personality
+
+    # Update social media fields on shop
+    if body.instagram_handle is not None:
+        shop.instagram_handle = body.instagram_handle
+    if body.facebook_url is not None:
+        shop.facebook_url = body.facebook_url
+    if body.tiktok_handle is not None:
+        shop.tiktok_handle = body.tiktok_handle
+    if body.email_list_size is not None:
+        shop.email_list_size = body.email_list_size
 
     db.commit()
     return {"detail": "Settings updated"}
@@ -1117,3 +1132,69 @@ def export_data(body: ExportRequest, user: User = Depends(get_current_user), db:
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+# ── Posted Content Tracking ──────────────────────────────────────────────────
+
+@router.post("/content/mark-posted")
+def mark_content_posted(
+    body: dict,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(db, user)
+    posted = PostedContent(
+        shop_id=shop.id,
+        content_type=body.get("content_type", "social"),
+        content_text=body.get("content_text", ""),
+        platform=body.get("platform", ""),
+        hashtags=body.get("hashtags", ""),
+    )
+    db.add(posted)
+    db.commit()
+    return {"detail": "Content marked as posted", "id": posted.id}
+
+
+@router.get("/content/posted-stats")
+def get_posted_stats(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    shop = _get_shop(db, user)
+
+    # This week's posts
+    today = datetime.utcnow()
+    week_start = today - __import__("datetime").timedelta(days=today.weekday())
+    week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    total_this_week = db.query(func.count(PostedContent.id)).filter(
+        PostedContent.shop_id == shop.id,
+        PostedContent.posted_at >= week_start,
+    ).scalar() or 0
+
+    total_all = db.query(func.count(PostedContent.id)).filter(
+        PostedContent.shop_id == shop.id,
+    ).scalar() or 0
+
+    # Recent posted items
+    recent = db.query(PostedContent).filter(
+        PostedContent.shop_id == shop.id,
+    ).order_by(PostedContent.posted_at.desc()).limit(20).all()
+
+    suggested_per_week = 7
+    usage_rate = round((total_this_week / suggested_per_week) * 100) if suggested_per_week > 0 else 0
+
+    return {
+        "total_this_week": total_this_week,
+        "suggested_per_week": suggested_per_week,
+        "usage_rate": min(usage_rate, 100),
+        "total_all_time": total_all,
+        "recent": [
+            {
+                "id": p.id,
+                "content_type": p.content_type,
+                "content_text": p.content_text[:100] + ("..." if len(p.content_text) > 100 else ""),
+                "platform": p.platform,
+                "posted_at": p.posted_at.isoformat() if p.posted_at else None,
+            }
+            for p in recent
+        ],
+    }

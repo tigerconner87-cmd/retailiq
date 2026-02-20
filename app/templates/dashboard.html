@@ -4,11 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — Forge</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><text x='16' y='23' text-anchor='middle' fill='white' font-size='20' font-weight='bold' font-family='Inter,sans-serif'>F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=25">
+  <link rel="stylesheet" href="/static/dashboard.css?v=26">
 </head>
 <body>
   <!-- Sidebar -->
@@ -1443,6 +1444,52 @@
               <label class="settings-toggle"><input type="checkbox" id="setAlertCompetitors" checked><span>Competitor alerts</span></label>
             </div>
           </div>
+          <div class="settings-group">
+            <h3 class="settings-group-title">Connected Accounts</h3>
+            <p class="settings-hint">Link your social media accounts to enable one-click posting from Forge.</p>
+            <div class="connected-accounts-grid">
+              <div class="connected-account-card" id="caInstagram">
+                <div class="ca-icon" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                </div>
+                <div class="ca-info">
+                  <div class="ca-name">Instagram</div>
+                  <input type="text" class="settings-input ca-input" id="setInstagramHandle" placeholder="@yourbusiness">
+                  <div class="ca-status" id="caInstagramStatus"></div>
+                </div>
+              </div>
+              <div class="connected-account-card" id="caFacebook">
+                <div class="ca-icon" style="background:#1877F2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                </div>
+                <div class="ca-info">
+                  <div class="ca-name">Facebook</div>
+                  <input type="text" class="settings-input ca-input" id="setFacebookUrl" placeholder="https://facebook.com/yourpage">
+                  <div class="ca-status" id="caFacebookStatus"></div>
+                </div>
+              </div>
+              <div class="connected-account-card" id="caTiktok">
+                <div class="ca-icon" style="background:#000">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+                </div>
+                <div class="ca-info">
+                  <div class="ca-name">TikTok</div>
+                  <input type="text" class="settings-input ca-input" id="setTiktokHandle" placeholder="@yourbusiness">
+                  <div class="ca-status" id="caTiktokStatus"></div>
+                </div>
+              </div>
+              <div class="connected-account-card" id="caEmail">
+                <div class="ca-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <div class="ca-info">
+                  <div class="ca-name">Email Marketing</div>
+                  <input type="number" class="settings-input ca-input" id="setEmailListSize" placeholder="Email list size (e.g., 500)">
+                  <div class="ca-status" id="caEmailStatus"></div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="settings-actions">
             <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
             <span class="settings-saved-msg" id="settingsSavedMsg" hidden>Settings saved!</span>
@@ -1479,8 +1526,8 @@
     <div class="ai-chat-messages" id="aiChatMessages">
       <div class="ai-welcome" id="aiWelcome">
         <div class="sage-avatar-lg">S</div>
-        <div class="ai-welcome-title">Meet Sage</div>
-        <div class="ai-welcome-sub">Your AI business advisor. I know your sales data, customers, and competitors — ask me anything.</div>
+        <div class="ai-welcome-title">Hi! I'm Sage, your AI business advisor &#128075;</div>
+        <div class="ai-welcome-sub">I know everything about your shop. Try asking me:</div>
         <div class="ai-prompt-section">
           <div class="ai-prompt-label">Quick Actions</div>
           <div class="ai-quick-prompts">
@@ -1533,6 +1580,39 @@
     </div>
   </div>
 
+  <!-- Post Now Modal -->
+  <div class="post-now-overlay" id="postNowModal" hidden onclick="if(event.target===this)this.hidden=true">
+    <div class="post-now-modal">
+      <div class="post-now-header">
+        <h3>Post Now</h3>
+        <button class="post-now-close" onclick="document.getElementById('postNowModal').hidden=true">&times;</button>
+      </div>
+      <div class="post-now-body">
+        <div class="post-now-field">
+          <label class="post-now-label">Post Content</label>
+          <textarea class="post-now-textarea" id="postNowText" rows="6"></textarea>
+        </div>
+        <div class="post-now-field">
+          <label class="post-now-label">Hashtags</label>
+          <input type="text" class="post-now-input" id="postNowHashtags" placeholder="#shoplocal #retail">
+        </div>
+        <div class="post-now-field">
+          <label class="post-now-label">Platform</label>
+          <div class="post-now-platforms" id="postNowPlatforms">
+            <button class="pnp-btn active" data-platform="instagram">Instagram</button>
+            <button class="pnp-btn" data-platform="facebook">Facebook</button>
+            <button class="pnp-btn" data-platform="tiktok">TikTok</button>
+          </div>
+        </div>
+        <div class="post-now-actions">
+          <button class="btn-primary post-now-main-btn" id="postNowCopyOpen">Copy & Open <span id="postNowPlatformLabel">Instagram</span></button>
+          <button class="post-now-sage-btn" id="postNowEditSage"><span class="sage-mini-avatar" style="width:16px;height:16px;font-size:8px">S</span> Edit with Sage</button>
+          <button class="post-now-posted-btn" id="postNowMarkPosted">Mark as Posted</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Help Tooltip Button -->
   <button class="help-tooltip-btn" id="helpTooltipBtn" title="Toggle help tooltips">?</button>
 
@@ -1569,7 +1649,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=25"></script>
+  <script src="/static/dashboard.js?v=26"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

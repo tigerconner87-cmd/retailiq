@@ -383,6 +383,10 @@ class ShopSettingsResponse(BaseModel):
     alert_customers: bool
     alert_reviews: bool
     alert_competitors: bool
+    instagram_handle: Optional[str] = ""
+    facebook_url: Optional[str] = ""
+    tiktok_handle: Optional[str] = ""
+    email_list_size: Optional[int] = 0
 
 
 class ShopSettingsUpdate(BaseModel):
@@ -405,6 +409,10 @@ class ShopSettingsUpdate(BaseModel):
     anthropic_api_key: Optional[str] = None
     ai_enabled: Optional[bool] = None
     ai_personality: Optional[str] = None
+    instagram_handle: Optional[str] = None
+    facebook_url: Optional[str] = None
+    tiktok_handle: Optional[str] = None
+    email_list_size: Optional[int] = None
 
 
 # ── Onboarding ────────────────────────────────────────────────────────────────
