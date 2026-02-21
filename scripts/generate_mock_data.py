@@ -25,10 +25,11 @@ from decimal import Decimal
 from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.models import (
+    Agent, AgentActivity, AgentDeliverable, AgentRun, AuditLog,
     Alert, Competitor, CompetitorReview, CompetitorSnapshot, Customer,
     DailySnapshot, Expense, Goal, HourlySnapshot, MarketingCampaign,
     MarketingResponse, Product, ProductGoal, Recommendation, Review,
-    RevenueGoal, Shop, ShopSettings, StrategyNote,
+    RevenueGoal, SentEmail, Shop, ShopSettings, StrategyNote,
     Transaction, TransactionItem, User,
 )
 from app.services.auth import hash_password
@@ -1136,6 +1137,207 @@ def main():
         status="completed",
     )
     db.add(sn2)
+
+    # ── Agent Fleet & Deliverables ──────────────────────────────────────────
+    today_dt = datetime.now()
+
+    # Create agent records
+    agent_types = ["maya", "scout", "emma", "alex", "max"]
+    agent_objs = {}
+    for at in agent_types:
+        a = Agent(id=nid(), shop_id=shop.id, agent_type=at, is_active=True)
+        db.add(a)
+        agent_objs[at] = a
+
+    # Create agent runs (last 24h)
+    for at in agent_types:
+        hours_ago = random.randint(1, 18)
+        run = AgentRun(
+            id=nid(), shop_id=shop.id, agent_type=at, trigger="scheduled",
+            instructions=f"Daily {at} run", status="completed",
+            output_count=random.randint(1, 3), tokens_used=random.randint(500, 3000),
+            duration_ms=random.randint(2000, 12000),
+            created_at=today_dt - timedelta(hours=hours_ago),
+            completed_at=today_dt - timedelta(hours=hours_ago, minutes=-2),
+        )
+        db.add(run)
+
+    # Create agent activities
+    activity_data = [
+        ("maya", "content_generated", "Created Instagram post: Weekend Vibes at Urban Threads", -2.5),
+        ("maya", "content_generated", "Drafted email campaign: Spring Collection Launch", -5.1),
+        ("maya", "content_generated", "Generated social calendar for the week", -8.0),
+        ("scout", "analysis_complete", "Competitor opportunity: Style Hub rating dropped to 3.6", -3.2),
+        ("scout", "analysis_complete", "Weekly competitor digest generated", -12.0),
+        ("emma", "content_generated", "Win-back emails drafted for 8 at-risk customers", -4.0),
+        ("emma", "content_generated", "Customer retention report generated", -7.5),
+        ("alex", "analysis_complete", "Daily briefing generated: revenue up 12%", -1.5),
+        ("alex", "analysis_complete", "Weekly strategy memo prepared", -24.0),
+        ("max", "analysis_complete", "Bundle opportunity: Hoodie + Beanie combo identified", -6.0),
+        ("max", "analysis_complete", "Price optimization report for 5 products", -10.0),
+    ]
+    for at, action, desc, hours_offset in activity_data:
+        act = AgentActivity(
+            id=nid(), agent_id=agent_objs[at].id, shop_id=shop.id,
+            action_type=action, description=desc,
+            created_at=today_dt + timedelta(hours=hours_offset),
+        )
+        db.add(act)
+
+    # ── Approved Deliverables (appear on dashboard pages) ──
+    approved_deliverables = [
+        # 3 Maya approved posts (Marketing page)
+        {
+            "agent_type": "maya", "deliverable_type": "social_post",
+            "title": "Weekend Vibes at Urban Threads",
+            "content": "Step into the weekend in style! Our Oversized Hoodie ($55) is flying off the shelves this week — grab yours before they're gone! Pair it with our Canvas Tote for the ultimate casual look.\n\n#UrbanThreads #PortlandFashion #WeekendVibes #ShopLocal #OOTD",
+            "overall_quality": 88, "confidence": 0.88, "status": "approved", "hours_ago": 6,
+        },
+        {
+            "agent_type": "maya", "deliverable_type": "social_post",
+            "title": "New Arrivals Alert",
+            "content": "Fresh drop alert! Our Linen Button-Up ($48) is perfect for those transitional spring days. Light, breathable, and effortlessly stylish. Available in store and ready for you.\n\n#NewArrivals #SpringStyle #LinenLove #UrbanThreads #PortlandBoutique",
+            "overall_quality": 85, "confidence": 0.85, "status": "approved", "hours_ago": 18,
+        },
+        {
+            "agent_type": "maya", "deliverable_type": "email_campaign",
+            "title": "Spring Collection Preview — Exclusive First Look",
+            "content": "Subject: You're Invited: Spring Collection Preview\n\nHi [Name],\n\nSpring is around the corner and we've been busy curating our new collection just for you.\n\nHighlights:\n- Linen Button-Up ($48) — perfect for layering\n- Floral Sundress ($72) — brunch-ready\n- Canvas Tote ($42) — the everyday essential\n\nAs a valued customer, you get first access before we share with the public.\n\nCome visit us this weekend!\n\nWarmly,\nUrban Threads Team",
+            "overall_quality": 92, "confidence": 0.92, "status": "approved", "hours_ago": 24,
+        },
+        # 2 Scout approved insights (Competitors page)
+        {
+            "agent_type": "scout", "deliverable_type": "competitor_report",
+            "title": "Opportunity Alert: Style Hub Rating Drops to 3.6",
+            "content": "Style Hub's Google rating dropped from 4.1 to 3.6 in the last 2 weeks. Recent negative reviews mention 'rude staff' and 'limited selection.'\n\nRecommended actions:\n1. Run a targeted Instagram campaign highlighting your friendly team and wide selection\n2. Consider a 'Welcome Style Hub customers' 10% off promotion\n3. Monitor their response — they may run a counter-promotion\n\nEstimated opportunity: Capture 15-20 of their dissatisfied customers ($800-$1,200 monthly revenue).",
+            "overall_quality": 90, "confidence": 0.87, "status": "approved", "hours_ago": 12,
+        },
+        {
+            "agent_type": "scout", "deliverable_type": "competitor_report",
+            "title": "Weekly Competitive Landscape Summary",
+            "content": "This week's competitive landscape:\n\n1. Style Hub (3.6★) — Rating still declining. 3 new negative reviews.\n2. Fresh Kicks (4.2★) — Stable. Launched new sneaker line.\n3. Neighborhood Finds (4.4★) — Strong week. 5 new positive reviews.\n4. City Goods Co (3.9★) — Neutral. No significant changes.\n\nYour position: Strong. Your 4.7★ rating is the highest in the area. Capitalize on competitor weakness by increasing social media presence.",
+            "overall_quality": 85, "confidence": 0.83, "status": "approved", "hours_ago": 36,
+        },
+        # 2 Emma approved emails (Win-back page)
+        {
+            "agent_type": "emma", "deliverable_type": "winback_email",
+            "title": "Win-Back: Sarah Johnson — 45 days inactive",
+            "content": "Subject: We miss you at Urban Threads!\n\nHi Sarah,\n\nIt's been a while since your last visit and we've been thinking of you! We know you love our Classic Cotton T-Shirts — and guess what? We just got a fresh batch in 3 new colors.\n\nAs a thank you for being a valued customer, here's 15% off your next visit:\n\nCode: WELCOME15\nValid for 7 days\n\nCome say hi!\n\nWarmly,\nThe Urban Threads Team",
+            "overall_quality": 91, "confidence": 0.90, "status": "approved", "hours_ago": 8,
+        },
+        {
+            "agent_type": "emma", "deliverable_type": "winback_email",
+            "title": "Win-Back: Mike Chen — 62 days inactive",
+            "content": "Subject: Something special waiting for you, Mike\n\nHi Mike,\n\nWe noticed it's been a while and wanted to reach out. Your favorite Slim Fit Jeans are back in stock, plus we've added some great new accessories.\n\nHere's an exclusive 20% off your next purchase:\n\nCode: COMEBACK20\nValid for 5 days\n\nWe'd love to see you back!\n\nBest,\nUrban Threads",
+            "overall_quality": 88, "confidence": 0.86, "status": "approved", "hours_ago": 10,
+        },
+        # 1 Alex approved briefing
+        {
+            "agent_type": "alex", "deliverable_type": "daily_briefing",
+            "title": "Daily Briefing — Revenue Up 12.5%, Action Items Inside",
+            "content": "Good morning! Here's your daily briefing:\n\nRevenue Summary:\n- Yesterday: $2,847 (+12.5% vs. last week)\n- Monthly pace: $34,200 / $35,000 target (97.7%)\n- Top seller: Oversized Hoodie (8 units, $440)\n\nKey Actions:\n1. Restock Oversized Hoodies — only 12 left at current sell rate\n2. 3 at-risk customers haven't visited in 35+ days — win-back emails ready\n3. Style Hub continues to decline — perfect time for a competitive push\n\nForecast: On track to hit monthly goal by the 27th at current pace.",
+            "overall_quality": 94, "confidence": 0.93, "status": "approved", "hours_ago": 2,
+        },
+        # 2 Max approved suggestions (Products page)
+        {
+            "agent_type": "max", "deliverable_type": "bundle_suggestion",
+            "title": "Bundle Opportunity: Hoodie + Beanie Winter Combo",
+            "content": "Bundle: Oversized Hoodie ($55) + Wool Beanie ($22)\n\nCurrent price if bought separately: $77\nSuggested bundle price: $68 (12% discount)\nEstimated margin: 52% (still healthy)\n\nWhy this works:\n- 34% of hoodie buyers also browse beanies\n- Cross-sell rate could increase from 8% to 25%\n- Estimated additional monthly revenue: $340-$510\n\nRecommendation: Display these together near checkout with a 'Better Together' sign.",
+            "overall_quality": 87, "confidence": 0.85, "status": "approved", "hours_ago": 14,
+        },
+        {
+            "agent_type": "max", "deliverable_type": "price_recommendation",
+            "title": "Price Optimization: Silk Scarf Underpriced by $7",
+            "content": "Product: Silk Scarf\nCurrent price: $38\nSuggested price: $45\n\nAnalysis:\n- Your Silk Scarf is priced 16% below comparable items at nearby boutiques\n- Demand elasticity analysis shows this product can sustain a price increase\n- At $45, estimated monthly revenue increases by $63 with minimal volume impact\n- Competitors price similar scarves at $42-$55\n\nAction: Increase price to $45 on the next restock cycle.",
+            "overall_quality": 83, "confidence": 0.81, "status": "approved", "hours_ago": 20,
+        },
+    ]
+
+    for d in approved_deliverables:
+        deliv = AgentDeliverable(
+            id=nid(), shop_id=shop.id,
+            agent_type=d["agent_type"], deliverable_type=d["deliverable_type"],
+            title=d["title"], content=d["content"],
+            overall_quality=d["overall_quality"], confidence=d.get("confidence", 0.8),
+            status=d["status"], source="internal",
+            approved_at=today_dt - timedelta(hours=d["hours_ago"]) if d["status"] == "approved" else None,
+            created_at=today_dt - timedelta(hours=d["hours_ago"]),
+        )
+        db.add(deliv)
+
+    # ── Pending Approval Items (5 items in the queue) ──
+    pending_deliverables = [
+        {
+            "agent_type": "maya", "deliverable_type": "social_post",
+            "title": "Monday Motivation: Start Your Week in Style",
+            "content": "Start your week right! Our Denim Jacket ($89) pairs perfectly with literally everything. Layer it over a tee, dress it up with a scarf — it's the one piece you need this season.\n\n#MondayMotivation #DenimJacket #UrbanThreads #PortlandStyle",
+            "overall_quality": 86, "confidence": 0.86, "hours_ago": 1,
+        },
+        {
+            "agent_type": "emma", "deliverable_type": "winback_email",
+            "title": "Win-Back: Lisa Park — 78 days inactive",
+            "content": "Subject: Lisa, we have something special for you\n\nHi Lisa,\n\nWe've missed seeing you at Urban Threads! Your favorite Yoga Leggings have been restocked, plus we've added some amazing new activewear.\n\nHere's 25% off your next visit — our way of saying we'd love to see you back:\n\nCode: MISSYOU25\nValid for 5 days\n\nHope to see you soon!\nUrban Threads Team",
+            "overall_quality": 89, "confidence": 0.87, "hours_ago": 2,
+        },
+        {
+            "agent_type": "scout", "deliverable_type": "competitor_report",
+            "title": "Fresh Kicks Launching New Product Line",
+            "content": "Fresh Kicks announced a new 'Urban Athletics' line on their Instagram. This is their first expansion into casual streetwear, directly competing with your hoodie and t-shirt categories.\n\nRecommended response:\n1. Differentiate on quality and local brand story\n2. Consider a 'Local > Chain' social media campaign\n3. Bundle your best-selling streetwear items at a slight discount\n\nUrgency: Medium — their launch is in 2 weeks.",
+            "overall_quality": 84, "confidence": 0.82, "hours_ago": 3,
+        },
+        {
+            "agent_type": "max", "deliverable_type": "bundle_suggestion",
+            "title": "Cross-Sell: Sundress + Crossbody Purse Summer Set",
+            "content": "Bundle: Floral Sundress ($72) + Crossbody Purse ($58)\n\nSuggested bundle price: $115 (11% discount)\nEstimated margin: 48%\n\n28% of sundress buyers browse accessories. This bundle could drive an additional $280/month in revenue.",
+            "overall_quality": 81, "confidence": 0.79, "hours_ago": 4,
+        },
+        {
+            "agent_type": "alex", "deliverable_type": "strategy_memo",
+            "title": "Q1 Mid-Quarter Review: On Track but Watch Cash Flow",
+            "content": "Mid-quarter strategy assessment:\n\nPositive:\n- Revenue tracking at 103% of target\n- Customer acquisition up 8% MoM\n- Social engagement growing steadily\n\nConcerns:\n- Inventory costs up 12% — review vendor pricing\n- Cash flow tight in weeks 3-4 of each month\n- Two product categories underperforming (stationery, decor)\n\nRecommendation: Negotiate better terms with top 3 vendors. Consider clearance sale on underperforming categories.",
+            "overall_quality": 91, "confidence": 0.89, "hours_ago": 5,
+        },
+    ]
+
+    for d in pending_deliverables:
+        deliv = AgentDeliverable(
+            id=nid(), shop_id=shop.id,
+            agent_type=d["agent_type"], deliverable_type=d["deliverable_type"],
+            title=d["title"], content=d["content"],
+            overall_quality=d["overall_quality"], confidence=d.get("confidence", 0.8),
+            status="pending_approval", source="internal",
+            created_at=today_dt - timedelta(hours=d["hours_ago"]),
+        )
+        db.add(deliv)
+
+    # ── Audit Log entries ──
+    audit_entries = [
+        ("claw_bot", "goal_started", "goal", None, {"title": "Monthly Revenue Target"}, -24),
+        ("maya", "deliverable_created", "deliverable", None, {"title": "Weekend Vibes at Urban Threads", "quality_score": 88}, -6),
+        ("maya", "deliverable_created", "deliverable", None, {"title": "New Arrivals Alert", "quality_score": 85}, -18),
+        ("scout", "deliverable_created", "deliverable", None, {"title": "Style Hub Rating Drops", "quality_score": 90}, -12),
+        ("emma", "deliverable_created", "deliverable", None, {"title": "Win-Back: Sarah Johnson", "quality_score": 91}, -8),
+        ("alex", "deliverable_created", "deliverable", None, {"title": "Daily Briefing", "quality_score": 94}, -2),
+        ("max", "deliverable_created", "deliverable", None, {"title": "Hoodie + Beanie Bundle", "quality_score": 87}, -14),
+        ("user", "deliverable_approved", "deliverable", None, {"title": "Weekend Vibes at Urban Threads"}, -5),
+        ("user", "deliverable_approved", "deliverable", None, {"title": "Style Hub Rating Drops"}, -11),
+        ("system", "agent_executed", "agent", None, {"agent": "maya", "trigger": "scheduled"}, -6),
+        ("system", "agent_executed", "agent", None, {"agent": "alex", "trigger": "scheduled"}, -2),
+    ]
+    for actor, action, rtype, rid, details, hours_offset in audit_entries:
+        db.add(AuditLog(
+            id=nid(), shop_id=shop.id,
+            actor=actor, action=action, resource_type=rtype, resource_id=rid,
+            details=details, created_at=today_dt + timedelta(hours=hours_offset),
+        ))
+
+    # ── Sent Email log ──
+    db.add(SentEmail(
+        id=nid(), shop_id=shop.id, to_email="sarah@example.com",
+        subject="We miss you at Urban Threads!", body_preview="Hi Sarah, it's been a while...",
+        template="marketing", status="sent", sent_by="emma",
+        created_at=today_dt - timedelta(days=3),
+    ))
 
     db.commit()
     db.close()

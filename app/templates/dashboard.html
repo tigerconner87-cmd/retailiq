@@ -333,6 +333,22 @@
           <div class="agent-command-progress-text" id="agentProgressText">Claw Bot executing...</div>
         </div>
 
+        <!-- Approval Queue Hero Section -->
+        <div class="aq-hero" id="aqHero">
+          <div class="aq-hero-header">
+            <div class="aq-hero-title-row">
+              <h3 class="aq-hero-title">Approval Queue</h3>
+              <span class="aq-hero-badge" id="aqHeroBadge">0 pending</span>
+            </div>
+            <div class="aq-hero-actions">
+              <button class="mke-btn" onclick="loadApprovalQueueHero()" style="font-size:12px;padding:6px 12px">Refresh</button>
+            </div>
+          </div>
+          <div class="aq-hero-grid" id="aqHeroGrid">
+            <div style="text-align:center;padding:24px;color:var(--text3)">Loading approval queue...</div>
+          </div>
+        </div>
+
         <!-- Live Collaboration Bar -->
         <div class="agents-collab-bar" id="agentsCollabBar">
           <div class="collab-live-dot"></div>
@@ -995,6 +1011,36 @@
 
       <!-- Overview Section -->
       <section class="section {{ 'active' if sec == 'overview' }}" id="sec-overview">
+        <!-- Setup Progress Bar (only if onboarding not fully complete) -->
+        <div class="setup-progress-wrap" id="setupProgressWrap" style="display:none">
+          <div class="setup-progress-card">
+            <div class="setup-progress-header">
+              <h3>Complete your setup to get the most from Forge</h3>
+              <button class="setup-dismiss-btn" onclick="this.closest('.setup-progress-wrap').style.display='none'">&times;</button>
+            </div>
+            <div class="setup-progress-bar-wrap">
+              <div class="setup-progress-bar-bg"><div class="setup-progress-bar-fill" id="setupProgressFill" style="width:0%"></div></div>
+              <span class="setup-progress-pct" id="setupProgressPct">0%</span>
+            </div>
+            <div class="setup-progress-steps" id="setupProgressSteps"></div>
+          </div>
+        </div>
+
+        <!-- AI Team Status Card -->
+        <div class="ai-team-status-card" id="aiTeamStatusCard">
+          <div class="ai-team-status-header">
+            <div class="ai-team-status-title"><span>&#9889;</span> Your AI Team</div>
+            <a href="/dashboard/agents" class="ai-team-view-all">View All &rarr;</a>
+          </div>
+          <div class="ai-team-status-body" id="aiTeamStatusBody">
+            <div style="color:var(--text3);font-size:13px">Loading team status...</div>
+          </div>
+          <div class="ai-team-status-actions">
+            <a href="/dashboard/agents" class="mke-btn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border);background:var(--bg-3);color:var(--text2);border-radius:6px">Open Approval Queue</a>
+            <button class="mke-btn primary" onclick="runAllAgents()" style="font-size:12px;padding:6px 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;border-radius:6px;font-weight:600">Run All Agents</button>
+          </div>
+        </div>
+
         <!-- Insights Strip -->
         <div class="insight-strip" id="insightStrip"></div>
 
@@ -1953,6 +1999,85 @@
               </div>
             </div>
           </div>
+          <!-- Integrations & Data Import -->
+          <div class="settings-group">
+            <h3 class="settings-group-title">Integrations</h3>
+            <div class="integrations-grid">
+              <div class="integration-card">
+                <div class="integration-icon" style="background:#96bf48">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                </div>
+                <div class="integration-info">
+                  <div class="integration-name">Shopify</div>
+                  <div class="integration-desc">Automatically import products, customers, and sales</div>
+                  <div class="integration-status not-connected">Not connected</div>
+                </div>
+                <button class="mke-btn" onclick="showIntegrationComingSoon('Shopify')" style="font-size:12px;padding:6px 14px;white-space:nowrap">Connect</button>
+              </div>
+              <div class="integration-card">
+                <div class="integration-icon" style="background:#006aff">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </div>
+                <div class="integration-info">
+                  <div class="integration-name">Square POS</div>
+                  <div class="integration-desc">Connect your Square point-of-sale system</div>
+                  <div class="integration-status not-connected">Not connected</div>
+                </div>
+                <button class="mke-btn" onclick="showIntegrationComingSoon('Square')" style="font-size:12px;padding:6px 14px;white-space:nowrap">Connect</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-group-title">CSV Data Import</h3>
+            <p class="settings-hint">Import your data from spreadsheets. Download a template, fill it in, and upload.</p>
+            <div class="csv-import-grid">
+              <div class="csv-import-card">
+                <div class="csv-import-icon">&#128230;</div>
+                <div class="csv-import-info">
+                  <strong>Import Products</strong>
+                  <span>name, price, category, sku, stock</span>
+                </div>
+                <div class="csv-import-actions">
+                  <a href="/api/dashboard/csv-template/products" class="csv-link" download>Template</a>
+                  <button class="mke-btn primary" onclick="openCsvImport('products')" style="font-size:12px;padding:5px 12px">Upload</button>
+                </div>
+              </div>
+              <div class="csv-import-card">
+                <div class="csv-import-icon">&#128101;</div>
+                <div class="csv-import-info">
+                  <strong>Import Customers</strong>
+                  <span>name, email, phone, last_visit_date</span>
+                </div>
+                <div class="csv-import-actions">
+                  <a href="/api/dashboard/csv-template/customers" class="csv-link" download>Template</a>
+                  <button class="mke-btn primary" onclick="openCsvImport('customers')" style="font-size:12px;padding:5px 12px">Upload</button>
+                </div>
+              </div>
+              <div class="csv-import-card">
+                <div class="csv-import-icon">&#128176;</div>
+                <div class="csv-import-info">
+                  <strong>Import Sales</strong>
+                  <span>date, amount, items, customer_email</span>
+                </div>
+                <div class="csv-import-actions">
+                  <a href="/api/dashboard/csv-template/sales" class="csv-link" download>Template</a>
+                  <button class="mke-btn primary" onclick="openCsvImport('sales')" style="font-size:12px;padding:5px 12px">Upload</button>
+                </div>
+              </div>
+            </div>
+            <!-- CSV Import Modal (hidden) -->
+            <div id="csvImportModal" style="display:none;margin-top:16px">
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:.2s" id="csvSettingsDropArea">
+                <div style="font-size:24px;margin-bottom:6px">&#128196;</div>
+                <div style="font-weight:600;font-size:14px">Drop your CSV here or click to browse</div>
+                <input type="file" id="csvSettingsFileInput" accept=".csv" style="display:none">
+              </div>
+              <div id="csvSettingsPreview" style="display:none;margin-top:12px"></div>
+              <div id="csvSettingsResult" style="display:none;margin-top:12px"></div>
+            </div>
+          </div>
+
           <div class="settings-actions">
             <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
             <span class="settings-saved-msg" id="settingsSavedMsg" hidden>Settings saved!</span>

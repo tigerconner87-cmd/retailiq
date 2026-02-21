@@ -6652,4 +6652,239 @@ document.addEventListener('DOMContentLoaded', () => {
   // Override to add better error messages (the original already handles errors,
   // but we enhance the catch block's message)
 
+  // ── Approval Queue Hero (Agents page top) ──
+  window.loadApprovalQueueHero = async function() {
+    const grid = $('#aqHeroGrid');
+    const badge = $('#aqHeroBadge');
+    if (!grid) return;
+    try {
+      const res = await fetch('/api/agents/approval-queue', { credentials: 'same-origin' });
+      if (!res.ok) { grid.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3)">Could not load approval queue</div>'; return; }
+      const items = await res.json();
+      const pending = (items || []).filter(d => d.status === 'pending_approval');
+      window._aqHeroData = pending;
+      if (badge) badge.textContent = pending.length + ' pending';
+      if (pending.length === 0) {
+        grid.innerHTML = '<div class="aq-hero-empty"><div style="font-size:32px;margin-bottom:8px">&#9989;</div><div style="font-weight:600;margin-bottom:4px">All caught up!</div><div style="font-size:13px;color:var(--text3)">No deliverables waiting for your approval. Your AI team will create new ones soon.</div></div>';
+        return;
+      }
+      grid.innerHTML = pending.slice(0, 6).map(d => {
+        const agentColor = _agentColors[d.agent_type] || '#6366f1';
+        const agentName = _agentNames[d.agent_type] || d.agent_type;
+        const conf = Math.round((d.confidence || 0.5) * 100);
+        const preview = (d.content || '').substring(0, 120) + ((d.content || '').length > 120 ? '...' : '');
+        return `<div class="aq-hero-card">
+          <div class="aq-hero-card-header">
+            <span class="aq-hero-agent" style="background:${agentColor}22;color:${agentColor}">${agentName}</span>
+            <span class="aq-hero-conf">${conf}%</span>
+          </div>
+          <div class="aq-hero-card-title">${esc(d.title)}</div>
+          <div class="aq-hero-card-preview">${esc(preview)}</div>
+          <div class="aq-hero-card-actions">
+            <button class="aq-hero-btn-approve" onclick="aqApprove('${d.id}');loadApprovalQueueHero()">Approve</button>
+            <button class="aq-hero-btn-edit" onclick="aqExpand('${d.id}')">View</button>
+            <button class="aq-hero-btn-reject" onclick="aqRejectPrompt('${d.id}')">Reject</button>
+            <button class="aq-hero-btn-copy" onclick="aqCopyContent('${d.id}')">Copy</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      grid.innerHTML = '<div style="text-align:center;padding:24px;color:var(--danger)">Failed to load approval queue</div>';
+    }
+  };
+
+  window.aqCopyContent = function(id) {
+    const items = window._aqData || [];
+    const d = items.find(x => x.id === id);
+    if (!d) { const heroItems = window._aqHeroData || []; const h = heroItems.find(x => x.id === id); if (h) { navigator.clipboard.writeText(h.content || '').then(() => showToast('Copied!','success')); } return; }
+    navigator.clipboard.writeText(d.content || '').then(() => showToast('Copied!','success'));
+  };
+
+  // Auto-load hero when agents section activates
+  const aqHeroObs = new MutationObserver(() => {
+    const sec = $('#sec-agents');
+    if (sec && sec.classList.contains('active') && $('#aqHeroGrid')) {
+      loadApprovalQueueHero();
+    }
+  });
+  const secAgents = $('#sec-agents');
+  if (secAgents) aqHeroObs.observe(secAgents, { attributes: true, attributeFilter: ['class'] });
+
+  // ── Setup Progress (Overview page) ──
+  async function loadSetupProgress() {
+    const wrap = $('#setupProgressWrap');
+    if (!wrap) return;
+    try {
+      const res = await fetch('/api/dashboard/setup-progress', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const pct = data.percentage || 0;
+      if (pct >= 100) { wrap.style.display = 'none'; return; }
+      wrap.style.display = 'block';
+      const fill = $('#setupProgressFill');
+      const pctEl = $('#setupProgressPct');
+      const stepsEl = $('#setupProgressSteps');
+      if (fill) fill.style.width = pct + '%';
+      if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+      if (stepsEl && data.steps) {
+        stepsEl.innerHTML = data.steps.map(s => `
+          <div class="setup-step ${s.done ? 'done' : ''}">
+            <span class="setup-step-icon">${s.done ? '&#10003;' : '&#9675;'}</span>
+            <span class="setup-step-label">${esc(s.label)}</span>
+          </div>
+        `).join('');
+      }
+    } catch (e) { /* silent */ }
+  }
+
+  // ── AI Team Status (Overview page) ──
+  async function loadTeamStatus() {
+    const body = $('#aiTeamStatusBody');
+    if (!body) return;
+    try {
+      const res = await fetch('/api/dashboard/team-status', { credentials: 'same-origin' });
+      if (!res.ok) { body.innerHTML = '<div style="color:var(--text3);font-size:13px">Team status unavailable</div>'; return; }
+      const data = await res.json();
+      const agents = [
+        { key: 'maya', name: 'Maya', role: 'Marketing', color: '#ec4899', emoji: '&#127912;' },
+        { key: 'scout', name: 'Scout', role: 'Competitors', color: '#3b82f6', emoji: '&#128269;' },
+        { key: 'emma', name: 'Emma', role: 'Customers', color: '#10b981', emoji: '&#128150;' },
+        { key: 'alex', name: 'Alex', role: 'Strategy', color: '#f59e0b', emoji: '&#128200;' },
+        { key: 'max', name: 'Max', role: 'Sales', color: '#8b5cf6', emoji: '&#128176;' },
+      ];
+      body.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px">
+          ${agents.map(a => `
+            <div style="text-align:center;padding:8px 4px;border-radius:8px;background:var(--bg-3)">
+              <div style="font-size:20px;margin-bottom:4px">${a.emoji}</div>
+              <div style="font-size:12px;font-weight:600;color:${a.color}">${a.name}</div>
+              <div style="font-size:10px;color:var(--text3)">${a.role}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)"><span style="font-weight:700;color:var(--warning)">${data.pending_count || 0}</span> pending approval</div>
+          <div style="font-size:13px;color:var(--text2)"><span style="font-weight:700;color:var(--success)">${data.today_approved || 0}</span> approved today</div>
+          <div style="font-size:13px;color:var(--text2)"><span style="font-weight:700;color:var(--primary)">${data.today_created || 0}</span> created today</div>
+        </div>
+      `;
+    } catch (e) {
+      body.innerHTML = '<div style="color:var(--text3);font-size:13px">Could not load team status</div>';
+    }
+  }
+
+  // Hook into loadOverview to also load setup progress and team status
+  const _origLoadOverview = loadOverview;
+  loadOverview = async function() {
+    await _origLoadOverview();
+    loadSetupProgress();
+    loadTeamStatus();
+  };
+
+  // ── Integration Coming Soon (Settings page) ──
+  window.showIntegrationComingSoon = function(name) {
+    showToast(name + ' integration coming soon! We\'ll notify you when it\'s available.', 'info', 4000);
+  };
+
+  // ── CSV Import (Settings page) ──
+  let _csvImportType = '';
+  window.openCsvImport = function(type) {
+    _csvImportType = type;
+    const modal = $('#csvImportModal');
+    const preview = $('#csvSettingsPreview');
+    const result = $('#csvSettingsResult');
+    if (!modal) return;
+    modal.style.display = 'block';
+    if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+    if (result) { result.style.display = 'none'; result.innerHTML = ''; }
+    const dropArea = $('#csvSettingsDropArea');
+    const fileInput = $('#csvSettingsFileInput');
+    if (dropArea && fileInput) {
+      dropArea.onclick = () => fileInput.click();
+      dropArea.ondragover = (e) => { e.preventDefault(); dropArea.style.borderColor = 'var(--primary)'; };
+      dropArea.ondragleave = () => { dropArea.style.borderColor = 'var(--border)'; };
+      dropArea.ondrop = (e) => {
+        e.preventDefault();
+        dropArea.style.borderColor = 'var(--border)';
+        const file = e.dataTransfer.files[0];
+        if (file) handleCsvSettingsFile(file);
+      };
+      fileInput.onchange = () => {
+        if (fileInput.files[0]) handleCsvSettingsFile(fileInput.files[0]);
+      };
+    }
+  };
+
+  function handleCsvSettingsFile(file) {
+    if (!file.name.endsWith('.csv')) {
+      showToast('Please upload a .csv file', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) { showToast('CSV file is empty or has no data rows', 'error'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = vals[idx] || ''; });
+        rows.push(row);
+      }
+      // Show preview
+      const preview = $('#csvSettingsPreview');
+      if (preview) {
+        preview.style.display = 'block';
+        preview.innerHTML = `
+          <div style="font-weight:600;margin-bottom:8px">${rows.length} rows found (${_csvImportType})</div>
+          <div style="max-height:200px;overflow:auto;border:1px solid var(--border);border-radius:8px">
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <thead><tr>${headers.map(h => `<th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg-3);font-weight:600;white-space:nowrap">${esc(h)}</th>`).join('')}</tr></thead>
+              <tbody>${rows.slice(0, 5).map(r => `<tr>${headers.map(h => `<td style="padding:4px 10px;border-bottom:1px solid var(--border);color:var(--text2)">${esc(r[h] || '')}</td>`).join('')}</tr>`).join('')}</tbody>
+            </table>
+          </div>
+          ${rows.length > 5 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px">...and ${rows.length - 5} more rows</div>` : ''}
+          <button class="mke-btn primary" onclick="submitCsvImport()" style="margin-top:12px;font-size:13px;padding:8px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;border-radius:8px;font-weight:600;cursor:pointer">Import ${rows.length} rows</button>
+        `;
+      }
+      window._csvParsedRows = rows;
+    };
+    reader.readAsText(file);
+  }
+
+  window.submitCsvImport = async function() {
+    const rows = window._csvParsedRows;
+    if (!rows || rows.length === 0) { showToast('No data to import', 'error'); return; }
+    const result = $('#csvSettingsResult');
+    if (result) { result.style.display = 'block'; result.innerHTML = '<div style="color:var(--text3)">Importing...</div>'; }
+    try {
+      const res = await fetch('/api/dashboard/csv-import/' + _csvImportType, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: rows }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Imported ' + (data.imported || rows.length) + ' ' + _csvImportType + ' successfully!', 'success');
+        if (result) result.innerHTML = `<div style="color:var(--success);font-weight:600">&#10003; ${data.imported || rows.length} ${_csvImportType} imported successfully</div>`;
+        const modal = $('#csvImportModal');
+        if (modal) setTimeout(() => { modal.style.display = 'none'; }, 2000);
+      } else {
+        showToast(data.detail || 'Import failed', 'error');
+        if (result) result.innerHTML = `<div style="color:var(--danger)">Import failed: ${esc(data.detail || 'Unknown error')}</div>`;
+      }
+    } catch (err) {
+      showToast('Import failed: ' + err.message, 'error');
+      if (result) result.innerHTML = `<div style="color:var(--danger)">Import failed: ${esc(err.message)}</div>`;
+    }
+  };
+
+  // ── Initial load for agents hero if already on agents page ──
+  if ($('#sec-agents') && $('#sec-agents').classList.contains('active')) {
+    loadApprovalQueueHero();
+  }
+
 });

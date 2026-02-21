@@ -842,6 +842,11 @@ def onboarding_step1(body: OnboardingStep1, user: User = Depends(get_current_use
         shop.name = body.business_name or shop.name
         shop.address = body.address or shop.address
         shop.pos_system = body.pos_system or shop.pos_system
+        shop.category = body.industry or shop.category
+        shop.city = body.city or shop.city
+        if body.employees:
+            emp_map = {"1-5": 3, "6-15": 10, "16-50": 30, "50+": 60}
+            shop.staff_count = emp_map.get(body.employees, 3)
     user.onboarding_step = 1
     db.commit()
     return {"detail": "Step 1 saved"}
@@ -849,10 +854,424 @@ def onboarding_step1(body: OnboardingStep1, user: User = Depends(get_current_use
 
 @router.post("/onboarding/step2")
 def onboarding_step2(body: OnboardingStep2, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Just save step progress; competitors are created in /complete
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if shop and body.competitors:
+        from app.models import Competitor, new_id
+        for name in body.competitors[:5]:
+            name = name.strip()
+            if not name:
+                continue
+            existing = db.query(Competitor).filter(
+                Competitor.shop_id == shop.id, Competitor.name == name
+            ).first()
+            if not existing:
+                db.add(Competitor(id=new_id(), shop_id=shop.id, name=name, category=shop.category))
+        db.commit()
     user.onboarding_step = 2
     db.commit()
     return {"detail": "Step 2 saved"}
+
+
+@router.post("/onboarding/generate-products")
+def onboarding_generate_products(
+    body: dict = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """AI-generate products for the user's industry."""
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(status_code=400, detail="No shop found")
+
+    industry = body.get("industry", "general_retail").replace("_", " ")
+    shop_name = body.get("shop_name", shop.name)
+    city = body.get("city", "")
+    state = body.get("state", "")
+    location = f" in {city}, {state}" if city else ""
+
+    # Try AI generation, fall back to template-based
+    products = []
+    try:
+        from app.config import settings as app_settings
+        import os, json
+        api_key = app_settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY", "")
+        if api_key:
+            import httpx
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 2000,
+                    "messages": [{"role": "user", "content": f'Generate 18 realistic products for a {industry} shop called "{shop_name}"{location}. For each product include: name, price (realistic), category, sku (short code). Return ONLY a JSON array, no markdown. Example: [{{"name":"...","price":29.99,"category":"...","sku":"SKU001"}}]'}],
+                },
+                timeout=30,
+            )
+            text = resp.json()["content"][0]["text"].strip()
+            # Extract JSON array
+            start = text.find("[")
+            end = text.rfind("]") + 1
+            if start >= 0 and end > start:
+                products = json.loads(text[start:end])
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("AI product generation failed: %s", e)
+
+    # Fallback: template products by industry
+    if not products:
+        products = _fallback_products(industry)
+
+    # Save to database
+    from app.models import Product, new_id
+    saved = []
+    for p in products[:20]:
+        prod = Product(
+            id=new_id(), shop_id=shop.id,
+            name=p.get("name", "Product"),
+            price=round(float(p.get("price", 19.99)), 2),
+            category=p.get("category", "General"),
+            sku=p.get("sku", ""),
+            stock_quantity=random.randint(10, 100),
+            cost=round(float(p.get("price", 19.99)) * 0.45, 2),
+        )
+        db.add(prod)
+        saved.append({"name": prod.name, "price": float(prod.price), "category": prod.category})
+    db.commit()
+    return {"products": saved, "count": len(saved)}
+
+
+def _fallback_products(industry):
+    """Generate template products when AI is unavailable."""
+    templates = {
+        "clothing fashion": [
+            {"name": "Classic Cotton T-Shirt", "price": 28.00, "category": "Tops", "sku": "TOP001"},
+            {"name": "Slim Fit Jeans", "price": 65.00, "category": "Bottoms", "sku": "BOT001"},
+            {"name": "Oversized Hoodie", "price": 55.00, "category": "Outerwear", "sku": "OUT001"},
+            {"name": "Floral Sundress", "price": 72.00, "category": "Dresses", "sku": "DRS001"},
+            {"name": "Leather Belt", "price": 35.00, "category": "Accessories", "sku": "ACC001"},
+            {"name": "Canvas Tote Bag", "price": 42.00, "category": "Accessories", "sku": "ACC002"},
+            {"name": "Wool Beanie", "price": 22.00, "category": "Accessories", "sku": "ACC003"},
+            {"name": "Linen Button-Up", "price": 48.00, "category": "Tops", "sku": "TOP002"},
+            {"name": "Yoga Leggings", "price": 45.00, "category": "Activewear", "sku": "ACT001"},
+            {"name": "Denim Jacket", "price": 89.00, "category": "Outerwear", "sku": "OUT002"},
+            {"name": "Silk Scarf", "price": 38.00, "category": "Accessories", "sku": "ACC004"},
+            {"name": "Crossbody Purse", "price": 58.00, "category": "Bags", "sku": "BAG001"},
+            {"name": "Running Sneakers", "price": 95.00, "category": "Shoes", "sku": "SHO001"},
+            {"name": "Graphic Sweatshirt", "price": 50.00, "category": "Tops", "sku": "TOP003"},
+            {"name": "Tailored Blazer", "price": 120.00, "category": "Outerwear", "sku": "OUT003"},
+        ],
+        "food beverage": [
+            {"name": "Artisan Sourdough", "price": 8.50, "category": "Bread", "sku": "BRD001"},
+            {"name": "Cold Brew Coffee (12oz)", "price": 5.50, "category": "Beverages", "sku": "BEV001"},
+            {"name": "Organic Granola", "price": 12.00, "category": "Pantry", "sku": "PAN001"},
+            {"name": "Avocado Toast", "price": 11.00, "category": "Breakfast", "sku": "BRK001"},
+            {"name": "Seasonal Fruit Smoothie", "price": 7.50, "category": "Beverages", "sku": "BEV002"},
+            {"name": "Gourmet Sandwich", "price": 13.50, "category": "Lunch", "sku": "LUN001"},
+            {"name": "Fresh Pressed Juice", "price": 9.00, "category": "Beverages", "sku": "BEV003"},
+            {"name": "Croissant", "price": 4.50, "category": "Pastry", "sku": "PAS001"},
+            {"name": "Matcha Latte", "price": 6.50, "category": "Beverages", "sku": "BEV004"},
+            {"name": "House Salad", "price": 10.50, "category": "Lunch", "sku": "LUN002"},
+            {"name": "Chocolate Chip Cookie", "price": 3.50, "category": "Pastry", "sku": "PAS002"},
+            {"name": "Espresso Shot", "price": 3.00, "category": "Beverages", "sku": "BEV005"},
+            {"name": "Turkey Club Wrap", "price": 12.00, "category": "Lunch", "sku": "LUN003"},
+            {"name": "Blueberry Muffin", "price": 4.00, "category": "Pastry", "sku": "PAS003"},
+            {"name": "Kombucha (16oz)", "price": 6.00, "category": "Beverages", "sku": "BEV006"},
+        ],
+    }
+    # Default fallback
+    default = [
+        {"name": f"Product {i+1}", "price": round(random.uniform(10, 80), 2), "category": "General", "sku": f"GEN{i+1:03d}"}
+        for i in range(15)
+    ]
+    for key, val in templates.items():
+        if key in industry.lower():
+            return val
+    return default
+
+
+@router.post("/onboarding/add-products")
+def onboarding_add_products(
+    body: dict = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Save manually entered or CSV-imported products."""
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(status_code=400, detail="No shop found")
+
+    from app.models import Product, new_id
+    products = body.get("products", [])
+    saved = 0
+    for p in products[:100]:
+        name = str(p.get("name", "")).strip()
+        price = float(p.get("price", 0))
+        if not name or price <= 0:
+            continue
+        prod = Product(
+            id=new_id(), shop_id=shop.id,
+            name=name, price=round(price, 2),
+            category=str(p.get("category", "General")).strip() or "General",
+            sku=str(p.get("sku", "")).strip(),
+            stock_quantity=int(p.get("stock", 0)) or random.randint(10, 50),
+            cost=round(price * 0.45, 2),
+        )
+        db.add(prod)
+        saved += 1
+    db.commit()
+    return {"detail": f"{saved} products saved", "count": saved}
+
+
+@router.post("/onboarding/generate-competitors")
+def onboarding_generate_competitors(
+    body: dict = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """AI-generate competitor suggestions."""
+    shop = db.query(Shop).filter(Shop.user_id == user.id).first()
+    if not shop:
+        raise HTTPException(status_code=400, detail="No shop found")
+
+    industry = body.get("industry", "general_retail").replace("_", " ")
+    city = body.get("city", "")
+    state = body.get("state", "")
+    shop_name = body.get("shop_name", shop.name)
+
+    competitors = []
+    try:
+        from app.config import settings as app_settings
+        import os, json
+        api_key = app_settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY", "")
+        if api_key:
+            import httpx
+            location = f"{city}, {state}" if city else "a mid-size US city"
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 1000,
+                    "messages": [{"role": "user", "content": f'Suggest 5 realistic competitor business names for a {industry} shop called "{shop_name}" in {location}. For each include: name, estimated_rating (3.0-4.8), estimated_review_count (20-300). Return ONLY a JSON array, no markdown. Example: [{{"name":"...","estimated_rating":4.2,"estimated_review_count":89}}]'}],
+                },
+                timeout=20,
+            )
+            text = resp.json()["content"][0]["text"].strip()
+            start = text.find("[")
+            end = text.rfind("]") + 1
+            if start >= 0 and end > start:
+                competitors = json.loads(text[start:end])
+    except Exception:
+        pass
+
+    if not competitors:
+        prefixes = ["Urban", "City", "Metro", "Local", "Main Street"]
+        suffixes = {"clothing fashion": ["Style Co", "Threads", "Apparel", "Fashion Hub", "Boutique"],
+                     "food beverage": ["Cafe", "Kitchen", "Bites", "Roasters", "Eats"]}
+        default_suf = ["Shop", "Store", "Market", "Goods", "Supply"]
+        suf_list = default_suf
+        for k, v in suffixes.items():
+            if k in industry.lower():
+                suf_list = v
+                break
+        competitors = [{"name": f"{prefixes[i]} {suf_list[i]}", "estimated_rating": round(random.uniform(3.2, 4.6), 1), "estimated_review_count": random.randint(30, 250)} for i in range(5)]
+
+    return {"competitors": competitors}
+
+
+@router.post("/onboarding/generate-goals")
+def onboarding_generate_goals(
+    body: dict = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """AI-generate smart goals based on industry and revenue."""
+    rev_range = body.get("monthly_revenue", "15k_50k")
+    rev_map = {"under_5k": 4000, "5k_15k": 10000, "15k_50k": 30000, "50k_100k": 75000, "100k_plus": 125000}
+    est_rev = rev_map.get(rev_range, 30000)
+
+    goals = [
+        {"title": "Monthly Revenue Target", "target_value": int(est_rev * 1.1), "unit": "$", "goal_type": "revenue"},
+        {"title": "Monthly Transactions", "target_value": max(50, int(est_rev / 25)), "unit": "#", "goal_type": "transactions"},
+        {"title": "New Customers This Month", "target_value": max(10, int(est_rev / 500)), "unit": "#", "goal_type": "customers"},
+        {"title": "Average Order Value", "target_value": round(est_rev / max(1, int(est_rev / 25)) * 1.05, 2), "unit": "$", "goal_type": "aov"},
+    ]
+    return {"goals": goals}
+
+
+@router.get("/setup-progress")
+def get_setup_progress(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get onboarding setup progress for the progress bar."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"steps": [], "completed": 0, "total": 6}
+
+    from app.models import Product, Goal, Competitor, AgentRun, SentEmail
+    product_count = db.query(Product).filter(Product.shop_id == shop.id).count()
+    goal_count = db.query(Goal).filter(Goal.shop_id == shop.id).count()
+    comp_count = db.query(Competitor).filter(Competitor.shop_id == shop.id).count()
+    agent_run_count = db.query(AgentRun).filter(AgentRun.shop_id == shop.id).count()
+    email_count = db.query(SentEmail).filter(SentEmail.shop_id == shop.id).count()
+
+    steps = [
+        {"key": "business_info", "label": "Business info added", "done": bool(shop.name and shop.name != "My Shop")},
+        {"key": "products", "label": f"Products added ({product_count})", "done": product_count >= 5},
+        {"key": "goals", "label": "First goal set", "done": goal_count > 0},
+        {"key": "competitors", "label": "Competitors added", "done": comp_count > 0, "link": "/dashboard/competitors"},
+        {"key": "agent_run", "label": "First agent run", "done": agent_run_count > 0, "link": "/dashboard/agents"},
+        {"key": "email_sent", "label": "First email sent", "done": email_count > 0, "link": "/dashboard/win-back"},
+    ]
+    completed = sum(1 for s in steps if s["done"])
+    pct = round((completed / len(steps)) * 100) if steps else 0
+    return {"steps": steps, "completed": completed, "total": len(steps), "percentage": pct}
+
+
+@router.get("/team-status")
+def get_team_status(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get AI team status summary for overview page."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"pending_count": 0, "today_created": 0, "today_approved": 0, "last_activity": None}
+
+    from app.models import AgentDeliverable, AuditLog
+    from sqlalchemy import func
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    pending = db.query(func.count(AgentDeliverable.id)).filter(
+        AgentDeliverable.shop_id == shop.id, AgentDeliverable.status == "pending_approval"
+    ).scalar() or 0
+
+    today_created = db.query(func.count(AgentDeliverable.id)).filter(
+        AgentDeliverable.shop_id == shop.id, AgentDeliverable.created_at >= today_start
+    ).scalar() or 0
+
+    today_approved = db.query(func.count(AgentDeliverable.id)).filter(
+        AgentDeliverable.shop_id == shop.id, AgentDeliverable.status.in_(["approved", "sent", "shipped"]),
+        AgentDeliverable.created_at >= today_start
+    ).scalar() or 0
+
+    last = db.query(AuditLog).filter(AuditLog.shop_id == shop.id).order_by(AuditLog.created_at.desc()).first()
+    last_activity = None
+    if last:
+        last_activity = {"actor": last.actor, "action": last.action, "time": last.created_at.isoformat()}
+
+    return {"pending_count": pending, "today_created": today_created, "today_approved": today_approved, "last_activity": last_activity}
+
+
+# ── CSV Import (Settings page) ─────────────────────────────────────────────
+
+@router.get("/csv-template/{template_type}")
+def download_csv_template(template_type: str):
+    """Download a sample CSV template for import."""
+    templates = {
+        "products": "name,price,category,sku,stock\nClassic T-Shirt,28.00,Tops,TOP001,50\nSlim Jeans,65.00,Bottoms,BOT001,30\nCanvas Tote,42.00,Accessories,ACC001,25\n",
+        "customers": "name,email,phone,last_visit_date\nSarah Johnson,sarah@example.com,555-0101,2025-12-15\nMike Chen,mike@example.com,555-0102,2025-11-20\nLisa Park,lisa@example.com,,2025-10-05\n",
+        "sales": "date,amount,items,customer_email\n2025-12-01,45.50,2,sarah@example.com\n2025-12-01,89.00,3,mike@example.com\n2025-12-02,28.00,1,\n",
+    }
+    content = templates.get(template_type, "")
+    if not content:
+        raise HTTPException(status_code=404, detail="Unknown template type")
+
+    return StreamingResponse(
+        io.StringIO(content),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=forge_{template_type}_template.csv"},
+    )
+
+
+@router.post("/csv-import/{import_type}")
+async def csv_import(
+    import_type: str,
+    body: dict = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Import CSV data (products, customers, or sales)."""
+    shop = _get_shop(db, user)
+    if not shop:
+        raise HTTPException(status_code=400, detail="No shop found")
+
+    rows = body.get("rows", [])
+    if not rows:
+        raise HTTPException(status_code=400, detail="No data provided")
+
+    from app.models import Product, Customer, Transaction, TransactionItem, new_id
+
+    if import_type == "products":
+        count = 0
+        for row in rows[:500]:
+            name = str(row.get("name", "")).strip()
+            price = float(row.get("price", 0))
+            if not name or price <= 0:
+                continue
+            db.add(Product(
+                id=new_id(), shop_id=shop.id, name=name,
+                price=round(price, 2), cost=round(price * 0.45, 2),
+                category=str(row.get("category", "General")).strip() or "General",
+                sku=str(row.get("sku", "")).strip(),
+                stock_quantity=int(row.get("stock", 0)) or 0,
+            ))
+            count += 1
+        db.commit()
+        return {"detail": f"{count} products imported", "count": count}
+
+    elif import_type == "customers":
+        count = 0
+        for row in rows[:1000]:
+            name = str(row.get("name", "")).strip()
+            email_addr = str(row.get("email", "")).strip()
+            if not name:
+                continue
+            last_visit = None
+            if row.get("last_visit_date"):
+                try:
+                    last_visit = datetime.strptime(str(row["last_visit_date"]), "%Y-%m-%d")
+                except Exception:
+                    pass
+            # Determine segment
+            segment = "regular"
+            if last_visit:
+                days_since = (datetime.utcnow() - last_visit).days
+                if days_since > 60:
+                    segment = "lost"
+                elif days_since > 30:
+                    segment = "at_risk"
+            db.add(Customer(
+                id=new_id(), shop_id=shop.id,
+                email=email_addr or None,
+                segment=segment,
+                first_seen=last_visit or datetime.utcnow(),
+                last_seen=last_visit or datetime.utcnow(),
+                visit_count=1,
+            ))
+            count += 1
+        db.commit()
+        return {"detail": f"{count} customers imported", "count": count}
+
+    elif import_type == "sales":
+        count = 0
+        for row in rows[:2000]:
+            amount = float(row.get("amount", 0))
+            if amount <= 0:
+                continue
+            ts = datetime.utcnow()
+            if row.get("date"):
+                try:
+                    ts = datetime.strptime(str(row["date"]), "%Y-%m-%d")
+                except Exception:
+                    pass
+            items_count = int(row.get("items", 1)) or 1
+            db.add(Transaction(
+                id=new_id(), shop_id=shop.id,
+                subtotal=round(amount, 2), tax=round(amount * 0.08, 2),
+                total=round(amount * 1.08, 2), items_count=items_count,
+                timestamp=ts, payment_method="imported",
+            ))
+            count += 1
+        db.commit()
+        return {"detail": f"{count} sales imported", "count": count}
+
+    raise HTTPException(status_code=400, detail="Unknown import type")
 
 
 @router.post("/onboarding/complete")
@@ -876,7 +1295,7 @@ def onboarding_complete(body: OnboardingStep3, user: User = Depends(get_current_
             biggest_challenges=body.biggest_challenges,
         )
 
-    user.onboarding_step = 3
+    user.onboarding_step = 5
     user.onboarding_completed = True
     db.commit()
     return {"detail": "Onboarding complete", "redirect": "/dashboard?welcome=1"}

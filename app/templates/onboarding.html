@@ -15,58 +15,49 @@
     .bg-glow{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
     .bg-glow-1{width:500px;height:500px;background:rgba(99,102,241,.1);top:-150px;left:-100px}
     .bg-glow-2{width:400px;height:400px;background:rgba(6,182,212,.08);bottom:-100px;right:-100px}
-    .onboarding-container{position:relative;z-index:1;width:100%;max-width:560px}
+    .onboarding-container{position:relative;z-index:1;width:100%;max-width:620px}
     .logo-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:24px}
-    .logo-row svg rect{fill:url(#lg)}
     .logo-text{font-weight:800;font-size:22px}
-
-    /* Progress */
-    .progress-bar{display:flex;gap:8px;margin-bottom:32px}
+    .progress-bar{display:flex;gap:6px;margin-bottom:32px}
     .progress-step{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .3s}
     .progress-step.active{background:linear-gradient(90deg,var(--primary),var(--accent))}
     .progress-step.done{background:var(--success)}
     .step-label{text-align:center;font-size:13px;color:var(--text3);margin-bottom:8px}
-
-    /* Card */
     .onboarding-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px 32px}
     .step-title{font-size:22px;font-weight:800;margin-bottom:4px}
     .step-sub{color:var(--text2);font-size:14px;margin-bottom:28px}
     .step-panel{display:none}
     .step-panel.active{display:block}
-
-    /* Form elements */
     .form-group{margin-bottom:16px}
     .form-group label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
-    .form-group input,.form-group select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
-    .form-group input:focus,.form-group select:focus{border-color:var(--primary)}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary)}
     .form-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
     .form-group select option{background:var(--bg1);color:var(--text)}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .form-hint{font-size:11px;color:var(--text3);margin-top:4px}
-
-    /* Checkbox group */
-    .checkbox-group{display:flex;flex-direction:column;gap:8px}
-    .checkbox-option{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);cursor:pointer;transition:.2s;font-size:14px}
-    .checkbox-option:hover{border-color:var(--border-light)}
-    .checkbox-option.selected{border-color:var(--primary);background:rgba(99,102,241,.04)}
-    .checkbox-box{width:18px;height:18px;border-radius:4px;border:2px solid var(--border-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s}
-    .checkbox-option.selected .checkbox-box{border-color:var(--primary);background:var(--primary)}
-    .checkbox-option.selected .checkbox-box::after{content:'';width:10px;height:10px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat}
-
-    /* Competitor inputs */
+    .option-cards{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+    .option-card{display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);cursor:pointer;transition:.2s}
+    .option-card:hover{border-color:var(--border-light)}
+    .option-card.selected{border-color:var(--primary);background:rgba(99,102,241,.05)}
+    .option-card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .option-card-text h4{font-size:14px;font-weight:700;margin-bottom:2px}
+    .option-card-text p{font-size:12px;color:var(--text3);margin:0}
+    .product-row{display:grid;grid-template-columns:2fr 1fr 1.2fr;gap:8px;margin-bottom:8px;align-items:end}
+    .product-row input{padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:13px;font-family:inherit;outline:none}
+    .product-row input:focus{border-color:var(--primary)}
+    .product-row-labels{display:grid;grid-template-columns:2fr 1fr 1.2fr;gap:8px;margin-bottom:4px}
+    .product-row-labels span{font-size:12px;font-weight:600;color:var(--text3)}
+    .add-btn{background:transparent;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text3);cursor:pointer;font-size:13px;font-family:inherit;width:100%;transition:.2s}
+    .add-btn:hover{border-color:var(--primary);color:var(--primary)}
     .comp-inputs{display:flex;flex-direction:column;gap:8px}
     .comp-input-row{display:flex;gap:8px;align-items:center}
     .comp-input-row input{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
     .comp-input-row input:focus{border-color:var(--primary)}
-    .comp-input-row input::placeholder{color:var(--text3)}
     .comp-num{width:24px;height:24px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text3);flex-shrink:0}
-
-    /* Revenue input */
     .revenue-input-wrap{position:relative}
     .revenue-input-wrap .currency-sign{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-weight:600;font-size:14px}
     .revenue-input-wrap input{padding-left:28px}
-
-    /* Buttons */
     .btn-row{display:flex;gap:12px;margin-top:24px}
     .btn{flex:1;padding:13px;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
     .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
@@ -74,12 +65,30 @@
     .btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
     .btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
     .btn-ghost:hover{border-color:var(--border-light);color:var(--text)}
+    .btn-accent{background:linear-gradient(135deg,var(--accent),#0891b2);color:#fff;border:none}
+    .btn-accent:hover{box-shadow:0 4px 20px rgba(6,182,212,.4)}
+    .btn-accent:disabled{opacity:.6;cursor:not-allowed}
     .btn-skip{background:transparent;border:none;color:var(--text3);font-size:13px;font-weight:500;cursor:pointer;text-align:center;width:100%;margin-top:12px;padding:8px}
     .btn-skip:hover{color:var(--text2)}
-
     .error-msg{color:var(--danger);font-size:13px;text-align:center;min-height:18px;margin-top:8px}
+    .ai-loading{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+    .gen-products-preview{max-height:250px;overflow-y:auto;margin-top:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1)}
+    .gen-product-item{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px}
+    .gen-product-item:last-child{border-bottom:none}
+    .gen-product-item .name{color:var(--text);font-weight:500}
+    .gen-product-item .price{color:var(--accent);font-weight:600}
+    .gen-count{font-size:13px;color:var(--success);font-weight:600;margin-top:8px}
+    .agent-intro-grid{display:grid;gap:12px;margin-bottom:20px}
+    .agent-intro-card{display:flex;gap:12px;padding:14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg1)}
+    .agent-intro-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:700;color:#fff}
+    .agent-intro-info h4{font-size:13px;font-weight:700;margin-bottom:2px}
+    .agent-intro-info p{font-size:12px;color:var(--text3);margin:0;line-height:1.4}
+    .csv-upload-area{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:.2s}
+    .csv-upload-area:hover{border-color:var(--primary);background:rgba(99,102,241,.03)}
+    .csv-upload-area.dragover{border-color:var(--primary);background:rgba(99,102,241,.06)}
+    .csv-upload-area input[type=file]{display:none}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @media(max-width:520px){.form-row{grid-template-columns:1fr}.onboarding-card{padding:28px 20px}}
+    @media(max-width:520px){.form-row{grid-template-columns:1fr}.onboarding-card{padding:28px 20px}.product-row{grid-template-columns:1fr}.product-row-labels{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -97,128 +106,243 @@
       <span class="logo-text">Forge</span>
     </div>
 
-    <div class="step-label" id="stepLabel">Step 1 of 3</div>
+    <div class="step-label" id="stepLabel">Step 1 of 5</div>
     <div class="progress-bar">
       <div class="progress-step active" id="prog1"></div>
       <div class="progress-step" id="prog2"></div>
       <div class="progress-step" id="prog3"></div>
+      <div class="progress-step" id="prog4"></div>
+      <div class="progress-step" id="prog5"></div>
     </div>
 
     <div class="onboarding-card">
-      <!-- STEP 1 -->
+      <!-- STEP 1: Business Info -->
       <div class="step-panel active" id="step1">
-        <h2 class="step-title">Tell us about your shop</h2>
+        <h2 class="step-title">Tell us about your business</h2>
         <p class="step-sub">This helps us customize your dashboard and generate accurate insights.</p>
 
         <div class="form-group">
-          <label for="s1Name">Business Name</label>
-          <input type="text" id="s1Name" value="{{ shop.name if shop else '' }}">
+          <label for="s1Name">Shop Name *</label>
+          <input type="text" id="s1Name" placeholder="e.g. Urban Threads Boutique" value="{{ shop.name if shop else '' }}" required>
         </div>
 
         <div class="form-group">
-          <label for="s1Address">Business Address</label>
-          <input type="text" id="s1Address" placeholder="123 Main St, Portland, OR 97201" value="{{ shop.address or '' }}">
+          <label for="s1Industry">Industry *</label>
+          <select id="s1Industry">
+            <option value="clothing_fashion">Clothing / Fashion</option>
+            <option value="food_beverage">Food & Beverage</option>
+            <option value="home_living">Home & Living</option>
+            <option value="beauty">Beauty & Cosmetics</option>
+            <option value="electronics">Electronics</option>
+            <option value="books">Books & Stationery</option>
+            <option value="general_retail" selected>General Retail</option>
+            <option value="other">Other</option>
+          </select>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label for="s1Locations">How many locations?</label>
-            <select id="s1Locations">
-              <option value="1" selected>1 location</option>
-              <option value="2-3">2-3 locations</option>
-              <option value="4+">4+ locations</option>
+            <label for="s1City">City</label>
+            <input type="text" id="s1City" placeholder="e.g. Portland" value="{{ shop.city or '' }}">
+          </div>
+          <div class="form-group">
+            <label for="s1State">State</label>
+            <input type="text" id="s1State" placeholder="e.g. OR">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="s1Employees">How many employees?</label>
+            <select id="s1Employees">
+              <option value="1-5" selected>1-5</option>
+              <option value="6-15">6-15</option>
+              <option value="16-50">16-50</option>
+              <option value="50+">50+</option>
             </select>
           </div>
           <div class="form-group">
             <label for="s1Revenue">Monthly revenue range</label>
             <select id="s1Revenue">
-              <option value="under_10k">Under $10,000</option>
-              <option value="10k_25k" selected>$10,000 - $25,000</option>
-              <option value="25k_50k">$25,000 - $50,000</option>
-              <option value="50k_100k">$50,000 - $100,000</option>
-              <option value="100k_plus">$100,000+</option>
+              <option value="under_5k">Under $5K</option>
+              <option value="5k_15k">$5K - $15K</option>
+              <option value="15k_50k" selected>$15K - $50K</option>
+              <option value="50k_100k">$50K - $100K</option>
+              <option value="100k_plus">$100K+</option>
             </select>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="s1POS">How do you currently track sales?</label>
-          <select id="s1POS">
-            <option value="shopify">Shopify</option>
-            <option value="square">Square</option>
-            <option value="clover">Clover</option>
-            <option value="spreadsheets">Spreadsheets</option>
-            <option value="pen_paper">Pen & Paper</option>
-            <option value="other" selected>Other</option>
-          </select>
-        </div>
-
+        <div class="error-msg" id="err1"></div>
         <div class="btn-row">
           <button class="btn btn-primary" id="s1Next">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
         </div>
       </div>
 
-      <!-- STEP 2 -->
+      <!-- STEP 2: Add Products -->
       <div class="step-panel" id="step2">
-        <h2 class="step-title">Find your competitors</h2>
-        <p class="step-sub">We'll start monitoring their reviews and activity immediately. You can add more later.</p>
+        <h2 class="step-title">Add your products</h2>
+        <p class="step-sub">We need at least 3 products to build your analytics. Choose how to add them.</p>
 
-        <div class="comp-inputs">
-          <div class="comp-input-row"><span class="comp-num">1</span><input type="text" class="comp-name" placeholder="e.g. Bean & Brew Coffee"></div>
-          <div class="comp-input-row"><span class="comp-num">2</span><input type="text" class="comp-name" placeholder="e.g. Style Hub Clothing"></div>
-          <div class="comp-input-row"><span class="comp-num">3</span><input type="text" class="comp-name" placeholder="e.g. Fresh Finds Market"></div>
-          <div class="comp-input-row"><span class="comp-num">4</span><input type="text" class="comp-name" placeholder="Competitor name (optional)"></div>
-          <div class="comp-input-row"><span class="comp-num">5</span><input type="text" class="comp-name" placeholder="Competitor name (optional)"></div>
+        <div class="option-cards" id="productOptions">
+          <div class="option-card selected" data-method="quickstart" onclick="selectProductMethod('quickstart')">
+            <div class="option-card-icon" style="background:linear-gradient(135deg,#6366f1,#06b6d4)">&#9889;</div>
+            <div class="option-card-text">
+              <h4>Quick Start — AI generates products for you</h4>
+              <p>We'll create 15-20 realistic products based on your industry</p>
+            </div>
+          </div>
+          <div class="option-card" data-method="csv" onclick="selectProductMethod('csv')">
+            <div class="option-card-icon" style="background:linear-gradient(135deg,#10b981,#059669)">&#128196;</div>
+            <div class="option-card-text">
+              <h4>Import from CSV</h4>
+              <p>Upload a CSV file with columns: name, price, category, sku, stock</p>
+            </div>
+          </div>
+          <div class="option-card" data-method="manual" onclick="selectProductMethod('manual')">
+            <div class="option-card-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">&#9998;</div>
+            <div class="option-card-text">
+              <h4>Add manually</h4>
+              <p>Enter products one by one</p>
+            </div>
+          </div>
         </div>
 
+        <!-- Quick Start sub-panel -->
+        <div id="productQuickstart" style="display:block">
+          <button class="btn btn-accent" id="btnGenProducts" onclick="generateProducts()" style="width:100%">&#9889; Generate Products for My Industry</button>
+          <div id="genProductsPreview" class="gen-products-preview" style="display:none"></div>
+          <div id="genProductsCount" class="gen-count" style="display:none"></div>
+        </div>
+
+        <!-- CSV sub-panel -->
+        <div id="productCsv" style="display:none">
+          <div class="csv-upload-area" id="csvDropArea" onclick="document.getElementById('csvFileInput').click()">
+            <div style="font-size:28px;margin-bottom:8px">&#128196;</div>
+            <div style="font-weight:600;margin-bottom:4px">Drop your CSV here or click to browse</div>
+            <div style="font-size:12px;color:var(--text3)">Columns: name, price, category, sku, stock</div>
+            <input type="file" id="csvFileInput" accept=".csv">
+          </div>
+          <div id="csvPreview" style="display:none;margin-top:12px"></div>
+        </div>
+
+        <!-- Manual sub-panel -->
+        <div id="productManual" style="display:none">
+          <div class="product-row-labels"><span>Product Name</span><span>Price</span><span>Category</span></div>
+          <div id="manualProductList">
+            <div class="product-row"><input type="text" placeholder="Product name" class="mp-name"><input type="number" placeholder="0.00" class="mp-price" step="0.01"><input type="text" placeholder="Category" class="mp-cat"></div>
+            <div class="product-row"><input type="text" placeholder="Product name" class="mp-name"><input type="number" placeholder="0.00" class="mp-price" step="0.01"><input type="text" placeholder="Category" class="mp-cat"></div>
+            <div class="product-row"><input type="text" placeholder="Product name" class="mp-name"><input type="number" placeholder="0.00" class="mp-price" step="0.01"><input type="text" placeholder="Category" class="mp-cat"></div>
+          </div>
+          <button class="add-btn" onclick="addManualRow()">+ Add another product</button>
+        </div>
+
+        <div class="error-msg" id="err2"></div>
         <div class="btn-row">
-          <button class="btn btn-ghost" id="s2Back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
-          <button class="btn btn-primary" id="s2Next">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+          <button class="btn btn-ghost" onclick="showStep(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+          <button class="btn btn-primary" id="s2Next" onclick="saveProducts()">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
         </div>
-        <button class="btn-skip" id="s2Skip">Skip for now</button>
       </div>
 
-      <!-- STEP 3 -->
+      <!-- STEP 3: Competitors -->
       <div class="step-panel" id="step3">
+        <h2 class="step-title">Who are your competitors?</h2>
+        <p class="step-sub">We'll monitor their reviews and activity. You can add more later.</p>
+
+        <div class="comp-inputs" id="compInputs">
+          <div class="comp-input-row"><span class="comp-num">1</span><input type="text" class="comp-name" placeholder="e.g. Style Hub Clothing"></div>
+          <div class="comp-input-row"><span class="comp-num">2</span><input type="text" class="comp-name" placeholder="e.g. Bean & Brew Coffee"></div>
+          <div class="comp-input-row"><span class="comp-num">3</span><input type="text" class="comp-name" placeholder="e.g. Fresh Finds Market"></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn btn-accent" id="btnFindComps" onclick="findCompetitors()" style="width:100%;padding:11px">&#128269; Find competitors automatically</button>
+          <div id="compAutoStatus" style="display:none;margin-top:8px;font-size:13px;color:var(--text3);text-align:center"></div>
+        </div>
+
+        <div class="error-msg" id="err3"></div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="showStep(2)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+          <button class="btn btn-primary" onclick="saveCompetitors()">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+        </div>
+        <button class="btn-skip" onclick="showStep(4)">Skip — I'll add these later</button>
+      </div>
+
+      <!-- STEP 4: Set Goals -->
+      <div class="step-panel" id="step4">
         <h2 class="step-title">Set your first goal</h2>
         <p class="step-sub">What are you working toward this month? We'll track your progress automatically.</p>
 
         <div class="form-group">
-          <label for="s3Target">Monthly revenue target</label>
+          <label for="s4Target">Monthly revenue target</label>
           <div class="revenue-input-wrap">
             <span class="currency-sign">$</span>
-            <input type="number" id="s3Target" value="25000" min="1000" step="1000">
+            <input type="number" id="s4Target" value="25000" min="1000" step="1000">
           </div>
           <div class="form-hint">We'll show your progress toward this goal on your dashboard.</div>
         </div>
 
-        <div class="form-group">
-          <label>What are your biggest challenges? (select all that apply)</label>
-          <div class="checkbox-group" id="challengeGroup">
-            <div class="checkbox-option selected" data-value="new_customers">
-              <div class="checkbox-box"></div>
-              <span>Getting new customers</span>
+        <div style="text-align:center;margin:16px 0">
+          <span style="font-size:13px;color:var(--text3)">— or —</span>
+        </div>
+
+        <button class="btn btn-accent" id="btnAiGoals" onclick="generateGoals()" style="width:100%;padding:11px">&#128202; Let Alex set smart goals for you</button>
+        <div id="aiGoalsPreview" style="display:none;margin-top:12px"></div>
+
+        <div class="error-msg" id="err4"></div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="showStep(3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+          <button class="btn btn-primary" onclick="saveGoals()">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+        </div>
+      </div>
+
+      <!-- STEP 5: Meet Your Team -->
+      <div class="step-panel" id="step5">
+        <h2 class="step-title">Meet your AI team</h2>
+        <p class="step-sub">5 specialized agents that work for your business 24/7.</p>
+
+        <div class="agent-intro-grid">
+          <div class="agent-intro-card">
+            <div class="agent-intro-avatar" style="background:#ec4899">M</div>
+            <div class="agent-intro-info">
+              <h4>Maya — Marketing Director</h4>
+              <p>Creates Instagram posts, email campaigns, and promotions using your real product data.</p>
             </div>
-            <div class="checkbox-option selected" data-value="retention">
-              <div class="checkbox-box"></div>
-              <span>Keeping customers coming back</span>
+          </div>
+          <div class="agent-intro-card">
+            <div class="agent-intro-avatar" style="background:#f59e0b">S</div>
+            <div class="agent-intro-info">
+              <h4>Scout — Competitive Intelligence</h4>
+              <p>Monitors your competitors' ratings, reviews, and alerts you to opportunities.</p>
             </div>
-            <div class="checkbox-option selected" data-value="marketing">
-              <div class="checkbox-box"></div>
-              <span>Marketing my shop</span>
+          </div>
+          <div class="agent-intro-card">
+            <div class="agent-intro-avatar" style="background:#10b981">E</div>
+            <div class="agent-intro-info">
+              <h4>Emma — Customer Success</h4>
+              <p>Identifies at-risk customers and drafts personalized win-back emails.</p>
             </div>
-            <div class="checkbox-option selected" data-value="competitors">
-              <div class="checkbox-box"></div>
-              <span>Understanding my competitors</span>
+          </div>
+          <div class="agent-intro-card">
+            <div class="agent-intro-avatar" style="background:#6366f1">A</div>
+            <div class="agent-intro-info">
+              <h4>Alex — Chief Strategy Officer</h4>
+              <p>Delivers CEO-level daily briefings with revenue analysis and action items.</p>
+            </div>
+          </div>
+          <div class="agent-intro-card">
+            <div class="agent-intro-avatar" style="background:#ef4444">X</div>
+            <div class="agent-intro-info">
+              <h4>Max — Sales Optimizer</h4>
+              <p>Finds bundle opportunities, pricing gaps, and upsell strategies.</p>
             </div>
           </div>
         </div>
 
-        <div class="error-msg" id="errorMsg"></div>
-
+        <div class="error-msg" id="err5"></div>
         <div class="btn-row">
-          <button class="btn btn-ghost" id="s3Back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
-          <button class="btn btn-primary" id="s3Launch">Launch My Dashboard <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></button>
+          <button class="btn btn-ghost" onclick="showStep(4)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+          <button class="btn btn-primary" id="btnLaunch" onclick="launchDashboard()" style="background:linear-gradient(135deg,var(--primary),var(--accent))">Activate Your Team & Launch Dashboard <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></button>
         </div>
       </div>
     </div>
@@ -226,14 +350,19 @@
 
   <script>
     let currentStep = 1;
-    const data = {step1: {}, step2: {competitors: []}, step3: {}};
+    const TOTAL_STEPS = 5;
+    let _generatedProducts = [];
+    let _csvProducts = [];
+    let _productMethod = 'quickstart';
+    let _aiGoals = [];
+    const data = {step1:{}, products:[], competitors:[], goals:{}};
 
     function showStep(n) {
       currentStep = n;
       document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
       document.getElementById('step' + n).classList.add('active');
-      document.getElementById('stepLabel').textContent = 'Step ' + n + ' of 3';
-      for (let i = 1; i <= 3; i++) {
+      document.getElementById('stepLabel').textContent = 'Step ' + n + ' of ' + TOTAL_STEPS;
+      for (let i = 1; i <= TOTAL_STEPS; i++) {
         const el = document.getElementById('prog' + i);
         el.classList.remove('active', 'done');
         if (i < n) el.classList.add('done');
@@ -241,24 +370,38 @@
       }
     }
 
-    // Checkbox group (multi-select)
-    document.querySelectorAll('.checkbox-option').forEach(opt => {
-      opt.addEventListener('click', () => {
-        opt.classList.toggle('selected');
-      });
-    });
+    function selectProductMethod(method) {
+      _productMethod = method;
+      document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+      document.querySelector('[data-method="' + method + '"]').classList.add('selected');
+      document.getElementById('productQuickstart').style.display = method === 'quickstart' ? 'block' : 'none';
+      document.getElementById('productCsv').style.display = method === 'csv' ? 'block' : 'none';
+      document.getElementById('productManual').style.display = method === 'manual' ? 'block' : 'none';
+    }
 
-    // Step 1 → 2
+    function addManualRow() {
+      const list = document.getElementById('manualProductList');
+      const row = document.createElement('div');
+      row.className = 'product-row';
+      row.innerHTML = '<input type="text" placeholder="Product name" class="mp-name"><input type="number" placeholder="0.00" class="mp-price" step="0.01"><input type="text" placeholder="Category" class="mp-cat">';
+      list.appendChild(row);
+    }
+
+    // Step 1: Save business info
     document.getElementById('s1Next').addEventListener('click', async () => {
+      const name = document.getElementById('s1Name').value.trim();
+      if (!name) { document.getElementById('err1').textContent = 'Shop name is required'; return; }
+      document.getElementById('err1').textContent = '';
+
       data.step1 = {
-        business_name: document.getElementById('s1Name').value.trim(),
-        address: document.getElementById('s1Address').value.trim(),
-        locations: document.getElementById('s1Locations').value,
+        business_name: name,
+        industry: document.getElementById('s1Industry').value,
+        city: document.getElementById('s1City').value.trim(),
+        state: document.getElementById('s1State').value.trim(),
+        employees: document.getElementById('s1Employees').value,
         monthly_revenue: document.getElementById('s1Revenue').value,
-        pos_system: document.getElementById('s1POS').value,
       };
 
-      // Save step 1
       try {
         await fetch('/api/dashboard/onboarding/step1', {
           method: 'POST',
@@ -268,77 +411,286 @@
         });
       } catch (e) {}
 
-      // Set revenue target default based on selection
-      const revMap = {under_10k: 8000, '10k_25k': 20000, '25k_50k': 40000, '50k_100k': 75000, '100k_plus': 125000};
-      document.getElementById('s3Target').value = revMap[data.step1.monthly_revenue] || 25000;
-
+      const revMap = {under_5k:4000, '5k_15k':10000, '15k_50k':30000, '50k_100k':75000, '100k_plus':125000};
+      document.getElementById('s4Target').value = revMap[data.step1.monthly_revenue] || 25000;
       showStep(2);
     });
 
-    // Step 2 → 3
-    document.getElementById('s2Next').addEventListener('click', () => {
-      data.step2.competitors = Array.from(document.querySelectorAll('.comp-name'))
-        .map(el => el.value.trim()).filter(v => v);
-      showStep(3);
-    });
-
-    document.getElementById('s2Skip').addEventListener('click', () => {
-      data.step2.competitors = [];
-      showStep(3);
-    });
-
-    // Back buttons
-    document.getElementById('s2Back').addEventListener('click', () => showStep(1));
-    document.getElementById('s3Back').addEventListener('click', () => showStep(2));
-
-    // Launch
-    document.getElementById('s3Launch').addEventListener('click', async () => {
-      const btn = document.getElementById('s3Launch');
-      const errEl = document.getElementById('errorMsg');
-      errEl.textContent = '';
+    // Step 2: Generate products (AI)
+    async function generateProducts() {
+      const btn = document.getElementById('btnGenProducts');
       btn.disabled = true;
-      btn.innerHTML = '<span style="display:inline-block;width:18px;height:18px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></span> Setting up your dashboard...';
-
-      const selectedChallenges = Array.from(document.querySelectorAll('.checkbox-option.selected'))
-        .map(el => el.dataset.value);
-
-      data.step3 = {
-        revenue_target: parseFloat(document.getElementById('s3Target').value) || 25000,
-        biggest_challenges: selectedChallenges.length > 0 ? selectedChallenges : ['new_customers'],
-        competitors: data.step2.competitors || [],
-        monthly_revenue: (data.step1.monthly_revenue) || '10k_25k',
-      };
+      btn.innerHTML = '<span class="ai-loading"></span> Generating products...';
 
       try {
-        // Save competitors
+        const res = await fetch('/api/dashboard/onboarding/generate-products', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            industry: data.step1.industry || 'general_retail',
+            shop_name: data.step1.business_name || 'My Shop',
+            city: data.step1.city || '',
+            state: data.step1.state || '',
+          }),
+        });
+        const result = await res.json();
+        _generatedProducts = result.products || [];
+        const preview = document.getElementById('genProductsPreview');
+        const count = document.getElementById('genProductsCount');
+        if (_generatedProducts.length > 0) {
+          preview.style.display = 'block';
+          preview.innerHTML = _generatedProducts.map(p => '<div class="gen-product-item"><span class="name">' + p.name + '</span><span class="price">$' + parseFloat(p.price).toFixed(2) + '</span></div>').join('');
+          count.style.display = 'block';
+          count.textContent = _generatedProducts.length + ' products generated and saved!';
+          btn.innerHTML = '&#10003; Products Generated';
+          btn.style.background = 'var(--success)';
+        } else {
+          throw new Error('No products returned');
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '&#9889; Generate Products for My Industry';
+        document.getElementById('err2').textContent = 'Generation failed — try manual entry instead';
+      }
+    }
+
+    // CSV upload
+    const csvFileInput = document.getElementById('csvFileInput');
+    const csvDropArea = document.getElementById('csvDropArea');
+    csvDropArea.addEventListener('dragover', e => { e.preventDefault(); csvDropArea.classList.add('dragover'); });
+    csvDropArea.addEventListener('dragleave', () => csvDropArea.classList.remove('dragover'));
+    csvDropArea.addEventListener('drop', e => { e.preventDefault(); csvDropArea.classList.remove('dragover'); if (e.dataTransfer.files.length) handleCsvFile(e.dataTransfer.files[0]); });
+    csvFileInput.addEventListener('change', () => { if (csvFileInput.files.length) handleCsvFile(csvFileInput.files[0]); });
+
+    function handleCsvFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const lines = e.target.result.split('\n').filter(l => l.trim());
+        if (lines.length < 2) { document.getElementById('err2').textContent = 'CSV must have a header row and at least 1 product'; return; }
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+        const nameIdx = headers.indexOf('name');
+        const priceIdx = headers.indexOf('price');
+        if (nameIdx === -1 || priceIdx === -1) { document.getElementById('err2').textContent = 'CSV must have "name" and "price" columns'; return; }
+        const catIdx = headers.indexOf('category');
+        const skuIdx = headers.indexOf('sku');
+        const stockIdx = headers.indexOf('stock');
+
+        _csvProducts = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.trim());
+          if (cols[nameIdx] && cols[priceIdx]) {
+            _csvProducts.push({
+              name: cols[nameIdx], price: parseFloat(cols[priceIdx]) || 0,
+              category: catIdx >= 0 ? cols[catIdx] : '', sku: skuIdx >= 0 ? cols[skuIdx] : '',
+              stock: stockIdx >= 0 ? parseInt(cols[stockIdx]) || 0 : 0,
+            });
+          }
+        }
+        const preview = document.getElementById('csvPreview');
+        preview.style.display = 'block';
+        preview.innerHTML = '<div class="gen-count">' + _csvProducts.length + ' products found</div><div class="gen-products-preview" style="display:block">' +
+          _csvProducts.slice(0, 10).map(p => '<div class="gen-product-item"><span class="name">' + p.name + '</span><span class="price">$' + p.price.toFixed(2) + '</span></div>').join('') +
+          (_csvProducts.length > 10 ? '<div style="padding:8px 12px;font-size:12px;color:var(--text3)">...and ' + (_csvProducts.length - 10) + ' more</div>' : '') + '</div>';
+        csvDropArea.innerHTML = '<div style="font-size:28px;margin-bottom:8px">&#10003;</div><div style="font-weight:600;color:var(--success)">' + file.name + ' loaded</div>';
+      };
+      reader.readAsText(file);
+    }
+
+    // Save products
+    async function saveProducts() {
+      document.getElementById('err2').textContent = '';
+      let products = [];
+
+      if (_productMethod === 'quickstart') {
+        if (_generatedProducts.length < 3) {
+          document.getElementById('err2').textContent = 'Click "Generate Products" first (minimum 3 required)';
+          return;
+        }
+        // Already saved by the generate endpoint
+        showStep(3);
+        return;
+      }
+
+      if (_productMethod === 'csv') {
+        if (_csvProducts.length < 3) {
+          document.getElementById('err2').textContent = 'CSV must contain at least 3 products';
+          return;
+        }
+        products = _csvProducts;
+      }
+
+      if (_productMethod === 'manual') {
+        const names = document.querySelectorAll('.mp-name');
+        const prices = document.querySelectorAll('.mp-price');
+        const cats = document.querySelectorAll('.mp-cat');
+        for (let i = 0; i < names.length; i++) {
+          const n = names[i].value.trim();
+          const p = parseFloat(prices[i].value) || 0;
+          if (n && p > 0) products.push({name: n, price: p, category: cats[i].value.trim() || 'General'});
+        }
+        if (products.length < 3) {
+          document.getElementById('err2').textContent = 'Add at least 3 products with name and price';
+          return;
+        }
+      }
+
+      // Save products via API
+      try {
+        const btn = document.getElementById('s2Next');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="ai-loading"></span> Saving...';
+        await fetch('/api/dashboard/onboarding/add-products', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
+          body: JSON.stringify({products: products}),
+        });
+        btn.disabled = false;
+        btn.innerHTML = 'Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+        showStep(3);
+      } catch (e) {
+        document.getElementById('err2').textContent = 'Failed to save products';
+      }
+    }
+
+    // Step 3: Find competitors automatically
+    async function findCompetitors() {
+      const btn = document.getElementById('btnFindComps');
+      const status = document.getElementById('compAutoStatus');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="ai-loading"></span> Finding competitors...';
+      status.style.display = 'block';
+      status.textContent = 'Searching for competitors in your area...';
+
+      try {
+        const res = await fetch('/api/dashboard/onboarding/generate-competitors', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            industry: data.step1.industry || 'general_retail',
+            city: data.step1.city || '',
+            state: data.step1.state || '',
+            shop_name: data.step1.business_name || 'My Shop',
+          }),
+        });
+        const result = await res.json();
+        const comps = result.competitors || [];
+        const inputs = document.querySelectorAll('.comp-name');
+        comps.forEach((c, i) => { if (inputs[i]) inputs[i].value = c.name; });
+        // Add more input rows if needed
+        if (comps.length > inputs.length) {
+          const container = document.getElementById('compInputs');
+          for (let i = inputs.length; i < comps.length; i++) {
+            const row = document.createElement('div');
+            row.className = 'comp-input-row';
+            row.innerHTML = '<span class="comp-num">' + (i + 1) + '</span><input type="text" class="comp-name" value="' + comps[i].name + '">';
+            container.appendChild(row);
+          }
+        }
+        btn.innerHTML = '&#10003; Competitors Found';
+        btn.style.background = 'var(--success)';
+        status.textContent = comps.length + ' competitors identified';
+        status.style.color = 'var(--success)';
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '&#128269; Find competitors automatically';
+        status.textContent = 'Could not auto-find. Enter them manually above.';
+        status.style.color = 'var(--warning)';
+      }
+    }
+
+    async function saveCompetitors() {
+      const names = Array.from(document.querySelectorAll('.comp-name')).map(el => el.value.trim()).filter(v => v);
+      data.competitors = names;
+      try {
         await fetch('/api/dashboard/onboarding/step2', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           credentials: 'same-origin',
-          body: JSON.stringify({competitors: data.step2.competitors}),
+          body: JSON.stringify({competitors: names}),
         });
+      } catch (e) {}
+      showStep(4);
+    }
 
-        // Complete onboarding (generates data)
+    // Step 4: Generate AI goals
+    async function generateGoals() {
+      const btn = document.getElementById('btnAiGoals');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="ai-loading"></span> Alex is analyzing your data...';
+
+      try {
+        const res = await fetch('/api/dashboard/onboarding/generate-goals', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            industry: data.step1.industry || 'general_retail',
+            monthly_revenue: data.step1.monthly_revenue || '15k_50k',
+            shop_name: data.step1.business_name || 'My Shop',
+          }),
+        });
+        const result = await res.json();
+        _aiGoals = result.goals || [];
+        const preview = document.getElementById('aiGoalsPreview');
+        preview.style.display = 'block';
+        preview.innerHTML = _aiGoals.map(g =>
+          '<div style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg1);margin-bottom:8px">' +
+          '<div style="font-weight:600;font-size:14px">' + g.title + '</div>' +
+          '<div style="font-size:12px;color:var(--text3);margin-top:2px">Target: ' + (g.unit === '$' ? '$' : '') + g.target_value + (g.unit !== '$' ? ' ' + g.unit : '') + ' / month</div></div>'
+        ).join('');
+        btn.innerHTML = '&#10003; Smart Goals Set';
+        btn.style.background = 'var(--success)';
+        // Update target field with first goal
+        if (_aiGoals.length > 0 && _aiGoals[0].unit === '$') {
+          document.getElementById('s4Target').value = _aiGoals[0].target_value;
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '&#128202; Let Alex set smart goals for you';
+        document.getElementById('err4').textContent = 'AI goals generation failed — set your target manually above';
+      }
+    }
+
+    async function saveGoals() {
+      const target = parseFloat(document.getElementById('s4Target').value) || 25000;
+      data.goals = {revenue_target: target, ai_goals: _aiGoals};
+      showStep(5);
+    }
+
+    // Step 5: Launch dashboard
+    async function launchDashboard() {
+      const btn = document.getElementById('btnLaunch');
+      const errEl = document.getElementById('err5');
+      errEl.textContent = '';
+      btn.disabled = true;
+      btn.innerHTML = '<span class="ai-loading"></span> Activating your AI team...';
+
+      try {
         const res = await fetch('/api/dashboard/onboarding/complete', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           credentials: 'same-origin',
-          body: JSON.stringify(data.step3),
+          body: JSON.stringify({
+            revenue_target: data.goals.revenue_target || parseFloat(document.getElementById('s4Target').value) || 25000,
+            biggest_challenges: ['new_customers', 'retention', 'marketing', 'competitors'],
+            competitors: data.competitors || [],
+            monthly_revenue: data.step1.monthly_revenue || '15k_50k',
+          }),
         });
-
         if (!res.ok) {
           const d = await res.json();
           throw new Error(d.detail || 'Setup failed');
         }
-
-        // Redirect to dashboard with welcome flag
         window.location.href = '/dashboard?welcome=1';
       } catch (err) {
         errEl.textContent = err.message || 'Something went wrong. Please try again.';
         btn.disabled = false;
-        btn.innerHTML = 'Launch My Dashboard <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>';
+        btn.innerHTML = 'Activate Your Team & Launch Dashboard <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>';
       }
-    });
+    }
   </script>
 </body>
 </html>

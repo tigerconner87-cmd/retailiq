@@ -428,6 +428,10 @@ class OnboardingStep1(BaseModel):
     locations: str = "1"
     monthly_revenue: str = "10k_25k"
     pos_system: str = "other"
+    industry: str = "general_retail"
+    city: str = ""
+    state: str = ""
+    employees: str = "1-5"
 
 
 class OnboardingStep2(BaseModel):
