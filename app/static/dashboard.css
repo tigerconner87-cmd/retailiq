@@ -1288,6 +1288,12 @@ svg.spin{animation:spin .8s linear infinite}
    AI Chat Widget
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* Section Floating Add Button */
+.section-fab{position:sticky;bottom:24px;float:right;margin-top:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border:none;color:#fff;cursor:pointer;z-index:50;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(99,102,241,.35);transition:all .2s}
+.section-fab:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(99,102,241,.5)}
+.section-fab:active{transform:scale(0.95)}
+@media(max-width:768px){.section-fab{width:46px;height:46px;bottom:80px}}
+
 /* Claw Bot Floating Button */
 .ai-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#ef4444);border:none;color:#fff;cursor:pointer;z-index:900;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(239,68,68,.35);transition:all .3s;animation:clawPulse 3s ease-in-out infinite}
 .ai-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(239,68,68,.5);animation:none}

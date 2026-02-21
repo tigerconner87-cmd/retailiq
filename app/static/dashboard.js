@@ -6660,8 +6660,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/api/agents/approval-queue', { credentials: 'same-origin' });
       if (!res.ok) { grid.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3)">Could not load approval queue</div>'; return; }
-      const items = await res.json();
-      const pending = (items || []).filter(d => d.status === 'pending_approval');
+      const data = await res.json();
+      const pending = data.queue || [];
       window._aqHeroData = pending;
       if (badge) badge.textContent = pending.length + ' pending';
       if (pending.length === 0) {
@@ -6880,6 +6880,11 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Import failed: ' + err.message, 'error');
       if (result) result.innerHTML = `<div style="color:var(--danger)">Import failed: ${esc(err.message)}</div>`;
     }
+  };
+
+  // ── Notify Me for Coming Soon Integrations ──
+  window.notifyIntegration = function(name) {
+    showToast('We\'ll notify you when ' + name + ' integration is available!', 'success', 4000);
   };
 
   // ── Initial load for agents hero if already on agents page ──

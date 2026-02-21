@@ -206,6 +206,13 @@
               <p>Enter products one by one</p>
             </div>
           </div>
+          <div class="option-card" data-method="shopify" onclick="selectProductMethod('shopify')" style="opacity:.7">
+            <div class="option-card-icon" style="background:linear-gradient(135deg,#96bf48,#6a9a2e)">&#128722;</div>
+            <div class="option-card-text">
+              <h4>Import from Shopify <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(245,158,11,.15);color:#f59e0b;margin-left:6px">COMING SOON</span></h4>
+              <p>Connect your Shopify store to auto-sync products, customers &amp; sales</p>
+            </div>
+          </div>
         </div>
 
         <!-- Quick Start sub-panel -->
@@ -374,6 +381,11 @@
       _productMethod = method;
       document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
       document.querySelector('[data-method="' + method + '"]').classList.add('selected');
+      if (method === 'shopify') {
+        alert('Shopify integration is coming soon! Please use Quick Start, CSV, or Manual entry for now.');
+        selectProductMethod('quickstart');
+        return;
+      }
       document.getElementById('productQuickstart').style.display = method === 'quickstart' ? 'block' : 'none';
       document.getElementById('productCsv').style.display = method === 'csv' ? 'block' : 'none';
       document.getElementById('productManual').style.display = method === 'manual' ? 'block' : 'none';

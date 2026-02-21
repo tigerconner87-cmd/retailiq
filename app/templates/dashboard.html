@@ -719,11 +719,11 @@
       <!-- Data Hub Section -->
       <section class="section {{ 'active' if sec == 'datahub' }}" id="sec-datahub">
         <div class="dh-tabs" id="dhTabs">
-          <button class="dh-tab active" data-tab="quick-entry">Quick Entry</button>
-          <button class="dh-tab" data-tab="csv-upload">CSV Upload</button>
-          <button class="dh-tab" data-tab="dh-products">Products</button>
+          <button class="dh-tab active" data-tab="quick-entry">Daily Entry</button>
+          <button class="dh-tab" data-tab="csv-upload">Bulk Import</button>
+          <button class="dh-tab" data-tab="dh-products">Quick Add</button>
           <button class="dh-tab" data-tab="dh-customers">Customers</button>
-          <button class="dh-tab" data-tab="connections">Connections</button>
+          <button class="dh-tab" data-tab="connections">Integrations</button>
         </div>
 
         <!-- Tab: Quick Entry -->
@@ -1210,6 +1210,10 @@
             <div class="ai-loading">Analyzing product data...</div>
           </div>
         </div>
+        <!-- Floating Add Button -->
+        <button class="section-fab" onclick="openProductModal()" title="Add Product">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
       </section>
 
       <!-- Customers Section -->
@@ -1245,6 +1249,10 @@
             <div class="ai-loading">Analyzing customer segments...</div>
           </div>
         </div>
+        <!-- Floating Add Button -->
+        <button class="section-fab" onclick="openCustomerModal()" title="Add Customer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
       </section>
 
       <!-- Competitors Section (Full Intelligence Dashboard) -->
@@ -1408,6 +1416,10 @@
             </div>
           </div>
         </div>
+        <!-- Floating Add Button -->
+        <button class="section-fab" onclick="openCompetitorModal()" title="Add Competitor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
       </section>
 
       <!-- Goals & Strategy Section -->
@@ -1467,6 +1479,10 @@
             <div class="ai-loading">Loading strategy...</div>
           </div>
         </div>
+        <!-- Floating Add Button -->
+        <button class="section-fab" onclick="openGoalModal()" title="Add Goal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
       </section>
 
       <!-- Marketing Content Engine -->
@@ -2002,28 +2018,81 @@
           <!-- Integrations & Data Import -->
           <div class="settings-group">
             <h3 class="settings-group-title">Integrations</h3>
-            <div class="integrations-grid">
+            <p class="settings-hint" style="margin-bottom:16px">Active data sources and upcoming integrations.</p>
+
+            <!-- Active Integrations -->
+            <div style="font-size:13px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Active</div>
+            <div class="integrations-grid" style="margin-bottom:24px">
               <div class="integration-card">
+                <div class="integration-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div class="integration-info">
+                  <div class="integration-name">CSV Import</div>
+                  <div class="integration-desc">Upload products, customers, and sales from spreadsheets</div>
+                  <div class="integration-status connected" style="color:var(--success)">Active</div>
+                </div>
+                <span style="font-size:12px;color:var(--success);font-weight:600;white-space:nowrap">Connected</span>
+              </div>
+              <div class="integration-card">
+                <div class="integration-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <div class="integration-info">
+                  <div class="integration-name">Manual Entry</div>
+                  <div class="integration-desc">Add products, customers, and daily sales through forms</div>
+                  <div class="integration-status connected" style="color:var(--success)">Active</div>
+                </div>
+                <span style="font-size:12px;color:var(--success);font-weight:600;white-space:nowrap">Connected</span>
+              </div>
+              <div class="integration-card">
+                <div class="integration-icon" style="background:linear-gradient(135deg,#6366f1,#06b6d4)">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <div class="integration-info">
+                  <div class="integration-name">Gmail SMTP</div>
+                  <div class="integration-desc">Send win-back emails and campaigns via your Gmail</div>
+                  <div class="integration-status" id="smtpIntegrationStatus" style="color:var(--text3)">Configure above</div>
+                </div>
+                <span style="font-size:12px;color:var(--text3);font-weight:600;white-space:nowrap">See SMTP settings</span>
+              </div>
+            </div>
+
+            <!-- Coming Soon Integrations -->
+            <div style="font-size:13px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Coming Soon</div>
+            <div class="integrations-grid">
+              <div class="integration-card" style="opacity:.75">
                 <div class="integration-icon" style="background:#96bf48">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
                 </div>
                 <div class="integration-info">
                   <div class="integration-name">Shopify</div>
-                  <div class="integration-desc">Automatically import products, customers, and sales</div>
-                  <div class="integration-status not-connected">Not connected</div>
+                  <div class="integration-desc">Auto-sync products, customers, and sales from your Shopify store</div>
+                  <div class="integration-status not-connected" style="color:var(--warning)">Coming Soon</div>
                 </div>
-                <button class="mke-btn" onclick="showIntegrationComingSoon('Shopify')" style="font-size:12px;padding:6px 14px;white-space:nowrap">Connect</button>
+                <button class="mke-btn" onclick="notifyIntegration('Shopify')" style="font-size:12px;padding:6px 14px;white-space:nowrap;background:rgba(245,158,11,.1);color:var(--warning);border:1px solid rgba(245,158,11,.3)">Notify Me</button>
               </div>
-              <div class="integration-card">
+              <div class="integration-card" style="opacity:.75">
                 <div class="integration-icon" style="background:#006aff">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                 </div>
                 <div class="integration-info">
                   <div class="integration-name">Square POS</div>
                   <div class="integration-desc">Connect your Square point-of-sale system</div>
-                  <div class="integration-status not-connected">Not connected</div>
+                  <div class="integration-status not-connected" style="color:var(--warning)">Coming Soon</div>
                 </div>
-                <button class="mke-btn" onclick="showIntegrationComingSoon('Square')" style="font-size:12px;padding:6px 14px;white-space:nowrap">Connect</button>
+                <button class="mke-btn" onclick="notifyIntegration('Square')" style="font-size:12px;padding:6px 14px;white-space:nowrap;background:rgba(245,158,11,.1);color:var(--warning);border:1px solid rgba(245,158,11,.3)">Notify Me</button>
+              </div>
+              <div class="integration-card" style="opacity:.75">
+                <div class="integration-icon" style="background:#0f9d58">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                </div>
+                <div class="integration-info">
+                  <div class="integration-name">Google Sheets</div>
+                  <div class="integration-desc">Sync data directly from your Google Sheets</div>
+                  <div class="integration-status not-connected" style="color:var(--warning)">Coming Soon</div>
+                </div>
+                <button class="mke-btn" onclick="notifyIntegration('Google Sheets')" style="font-size:12px;padding:6px 14px;white-space:nowrap;background:rgba(245,158,11,.1);color:var(--warning);border:1px solid rgba(245,158,11,.3)">Notify Me</button>
               </div>
             </div>
           </div>
