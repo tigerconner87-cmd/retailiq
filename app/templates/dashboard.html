@@ -310,7 +310,8 @@
             <p class="agents-subtitle">Autonomous AI operations engine. Deploy agents, verify quality, ship deliverables.</p>
           </div>
           <div class="agents-header-actions">
-            <button class="mke-btn primary" id="agentNewTaskBtn" onclick="document.getElementById('agentQuickTaskBar').hidden=false;document.getElementById('agentQuickTaskBar').style.display='flex';document.getElementById('aqtTitle').focus()">+ Assign Task</button>
+            <button class="mke-btn primary" id="runAllAgentsBtn" onclick="runAllAgents()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;font-weight:600">Run All Agents</button>
+            <button class="mke-btn" id="agentNewTaskBtn" onclick="document.getElementById('agentQuickTaskBar').hidden=false;document.getElementById('agentQuickTaskBar').style.display='flex';document.getElementById('aqtTitle').focus()">+ Assign Task</button>
           </div>
         </div>
 
@@ -582,6 +583,21 @@
               <button class="mke-btn" onclick="copyAgentOutput()">Copy</button>
               <button class="mke-btn primary" id="aoSendEmailBtn" onclick="sendAgentOutputEmail()" style="display:none">Send Email</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent History Modal -->
+      <div class="agent-output-overlay" id="agentHistoryModal" hidden style="display:none" onclick="if(event.target===this){this.hidden=true;this.style.display='none'}">
+        <div class="agent-output-modal" style="max-width:700px;max-height:85vh">
+          <div class="agent-output-modal-header">
+            <div>
+              <h3 id="ahModalTitle">Agent History</h3>
+              <span id="ahModalStats" style="font-size:13px;color:var(--text3)"></span>
+            </div>
+            <button class="agent-config-close" onclick="this.closest('.agent-output-overlay').hidden=true;this.closest('.agent-output-overlay').style.display='none'">&times;</button>
+          </div>
+          <div class="agent-output-modal-body" id="ahModalBody" style="max-height:60vh;overflow-y:auto">
           </div>
         </div>
       </div>

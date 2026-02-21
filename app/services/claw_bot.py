@@ -141,6 +141,71 @@ def _audit(db: Session, shop_id: str, actor: str, action: str,
     ))
 
 
+def _text_to_outputs(text: str, agent_type: str) -> list:
+    """Convert raw text into structured outputs by splitting on headers/sections."""
+    agent_output_types = {
+        "maya": "instagram_post", "scout": "market_report",
+        "emma": "winback_email", "alex": "daily_briefing", "max": "bundle_suggestion",
+    }
+    default_type = agent_output_types.get(agent_type, "general")
+
+    # Try splitting on markdown headers (##, ###)
+    sections = re.split(r'\n(?=#{1,3}\s)', text.strip())
+    if len(sections) > 1:
+        outputs = []
+        for sec in sections:
+            sec = sec.strip()
+            if not sec:
+                continue
+            lines = sec.split('\n', 1)
+            title = lines[0].lstrip('#').strip()
+            content = lines[1].strip() if len(lines) > 1 else title
+            if len(title) > 200:
+                title = title[:100] + '...'
+            outputs.append({"type": default_type, "title": title, "content": content, "metadata": {}})
+        if outputs:
+            return outputs
+
+    # Try splitting on ALL-CAPS section headers (e.g., "REVENUE PERFORMANCE:", "KEY INSIGHTS:")
+    caps_sections = re.split(r'\n(?=[A-Z][A-Z\s&/]+:)', text.strip())
+    if len(caps_sections) > 1:
+        outputs = []
+        for sec in caps_sections:
+            sec = sec.strip()
+            if not sec:
+                continue
+            lines = sec.split('\n', 1)
+            title = lines[0].rstrip(':').strip()
+            content = sec
+            if len(title) > 100:
+                title = title[:80] + '...'
+            outputs.append({"type": default_type, "title": title.title(), "content": content, "metadata": {}})
+        if outputs:
+            return outputs
+
+    # Try splitting on numbered items (1. 2. 3.)
+    items = re.split(r'\n(?=\d+\.?\s)', text.strip())
+    if len(items) > 2:
+        outputs = []
+        for item in items:
+            item = item.strip()
+            if not item or len(item) < 20:
+                continue
+            title_match = re.match(r'\d+\.?\s*(.+?)[\n:]', item)
+            title = title_match.group(1).strip() if title_match else item[:80]
+            outputs.append({"type": default_type, "title": title, "content": item, "metadata": {}})
+        if outputs:
+            return outputs
+
+    # Last resort: single output
+    return [{
+        "type": default_type,
+        "title": f"{AGENT_NAMES.get(agent_type, 'Agent')} Analysis",
+        "content": text,
+        "metadata": {},
+    }]
+
+
 class ClawBot:
     """Autonomous AI operations engine."""
 
@@ -254,11 +319,50 @@ class ClawBot:
         """Run a single agent with the full verify/retry loop."""
         if not instructions:
             default_instructions = {
-                "maya": "Create 3 engaging social media posts for our shop based on current products and trends.",
-                "scout": "Provide a competitive intelligence briefing with opportunities and threats.",
-                "emma": "Identify at-risk customers and draft win-back emails. Also draft responses to any recent negative reviews.",
-                "alex": "Create a daily business briefing with key metrics, trends, and recommended actions.",
-                "max": "Analyze current product performance and suggest 2 bundles and 2 pricing optimizations.",
+                "maya": (
+                    "Create this week's complete marketing content package:\n"
+                    "1. Create 5 Instagram posts (one for each weekday) with full captions, CTAs, and 20 hashtags each. Use actual product names and trends.\n"
+                    "2. Create 2 Facebook posts — one product spotlight and one community engagement post.\n"
+                    "3. Draft 1 email campaign for this week targeting customers who haven't visited recently.\n"
+                    "4. Suggest 1 promotion idea with execution plan and estimated revenue impact.\n"
+                    "Reference real products, real revenue trends, and real competitor weaknesses in all content."
+                ),
+                "scout": (
+                    "Create a full competitive intelligence report:\n"
+                    "1. Analyze each competitor's current rating and review count vs ours.\n"
+                    "2. Identify the top 3 opportunities where competitors are showing weakness.\n"
+                    "3. Identify the top 2 threats where competitors are gaining strength.\n"
+                    "4. Draft specific competitive response content for each opportunity.\n"
+                    "5. Provide an overall market position summary.\n"
+                    "Use actual competitor names, ratings, and review data."
+                ),
+                "emma": (
+                    "Create a complete customer outreach package:\n"
+                    "1. Draft win-back emails for 5 at-risk customers (personalized with customer name, days inactive, favorite product, discount code).\n"
+                    "2. Draft professional responses for any recent negative reviews.\n"
+                    "3. Create VIP appreciation messages for our top 3 VIP customers.\n"
+                    "4. Suggest 1 customer retention strategy based on the at-risk segment data.\n"
+                    "Use actual customer segment numbers and actual product names."
+                ),
+                "alex": (
+                    "Create a comprehensive executive briefing:\n"
+                    "1. Today's performance: revenue vs yesterday, this week vs last week, this month vs last month.\n"
+                    "2. Top 3 performing products with trends and why they're winning.\n"
+                    "3. Top 3 underperforming areas with specific recommendations to fix each.\n"
+                    "4. Goal progress: are we on track? What's needed to hit the monthly goal?\n"
+                    "5. Create 5 prioritized action items (P1/P2/P3) for this week.\n"
+                    "6. 30-day revenue forecast based on current trends.\n"
+                    "Use exact revenue numbers from the data. No generic advice."
+                ),
+                "max": (
+                    "Create a revenue optimization report:\n"
+                    "1. Suggest 3 product bundle ideas using actual products that complement each other.\n"
+                    "2. Recommend 2 price adjustments (one increase for a hot seller, one decrease for a slow mover) with rationale.\n"
+                    "3. Identify 2 slow-moving products that need markdown or promotion.\n"
+                    "4. Suggest 2 upsell strategies for checkout (what to recommend when a customer buys X).\n"
+                    "5. Estimate total revenue impact of all recommendations combined.\n"
+                    "Use actual product names, prices, and sales volumes."
+                ),
             }
             instructions = default_instructions.get(agent_type, "Provide your best analysis and recommendations.")
 
@@ -300,7 +404,7 @@ class ClawBot:
     async def _plan(self, command: str) -> dict:
         """Call Claude to decompose a command into an execution plan."""
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(
                     CLAUDE_API_URL,
                     headers={
@@ -382,12 +486,8 @@ class ClawBot:
                     raw_outputs = parsed["outputs"]
                     summary = parsed.get("summary", "Task completed.")
                 else:
-                    raw_outputs = [{
-                        "type": "general",
-                        "title": f"{AGENT_NAMES.get(task.agent_type, 'Agent')} Response",
-                        "content": text,
-                        "metadata": {},
-                    }]
+                    # Fallback: split raw text into structured sections
+                    raw_outputs = _text_to_outputs(text, task.agent_type)
                     summary = f"{AGENT_NAMES.get(task.agent_type, 'Agent')} completed the task."
 
                 # ── VERIFY ──
@@ -522,7 +622,7 @@ class ClawBot:
     async def _call_agent(self, system_prompt: str, instructions: str) -> tuple[str, int]:
         """Call Claude for an agent task, return (text, tokens_used)."""
         log.info("[ClawBot] Calling agent — model=%s, instructions=%s...", CLAUDE_MODEL, instructions[:80])
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=120) as client:
             resp = await client.post(
                 CLAUDE_API_URL,
                 headers={
@@ -532,7 +632,7 @@ class ClawBot:
                 },
                 json={
                     "model": CLAUDE_MODEL,
-                    "max_tokens": 4096,
+                    "max_tokens": 8000,
                     "system": system_prompt,
                     "messages": [{"role": "user", "content": instructions}],
                 },
@@ -562,7 +662,7 @@ class ClawBot:
             )
             verify_input = f"INSTRUCTIONS: {instructions}\n\nAGENT OUTPUT:\n{output_text}"
 
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(
                     CLAUDE_API_URL,
                     headers={

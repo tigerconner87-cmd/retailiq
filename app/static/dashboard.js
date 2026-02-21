@@ -4231,8 +4231,16 @@ document.addEventListener('DOMContentLoaded', () => {
       // Render agent cards + custom agent builder teaser
       const grid = $('#agentsGrid');
       if (!grid) return;
+      const AGENT_RUN_LABELS = {
+        maya: 'Generate Content',
+        scout: 'Run Competitor Scan',
+        emma: 'Draft Outreach',
+        alex: 'Generate Briefing',
+        max: 'Find Opportunities',
+      };
       const agentCards = data.agents.map(agent => {
         const effectiveness = Math.min(98, 70 + agent.tasks_month * 2);
+        const runLabel = AGENT_RUN_LABELS[agent.agent_type] || 'Run Now';
         return `
         <div class="agent-card" data-agent="${agent.agent_type}" style="--agent-color:${agent.color}">
           <div class="agent-card-top">
@@ -4255,10 +4263,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           ${agent.last_action ? '<div class="agent-last-action">' + esc(agent.last_action) + ' <span class="agent-time">' + timeAgo(agent.last_action_at) + '</span></div>' : ''}
           <div class="agent-card-actions">
-            <button class="agent-btn agent-btn-run" id="agentRunBtn-${agent.agent_type}" onclick="runSingleAgent('${agent.agent_type}')">Run Now</button>
+            <button class="agent-btn agent-btn-run" id="agentRunBtn-${agent.agent_type}" data-label="${esc(runLabel)}" onclick="runSingleAgent('${agent.agent_type}')">${runLabel}</button>
             <button class="agent-btn agent-btn-chat" onclick="openAgentChat('${agent.agent_type}')">Chat</button>
             <button class="agent-btn agent-btn-config" onclick="openAgentConfig('${agent.agent_type}')">Configure</button>
-            <button class="agent-btn agent-btn-activity" onclick="showAgentActivity('${agent.agent_type}')">Activity</button>
+            <button class="agent-btn agent-btn-activity" onclick="showAgentHistory('${agent.agent_type}')">History</button>
           </div>
         </div>`;
       }).join('');
@@ -4510,26 +4518,39 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:2rem;margin-bottom:0.5rem">&#128230;</div>No deliverables yet. Run a command to generate outputs.</div>';
         return;
       }
+      const agentEmojis = {maya:'&#128227;',scout:'&#128269;',emma:'&#128154;',alex:'&#128202;',max:'&#128176;'};
+      const agentCredit = {maya:'Created by Maya',scout:'Identified by Scout',emma:'Drafted by Emma',alex:'Analysis by Alex',max:'Recommended by Max'};
       grid.innerHTML = items.map(d => {
         const statusColors = {draft:'#f59e0b',approved:'#10b981',shipped:'#6366f1',rejected:'#ef4444'};
         const statusColor = statusColors[d.status] || '#71717a';
         const quality = d.overall_quality ? Math.round(d.overall_quality) : '—';
         const qualityColor = d.overall_quality >= 80 ? '#10b981' : d.overall_quality >= 60 ? '#f59e0b' : '#ef4444';
-        const timeAgo = agentTimeAgo(d.created_at);
+        const tAgo = agentTimeAgo(d.created_at);
+        const credit = (agentCredit[d.agent_type] || d.agent_type) + ' ' + (agentEmojis[d.agent_type] || '');
+        const typeBadge = (d.deliverable_type || 'general').replace(/_/g, ' ');
+        const aColor = d.agent_color || '#6366f1';
         return `
         <div class="deliverable-card" style="background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:600;color:var(--text1)">${esc(d.title || d.deliverable_type)}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${aColor}18;color:${aColor};font-weight:600;text-transform:capitalize">${typeBadge}</span>
+              <span style="font-weight:600;color:var(--text1)">${esc(d.title || d.deliverable_type)}</span>
+            </div>
             <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${statusColor}22;color:${statusColor};font-weight:600;text-transform:uppercase">${d.status}</span>
           </div>
-          <div style="font-size:13px;color:var(--text3)">${esc(d.agent_type)} &middot; ${d.deliverable_type} &middot; ${timeAgo}</div>
-          <div style="font-size:13px;color:var(--text2);max-height:60px;overflow:hidden;text-overflow:ellipsis">${esc((d.content || '').substring(0, 200))}</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto">
+          <div style="font-size:12px;color:var(--text3)">${credit} &middot; ${tAgo}</div>
+          <div style="font-size:13px;color:var(--text2);max-height:80px;overflow:hidden;line-height:1.5;white-space:pre-line">${esc((d.content || '').substring(0, 250))}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto;gap:6px;flex-wrap:wrap">
             <span style="font-size:12px;font-weight:700;color:${qualityColor}">Quality: ${quality}/100</span>
-            ${d.status === 'draft' ? '<button class="btn-sm" onclick="approveDeliverable(' + d.id + ')" style="font-size:11px;padding:4px 12px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer">Approve</button>' : ''}
+            <div style="display:flex;gap:4px">
+              <button onclick="copyDeliverableContent('${d.id}')" style="font-size:11px;padding:4px 10px;background:var(--bg-3);color:var(--text2);border:1px solid var(--border);border-radius:6px;cursor:pointer" title="Copy to clipboard">Copy</button>
+              ${d.status === 'draft' ? '<button onclick="approveDeliverable(&#39;'+d.id+'&#39;)" style="font-size:11px;padding:4px 10px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer">Approve</button>' : ''}
+            </div>
           </div>
         </div>`;
       }).join('');
+      // Store data for copy function
+      window._deliverablesData = items;
     } catch (err) {
       grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger)">Failed to load deliverables</div>';
     }
@@ -4893,6 +4914,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Run Single Agent ──
   window.runSingleAgent = async function(agentType) {
     const btn = $('#agentRunBtn-' + agentType);
+    const originalLabel = btn ? (btn.dataset.label || 'Run Now') : 'Run Now';
+    const agentNames = {maya:'Maya',scout:'Scout',emma:'Emma',alex:'Alex',max:'Max'};
+    const name = agentNames[agentType] || agentType;
     if (btn) { btn.classList.add('running'); btn.textContent = 'Running...'; btn.disabled = true; }
 
     try {
@@ -4905,19 +4929,21 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.error) {
         showToast(data.error, 'error');
       } else {
-        const name = data.agent_name || agentType;
         const outCount = (data.outputs || []).length;
-        showToast(name + ' produced ' + outCount + ' output(s)!', 'success');
+        showToast(name + ' produced ' + outCount + ' deliverable(s)! View them in the Outputs tab.', 'success', 5000);
         loadAgentActivityFeed('');
         _agentOutputsData = null;
         _agentTasksData = null;
         loadAgentMetricsBar();
+        // Auto-switch to Outputs tab to show results
+        const outputsTab = document.querySelector('.agents-tab[data-tab="outputs"]');
+        if (outputsTab) outputsTab.click();
       }
     } catch (err) {
       showToast('Run failed: ' + err.message, 'error');
     }
 
-    if (btn) { btn.classList.remove('running'); btn.textContent = 'Run Now'; btn.disabled = false; }
+    if (btn) { btn.classList.remove('running'); btn.textContent = originalLabel; btn.disabled = false; }
   };
 
   // ── Agent Outputs Grid ──
@@ -4941,17 +4967,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const agentNames = { maya: 'Maya', scout: 'Scout', emma: 'Emma', alex: 'Alex', max: 'Max' };
+      const agentNames2 = { maya: 'Maya', scout: 'Scout', emma: 'Emma', alex: 'Alex', max: 'Max' };
+      const agentCreditEmoji = {maya:'Created by Maya &#128227;',scout:'Identified by Scout &#128269;',emma:'Drafted by Emma &#128154;',alex:'Analysis by Alex &#128202;',max:'Recommended by Max &#128176;'};
       grid.innerHTML = data.outputs.map(o => `
         <div class="agent-output-card" style="--agent-color:${o.agent_color}" onclick="showAgentOutput('${o.id}')">
           <div class="agent-output-card-top">
-            <span class="agent-output-type-badge" style="background:${o.agent_color}20;color:${o.agent_color}">${o.output_type.replace(/_/g, ' ')}</span>
-            <span class="agent-output-agent">${agentNames[o.agent_type] || o.agent_type}</span>
+            <span class="agent-output-type-badge" style="background:${o.agent_color}20;color:${o.agent_color}">${(o.output_type||'').replace(/_/g, ' ')}</span>
+            <span class="agent-output-agent">${agentCreditEmoji[o.agent_type] || agentNames2[o.agent_type] || o.agent_type}</span>
           </div>
           <div class="agent-output-card-title">${esc(o.title)}</div>
-          <div class="agent-output-card-preview">${esc(o.content.substring(0, 120))}${o.content.length > 120 ? '...' : ''}</div>
+          <div class="agent-output-card-preview">${esc(o.content.substring(0, 150))}${o.content.length > 150 ? '...' : ''}</div>
           <div class="agent-output-card-footer">
             <span class="agent-output-card-time">${timeAgo(o.created_at)}</span>
+            <button class="agent-output-copy-btn" onclick="event.stopPropagation();copyOutputById('${o.id}')" style="font-size:11px;padding:2px 8px;background:var(--bg-3);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2)">Copy</button>
             ${o.rating ? '<span class="agent-output-card-rating">' + '&#9733;'.repeat(o.rating) + '</span>' : ''}
           </div>
         </div>
@@ -5034,6 +5062,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(() => {
       showToast('Failed to copy', 'error');
     });
+  };
+
+  // ── Copy Output by ID ──
+  window.copyOutputById = function(id) {
+    if (!_agentOutputsData) return;
+    const o = _agentOutputsData.outputs.find(x => x.id === id);
+    if (!o) return;
+    navigator.clipboard.writeText(o.content).then(() => {
+      showToast('Copied to clipboard!', 'success');
+    }).catch(() => {
+      showToast('Failed to copy', 'error');
+    });
+  };
+
+  // ── Copy Deliverable Content ──
+  window.copyDeliverableContent = function(id) {
+    const items = window._deliverablesData || [];
+    const d = items.find(x => x.id === id);
+    if (!d) return;
+    navigator.clipboard.writeText(d.content).then(() => {
+      showToast('Copied to clipboard!', 'success');
+    }).catch(() => {
+      showToast('Failed to copy', 'error');
+    });
+  };
+
+  // ── Agent History Modal ──
+  window.showAgentHistory = async function(agentType) {
+    const agentNames = {maya:'Maya',scout:'Scout',emma:'Emma',alex:'Alex',max:'Max'};
+    const agentEmojis = {maya:'&#128227;',scout:'&#128269;',emma:'&#128154;',alex:'&#128202;',max:'&#128176;'};
+    const name = agentNames[agentType] || agentType;
+    const modal = $('#agentHistoryModal');
+    const title = $('#ahModalTitle');
+    const stats = $('#ahModalStats');
+    const body = $('#ahModalBody');
+    if (!modal || !body) return;
+    modal.hidden = false;
+    modal.style.display = 'flex';
+    if (title) title.textContent = name + ' History ' + (agentEmojis[agentType] || '');
+    if (stats) stats.textContent = 'Loading...';
+    body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Loading history...</div>';
+    try {
+      const res = await fetch('/api/agents/' + agentType + '/outputs?limit=50', {credentials:'same-origin'});
+      const data = await res.json();
+      const outputs = data.outputs || [];
+      if (stats) stats.textContent = name + ' has created ' + data.total + ' deliverables total';
+      if (outputs.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text3)">No outputs yet. Click "' + (agentType === 'maya' ? 'Generate Content' : 'Run') + '" to get started.</div>';
+        return;
+      }
+      window._historyOutputs = outputs;
+      body.innerHTML = outputs.map((o, idx) => `
+        <div style="border-bottom:1px solid var(--border);padding:14px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${o.agent_color}18;color:${o.agent_color};font-weight:600;text-transform:capitalize">${(o.output_type||'').replace(/_/g,' ')}</span>
+              <strong style="color:var(--text1)">${esc(o.title)}</strong>
+            </div>
+            <span style="font-size:11px;color:var(--text3)">${timeAgo(o.created_at)}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text2);white-space:pre-line;max-height:100px;overflow:hidden;line-height:1.5">${esc(o.content.substring(0, 300))}${o.content.length > 300 ? '...' : ''}</div>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <button onclick="copyHistoryItem(${idx})" style="font-size:11px;padding:3px 10px;background:var(--bg-3);color:var(--text2);border:1px solid var(--border);border-radius:6px;cursor:pointer">Copy</button>
+            ${o.rating ? '<span style="color:#f59e0b;font-size:12px">' + '&#9733;'.repeat(o.rating) + '</span>' : ''}
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger)">Failed to load history</div>';
+    }
+  };
+
+  window.copyHistoryItem = function(idx) {
+    const items = window._historyOutputs || [];
+    if (idx < items.length) {
+      navigator.clipboard.writeText(items[idx].content).then(() => {
+        showToast('Copied to clipboard!', 'success');
+      }).catch(() => {
+        showToast('Failed to copy', 'error');
+      });
+    }
   };
 
   // ── Metrics Bar (enhanced) ──
@@ -6093,26 +6202,39 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.runAllAgents = async function() {
-    showToast('Running all agents...', 'info', 4000);
-    const agentTypes = ['marketing', 'competitor', 'customer', 'strategy', 'sales'];
+    const btn = $('#runAllAgentsBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Running...'; }
+    const agentTypes = ['maya', 'scout', 'emma', 'alex', 'max'];
+    const agentNames = {maya:'Maya',scout:'Scout',emma:'Emma',alex:'Alex',max:'Max'};
     let completed = 0;
+    let totalOutputs = 0;
     for (const agentType of agentTypes) {
+      showToast('Running ' + agentNames[agentType] + '...', 'info', 3000);
       try {
-        const res = await fetch('/api/ai/agent/' + agentType + '/chat', {
+        const res = await fetch('/api/agents/' + agentType + '/run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ message: 'Run your daily analysis and provide a summary report.' }),
+          body: JSON.stringify({ instructions: '' }),
         });
-        if (res.ok) completed++;
+        const data = await res.json();
+        if (!data.error) {
+          completed++;
+          totalOutputs += (data.outputs || []).length;
+        }
       } catch (e) {
         console.warn('[Forge] Agent run failed:', agentType, e);
       }
     }
-    showToast('All agents completed! (' + completed + '/' + agentTypes.length + ')', 'success');
-    // Refresh overview to show new data
-    const activeNav = document.querySelector('.nav-item.active');
-    if (activeNav) loadSection(activeNav.dataset.section);
+    showToast('All agents complete! ' + totalOutputs + ' deliverables generated.', 'success', 5000);
+    if (btn) { btn.disabled = false; btn.textContent = 'Run All Agents'; }
+    // Refresh data and switch to outputs tab
+    _agentOutputsData = null;
+    _agentTasksData = null;
+    loadAgentActivityFeed('');
+    loadAgentMetricsBar();
+    const outputsTab = document.querySelector('.agents-tab[data-tab="outputs"]');
+    if (outputsTab) outputsTab.click();
   };
 
   // ── Claw Bot Error Handling Enhancement ──
