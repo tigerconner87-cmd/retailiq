@@ -602,6 +602,45 @@
         </div>
       </div>
 
+      <!-- OpenClaw Engine Panel (injected into agents page by JS) -->
+      <div id="openclawEnginePanel" style="display:none">
+        <!-- Engine Status Bar -->
+        <div class="openclaw-status-bar" id="openclawStatusBar">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="openclaw-pulse"></div>
+            <div>
+              <strong>OpenClaw Engine</strong>
+              <span id="openclawStatusText" style="color:var(--text3);margin-left:8px">Starting...</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="openclawInsightBadge" class="insight-badge" style="display:none">0</span>
+            <button class="mke-btn" onclick="loadInsights()" style="font-size:13px">Insights</button>
+            <button class="mke-btn" onclick="loadSchedules()" style="font-size:13px">Schedules</button>
+            <button class="mke-btn" onclick="loadMemories()" style="font-size:13px">Memory</button>
+            <button class="mke-btn" onclick="runWebResearch()" style="font-size:13px">Web Research</button>
+          </div>
+        </div>
+
+        <!-- Proactive Insights Feed -->
+        <div id="openclawInsightsPanel" style="display:none;margin-top:12px">
+          <h4 style="margin:0 0 8px;font-size:14px;color:var(--text2)">Proactive Insights</h4>
+          <div id="openclawInsightsList"></div>
+        </div>
+
+        <!-- Schedules Panel -->
+        <div id="openclawSchedulesPanel" style="display:none;margin-top:12px">
+          <h4 style="margin:0 0 8px;font-size:14px;color:var(--text2)">Autonomous Schedules</h4>
+          <div id="openclawSchedulesList"></div>
+        </div>
+
+        <!-- Memory Panel -->
+        <div id="openclawMemoryPanel" style="display:none;margin-top:12px">
+          <h4 style="margin:0 0 8px;font-size:14px;color:var(--text2)">Agent Memory</h4>
+          <div id="openclawMemoryList"></div>
+        </div>
+      </div>
+
       <!-- Universal Edit Modal -->
       <div class="forge-modal-overlay" id="forgeEditModal" hidden style="display:none" onclick="if(event.target===this)closeForgeModal()">
         <div class="forge-modal">

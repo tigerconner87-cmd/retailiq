@@ -4282,6 +4282,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       grid.innerHTML = agentCards + builderCard;
 
+      // Show OpenClaw engine panel
+      initOpenClawPanel();
+
       // Load activity feed
       loadAgentActivityFeed('');
 
@@ -5164,6 +5167,184 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load metrics on agents page load
   loadAgentMetricsBar();
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // OPENCLAW ENGINE UI
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function initOpenClawPanel() {
+    const panel = $('#openclawEnginePanel');
+    if (!panel) return;
+    // Move panel into the agents content area (after the grid)
+    const grid = $('#agentsGrid');
+    if (grid && grid.parentNode) {
+      grid.parentNode.insertBefore(panel, grid.nextSibling.nextSibling || null);
+    }
+    panel.style.display = 'block';
+    loadEngineStatus();
+  }
+
+  async function loadEngineStatus() {
+    try {
+      const res = await fetch('/api/agents/engine-status', { credentials: 'same-origin' });
+      const data = await res.json();
+      if (data.error) return;
+      const statusEl = $('#openclawStatusText');
+      if (statusEl) {
+        const parts = [];
+        if (data.active_schedules) parts.push(data.active_schedules + ' schedules');
+        if (data.total_memories) parts.push(data.total_memories + ' memories');
+        if (data.unread_insights) parts.push(data.unread_insights + ' insights');
+        if (data.next_scheduled_task) parts.push('Next: ' + data.next_scheduled_task);
+        statusEl.textContent = data.engine_running ? (parts.join(' · ') || 'Running') : 'Stopped';
+      }
+      const badge = $('#openclawInsightBadge');
+      if (badge && data.unread_insights > 0) {
+        badge.textContent = data.unread_insights;
+        badge.style.display = 'inline-block';
+      }
+    } catch (e) {
+      const statusEl = $('#openclawStatusText');
+      if (statusEl) statusEl.textContent = 'Initializing...';
+    }
+  }
+
+  window.loadInsights = async function() {
+    toggleOCPanel('openclawInsightsPanel');
+    const list = $('#openclawInsightsList');
+    if (!list) return;
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading insights...</div>';
+    try {
+      const res = await fetch('/api/agents/insights?limit=10', { credentials: 'same-origin' });
+      const data = await res.json();
+      if (!data.insights || data.insights.length === 0) {
+        list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px">No insights yet. The engine will detect opportunities and threats automatically.</div>';
+        return;
+      }
+      list.innerHTML = data.insights.map(i => `
+        <div class="insight-card" data-id="${i.id}">
+          <div class="insight-header">
+            <span class="schedule-agent" style="background:${i.agent_color}">${i.agent_type}</span>
+            <span class="insight-severity ${i.severity}">${i.severity}</span>
+            <span style="font-size:11px;color:var(--text3);margin-left:auto">${timeAgo(i.created_at)}</span>
+          </div>
+          <div class="insight-title">${esc(i.title)}</div>
+          <div class="insight-content">${esc(i.content).substring(0, 200)}${i.content.length > 200 ? '...' : ''}</div>
+          <div class="insight-actions">
+            ${!i.is_read ? '<button class="mke-btn" style="font-size:11px;padding:3px 10px" onclick="markInsightRead(\'' + i.id + '\', this)">Mark Read</button>' : ''}
+            ${!i.is_actioned ? '<button class="mke-btn primary" style="font-size:11px;padding:3px 10px" onclick="actionInsight(\'' + i.id + '\', \'' + i.agent_type + '\')">Run Agent</button>' : '<span style="font-size:11px;color:#22c55e">Actioned</span>'}
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = '<div style="color:var(--text3);font-size:13px">Failed to load insights</div>';
+    }
+  };
+
+  window.markInsightRead = async function(id, btn) {
+    await fetch('/api/agents/insights/' + id + '/read', { method: 'POST', credentials: 'same-origin' });
+    if (btn) btn.remove();
+    loadEngineStatus();
+  };
+
+  window.actionInsight = async function(id, agentType) {
+    await fetch('/api/agents/insights/' + id + '/action', { method: 'POST', credentials: 'same-origin' });
+    showToast('Running ' + agentType + '...', 'info');
+    runSingleAgent(agentType);
+    loadInsights();
+  };
+
+  window.loadSchedules = async function() {
+    toggleOCPanel('openclawSchedulesPanel');
+    const list = $('#openclawSchedulesList');
+    if (!list) return;
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading schedules...</div>';
+    try {
+      const res = await fetch('/api/agents/schedules', { credentials: 'same-origin' });
+      const data = await res.json();
+      if (!data.schedules || data.schedules.length === 0) {
+        list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px">No schedules configured.</div>';
+        return;
+      }
+      list.innerHTML = data.schedules.map(s => {
+        const nextRun = s.next_run_at ? new Date(s.next_run_at).toLocaleString() : 'Not scheduled';
+        const lastRun = s.last_run_at ? timeAgo(s.last_run_at) : 'Never';
+        return `
+        <div class="schedule-card">
+          <div class="schedule-info">
+            <div><span class="schedule-agent" style="background:${s.agent_color}">${s.agent_type}</span><span class="schedule-name">${esc(s.task_name)}</span></div>
+            <div class="schedule-meta">${s.schedule_type} · Runs: ${s.run_count} · Last: ${lastRun} · Next: ${nextRun}${s.last_status ? ' · Status: ' + s.last_status : ''}</div>
+          </div>
+          <button class="schedule-toggle ${s.is_active ? 'active' : 'inactive'}" onclick="toggleSchedule('${s.id}', this)" title="${s.is_active ? 'Pause' : 'Activate'}"></button>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = '<div style="color:var(--text3);font-size:13px">Failed to load schedules</div>';
+    }
+  };
+
+  window.toggleSchedule = async function(id, btn) {
+    try {
+      const res = await fetch('/api/agents/schedules/' + id + '/toggle', { method: 'PUT', credentials: 'same-origin' });
+      const data = await res.json();
+      if (data.ok) {
+        btn.className = 'schedule-toggle ' + (data.is_active ? 'active' : 'inactive');
+        showToast('Schedule ' + (data.is_active ? 'activated' : 'paused'), 'success');
+      }
+    } catch (e) {
+      showToast('Failed to toggle schedule', 'error');
+    }
+  };
+
+  window.loadMemories = async function() {
+    toggleOCPanel('openclawMemoryPanel');
+    const list = $('#openclawMemoryList');
+    if (!list) return;
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px">Loading memories...</div>';
+    try {
+      const res = await fetch('/api/agents/memory?limit=20', { credentials: 'same-origin' });
+      const data = await res.json();
+      if (!data.memories || data.memories.length === 0) {
+        list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px">No agent memories yet. Memories are created as agents run and learn from their outputs.</div>';
+        return;
+      }
+      list.innerHTML = data.memories.map(m => `
+        <div class="memory-card">
+          <span class="memory-agent" style="background:${m.agent_color}">${m.agent_type}</span>
+          <div style="flex:1">
+            <div>${esc(m.content)}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${m.memory_type} · accessed ${m.access_count}x · ${timeAgo(m.created_at)}</div>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = '<div style="color:var(--text3);font-size:13px">Failed to load memories</div>';
+    }
+  };
+
+  window.runWebResearch = async function() {
+    showToast('Running web research on competitors...', 'info', 5000);
+    try {
+      const res = await fetch('/api/agents/research', { method: 'POST', credentials: 'same-origin' });
+      const data = await res.json();
+      if (data.error) {
+        showToast('Research failed: ' + data.error, 'error');
+        return;
+      }
+      const compCount = (data.competitor_research || []).length;
+      const trendCount = data.market_trends ? 1 : 0;
+      showToast('Web research complete: ' + compCount + ' competitors, ' + trendCount + ' trend reports', 'success', 5000);
+    } catch (e) {
+      showToast('Web research failed', 'error');
+    }
+  };
+
+  function toggleOCPanel(panelId) {
+    ['openclawInsightsPanel', 'openclawSchedulesPanel', 'openclawMemoryPanel'].forEach(id => {
+      const el = $('#' + id);
+      if (el) el.style.display = id === panelId && el.style.display === 'none' ? 'block' : 'none';
+    });
+  }
 
   // ── End Agent Fleet ──
 

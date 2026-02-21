@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import FastAPI, Request
@@ -91,12 +92,30 @@ def on_startup():
         "CREATE INDEX IF NOT EXISTS ix_agent_deliverables_shop ON agent_deliverables (shop_id)",
         "CREATE INDEX IF NOT EXISTS ix_audit_log_shop ON audit_log (shop_id, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS ix_email_sequences_shop ON email_sequences (shop_id)",
+        # OpenClaw Engine indexes
+        "CREATE INDEX IF NOT EXISTS ix_agent_memories_shop ON agent_memories (shop_id, agent_type)",
+        "CREATE INDEX IF NOT EXISTS ix_scheduled_tasks_shop ON scheduled_tasks (shop_id)",
+        "CREATE INDEX IF NOT EXISTS ix_scheduled_tasks_next ON scheduled_tasks (next_run_at) WHERE is_active = true",
+        "CREATE INDEX IF NOT EXISTS ix_proactive_insights_shop ON proactive_insights (shop_id, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_web_research_shop ON web_research_results (shop_id, research_type)",
     ]
     with engine.begin() as conn:
         for stmt in _INDEX_STMTS:
             conn.execute(text(stmt))
 
     log.info("Schema sync complete")
+
+
+@app.on_event("startup")
+async def start_openclaw_engine():
+    """Start the OpenClaw autonomous engine."""
+    try:
+        from app.services.openclaw_engine import OpenClawEngine
+        engine_instance = OpenClawEngine.get_instance()
+        await engine_instance.start()
+        log.info("[OpenClaw] Autonomous engine started")
+    except Exception as e:
+        log.warning("[OpenClaw] Engine start failed (non-fatal): %s", e)
 
 # Static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

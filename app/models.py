@@ -802,3 +802,85 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     shop = relationship("Shop")
+
+
+# ── OpenClaw Engine: Agent Memory ─────────────────────────────────────────
+
+class AgentMemory(Base):
+    __tablename__ = "agent_memories"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False, index=True)
+    memory_type = Column(String(50), nullable=False)  # insight, preference, fact, pattern, success, failure
+    content = Column(Text, nullable=False)
+    importance = Column(Float, default=0.5)  # 0.0-1.0, higher = more important
+    access_count = Column(Integer, default=0)
+    last_accessed = Column(DateTime)
+    source_goal_id = Column(String(36))
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")
+
+
+# ── OpenClaw Engine: Scheduled Tasks ──────────────────────────────────────
+
+class ScheduledTask(Base):
+    __tablename__ = "scheduled_tasks"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    task_name = Column(String(255), nullable=False)
+    agent_type = Column(String(20))  # specific agent or null for multi-agent
+    instructions = Column(Text, nullable=False)
+    schedule_type = Column(String(20), nullable=False)  # daily, weekly, hourly, interval
+    schedule_config = Column(JSON, default=dict)  # {hour: 9, minute: 0, days: ["mon","wed","fri"]}
+    is_active = Column(Boolean, default=True)
+    last_run_at = Column(DateTime)
+    next_run_at = Column(DateTime)
+    run_count = Column(Integer, default=0)
+    last_result_summary = Column(Text)
+    last_status = Column(String(20))  # completed, failed
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")
+
+
+# ── OpenClaw Engine: Proactive Insights ───────────────────────────────────
+
+class ProactiveInsight(Base):
+    __tablename__ = "proactive_insights"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    agent_type = Column(String(20), nullable=False)
+    insight_type = Column(String(50), nullable=False)  # opportunity, threat, alert, suggestion, milestone
+    severity = Column(String(20), default="info")  # critical, warning, info, success
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=False)
+    data_snapshot = Column(JSON, default=dict)  # raw data that triggered the insight
+    is_read = Column(Boolean, default=False)
+    is_actioned = Column(Boolean, default=False)
+    expires_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")
+
+
+# ── OpenClaw Engine: Web Research Cache ───────────────────────────────────
+
+class WebResearchResult(Base):
+    __tablename__ = "web_research_results"
+
+    id = Column(String(36), primary_key=True, default=new_id)
+    shop_id = Column(String(36), ForeignKey("shops.id"), nullable=False, index=True)
+    research_type = Column(String(50), nullable=False)  # competitor_search, trend_search, review_scrape
+    query = Column(Text, nullable=False)
+    results_json = Column(JSON, default=dict)
+    source_urls = Column(JSON, default=list)
+    agent_type = Column(String(20))
+    ttl_hours = Column(Integer, default=24)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    shop = relationship("Shop")

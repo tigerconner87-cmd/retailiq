@@ -315,7 +315,8 @@ class ClawBot:
                 "status": "failed",
             }
 
-    async def execute_single_agent(self, agent_type: str, instructions: str = "") -> dict:
+    async def execute_single_agent(self, agent_type: str, instructions: str = "",
+                                     include_web_research: bool = False) -> dict:
         """Run a single agent with the full verify/retry loop."""
         if not instructions:
             default_instructions = {
@@ -448,6 +449,16 @@ class ClawBot:
         )
         config = config_row.settings if config_row and config_row.settings else {}
         system_prompt = get_agent_prompt(task.agent_type, self.shop_context, config)
+
+        # ── OpenClaw: Inject agent memory ──
+        try:
+            from app.services.openclaw_engine import OpenClawEngine
+            engine = OpenClawEngine.get_instance()
+            task.instructions = await engine.enhance_with_memory(
+                self.db, self.shop.id, task.agent_type, task.instructions
+            )
+        except Exception as e:
+            log.debug("Memory injection skipped: %s", e)
 
         run = AgentRun(
             id=str(uuid.uuid4()),
@@ -584,7 +595,8 @@ class ClawBot:
                    "task", task.id, {"outputs": len(outputs), "quality": quality_score})
             self.db.commit()
 
-            return {
+            # ── OpenClaw: Extract memories from output ──
+            result_dict = {
                 "agent_type": task.agent_type,
                 "agent_name": AGENT_NAMES.get(task.agent_type, task.agent_type),
                 "summary": summary,
@@ -592,7 +604,16 @@ class ClawBot:
                 "tokens_used": tokens_used,
                 "duration_ms": duration_ms,
                 "quality_score": quality_score,
+                "goal_id": goal.id,
             }
+            try:
+                from app.services.openclaw_engine import OpenClawEngine
+                engine = OpenClawEngine.get_instance()
+                await engine.extract_memories(self.db, self.shop.id, task.agent_type, result_dict)
+            except Exception as e:
+                log.debug("Memory extraction skipped: %s", e)
+
+            return result_dict
 
         except Exception as e:
             log.exception("Agent task failed: %s / %s", task.agent_type, task.instructions[:80])

@@ -14,6 +14,7 @@ from app.models import (
     User, Shop, ShopSettings, Agent, AgentActivity,
     TaskGroup, OrchestratedTask, AgentConfig, AgentOutput, AgentRun,
     ExecutionGoal, ExecutionTask, AgentDeliverable, AuditLog,
+    AgentMemory, ScheduledTask, ProactiveInsight, WebResearchResult,
 )
 from app.services.orchestrator import TaskOrchestrator
 from app.services.policy_engine import PolicyEngine
@@ -843,3 +844,354 @@ def get_usage_stats(
         return {"error": "No shop found"}
     engine = PolicyEngine(db, shop.id)
     return engine.get_usage_stats()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# OpenClaw Engine Endpoints
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Scheduled Tasks ───────────────────────────────────────────────────────
+
+@router.get("/schedules")
+def get_schedules(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get all scheduled tasks for this shop."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+
+    # Seed defaults on first access
+    from app.services.openclaw_engine import OpenClawEngine
+    engine = OpenClawEngine.get_instance()
+    engine.seed_default_schedules(db, shop.id)
+
+    tasks = (
+        db.query(ScheduledTask)
+        .filter(ScheduledTask.shop_id == shop.id)
+        .order_by(ScheduledTask.next_run_at)
+        .all()
+    )
+    return {
+        "schedules": [
+            {
+                "id": t.id,
+                "task_name": t.task_name,
+                "agent_type": t.agent_type,
+                "instructions": t.instructions,
+                "schedule_type": t.schedule_type,
+                "schedule_config": t.schedule_config,
+                "is_active": t.is_active,
+                "last_run_at": t.last_run_at.isoformat() if t.last_run_at else None,
+                "next_run_at": t.next_run_at.isoformat() if t.next_run_at else None,
+                "run_count": t.run_count or 0,
+                "last_status": t.last_status,
+                "last_result_summary": t.last_result_summary,
+                "agent_color": AGENT_COLORS.get(t.agent_type, "#6366f1"),
+            }
+            for t in tasks
+        ],
+    }
+
+
+@router.post("/schedules")
+def create_schedule(
+    task_name: str = Body(...),
+    agent_type: str = Body(...),
+    instructions: str = Body(...),
+    schedule_type: str = Body("daily"),
+    schedule_config: dict = Body({}),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new scheduled task."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+
+    from app.services.openclaw_engine import OpenClawEngine
+    engine = OpenClawEngine.get_instance()
+    task = engine.create_schedule(db, shop.id, task_name, agent_type,
+                                  instructions, schedule_type, schedule_config)
+    return {"ok": True, "schedule_id": task.id}
+
+
+@router.put("/schedules/{schedule_id}/toggle")
+def toggle_schedule(
+    schedule_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Toggle a scheduled task on/off."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    task = db.query(ScheduledTask).filter(
+        ScheduledTask.id == schedule_id, ScheduledTask.shop_id == shop.id
+    ).first()
+    if not task:
+        return {"error": "Schedule not found"}
+    task.is_active = not task.is_active
+    db.commit()
+    return {"ok": True, "is_active": task.is_active}
+
+
+@router.delete("/schedules/{schedule_id}")
+def delete_schedule(
+    schedule_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a scheduled task."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    task = db.query(ScheduledTask).filter(
+        ScheduledTask.id == schedule_id, ScheduledTask.shop_id == shop.id
+    ).first()
+    if not task:
+        return {"error": "Schedule not found"}
+    db.delete(task)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Proactive Insights ────────────────────────────────────────────────────
+
+@router.get("/insights")
+def get_insights(
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get proactive insights from the OpenClaw engine."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+
+    insights = (
+        db.query(ProactiveInsight)
+        .filter(ProactiveInsight.shop_id == shop.id)
+        .order_by(desc(ProactiveInsight.created_at))
+        .limit(limit)
+        .all()
+    )
+    unread_count = (
+        db.query(func.count(ProactiveInsight.id))
+        .filter(
+            ProactiveInsight.shop_id == shop.id,
+            ProactiveInsight.is_read == False,
+        )
+        .scalar()
+    ) or 0
+
+    return {
+        "insights": [
+            {
+                "id": i.id,
+                "agent_type": i.agent_type,
+                "agent_color": AGENT_COLORS.get(i.agent_type, "#6366f1"),
+                "insight_type": i.insight_type,
+                "severity": i.severity,
+                "title": i.title,
+                "content": i.content,
+                "data_snapshot": i.data_snapshot,
+                "is_read": i.is_read,
+                "is_actioned": i.is_actioned,
+                "created_at": i.created_at.isoformat(),
+            }
+            for i in insights
+        ],
+        "unread_count": unread_count,
+    }
+
+
+@router.post("/insights/{insight_id}/read")
+def mark_insight_read(
+    insight_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark an insight as read."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    insight = db.query(ProactiveInsight).filter(
+        ProactiveInsight.id == insight_id, ProactiveInsight.shop_id == shop.id
+    ).first()
+    if insight:
+        insight.is_read = True
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/insights/{insight_id}/action")
+def action_insight(
+    insight_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark an insight as actioned."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    insight = db.query(ProactiveInsight).filter(
+        ProactiveInsight.id == insight_id, ProactiveInsight.shop_id == shop.id
+    ).first()
+    if insight:
+        insight.is_actioned = True
+        insight.is_read = True
+        db.commit()
+    return {"ok": True}
+
+
+# ── Agent Memory ──────────────────────────────────────────────────────────
+
+@router.get("/memory")
+def get_agent_memories(
+    agent_type: str = Query("", description="Filter by agent type"),
+    limit: int = Query(30, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get agent memories (learning history)."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    q = db.query(AgentMemory).filter(AgentMemory.shop_id == shop.id)
+    if agent_type:
+        q = q.filter(AgentMemory.agent_type == agent_type)
+    memories = q.order_by(desc(AgentMemory.importance), desc(AgentMemory.created_at)).limit(limit).all()
+    return {
+        "memories": [
+            {
+                "id": m.id,
+                "agent_type": m.agent_type,
+                "agent_color": AGENT_COLORS.get(m.agent_type, "#6366f1"),
+                "memory_type": m.memory_type,
+                "content": m.content,
+                "importance": m.importance,
+                "access_count": m.access_count or 0,
+                "created_at": m.created_at.isoformat(),
+            }
+            for m in memories
+        ],
+    }
+
+
+# ── Web Research ──────────────────────────────────────────────────────────
+
+@router.post("/research")
+async def run_web_research(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Run web research for the shop's competitors and market."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+
+    from app.services.openclaw_engine import OpenClawEngine
+    engine = OpenClawEngine.get_instance()
+    results = await engine.run_web_research(db, shop)
+    return results
+
+
+# ── Task Chaining ─────────────────────────────────────────────────────────
+
+@router.post("/chain")
+async def run_agent_chain(
+    chain: list = Body(..., embed=True),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Run a chain of agent tasks where each feeds into the next.
+
+    Body: {"chain": [{"agent": "scout", "instructions": "..."}, {"agent": "maya", "instructions": "..."}]}
+    """
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+    api_key = _get_api_key(db, shop)
+    if not api_key:
+        return {"error": "No API key configured"}
+    ctx = _get_shop_context(db, shop, user)
+
+    from app.services.openclaw_engine import OpenClawEngine
+    engine = OpenClawEngine.get_instance()
+    results = await engine.chain_agents(db, shop, api_key, ctx, chain)
+
+    total_outputs = sum(len(r.get("outputs", [])) for r in results)
+    return {
+        "results": results,
+        "agent_count": len(results),
+        "total_outputs": total_outputs,
+        "summary": f"Chain completed: {len(results)} agents, {total_outputs} outputs",
+    }
+
+
+# ── OpenClaw Engine Status ────────────────────────────────────────────────
+
+@router.get("/engine-status")
+def get_engine_status(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the OpenClaw engine status."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"error": "No shop found"}
+
+    from app.services.openclaw_engine import OpenClawEngine
+    engine = OpenClawEngine.get_instance()
+
+    schedule_count = (
+        db.query(func.count(ScheduledTask.id))
+        .filter(ScheduledTask.shop_id == shop.id, ScheduledTask.is_active == True)
+        .scalar()
+    ) or 0
+    memory_count = (
+        db.query(func.count(AgentMemory.id))
+        .filter(AgentMemory.shop_id == shop.id)
+        .scalar()
+    ) or 0
+    insight_count = (
+        db.query(func.count(ProactiveInsight.id))
+        .filter(
+            ProactiveInsight.shop_id == shop.id,
+            ProactiveInsight.is_read == False,
+        )
+        .scalar()
+    ) or 0
+    research_count = (
+        db.query(func.count(WebResearchResult.id))
+        .filter(WebResearchResult.shop_id == shop.id)
+        .scalar()
+    ) or 0
+
+    # Next scheduled run
+    next_task = (
+        db.query(ScheduledTask)
+        .filter(ScheduledTask.shop_id == shop.id, ScheduledTask.is_active == True)
+        .order_by(ScheduledTask.next_run_at)
+        .first()
+    )
+
+    return {
+        "engine_running": engine._running,
+        "active_schedules": schedule_count,
+        "total_memories": memory_count,
+        "unread_insights": insight_count,
+        "web_research_cached": research_count,
+        "next_scheduled_run": next_task.next_run_at.isoformat() if next_task else None,
+        "next_scheduled_task": next_task.task_name if next_task else None,
+        "features": {
+            "autonomous_scheduling": True,
+            "web_browsing": True,
+            "memory_learning": True,
+            "task_chaining": True,
+            "proactive_insights": True,
+            "email_sending": True,
+        },
+    }
