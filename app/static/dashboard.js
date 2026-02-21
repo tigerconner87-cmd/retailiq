@@ -5192,11 +5192,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const statusEl = $('#openclawStatusText');
       if (statusEl) {
         const parts = [];
+        // Show real OpenClaw gateway status
+        if (data.gateway && data.gateway.available) {
+          parts.push('Gateway: Online');
+        } else {
+          parts.push('Gateway: Fallback');
+        }
         if (data.active_schedules) parts.push(data.active_schedules + ' schedules');
         if (data.total_memories) parts.push(data.total_memories + ' memories');
         if (data.unread_insights) parts.push(data.unread_insights + ' insights');
         if (data.next_scheduled_task) parts.push('Next: ' + data.next_scheduled_task);
         statusEl.textContent = data.engine_running ? (parts.join(' · ') || 'Running') : 'Stopped';
+      }
+      // Update gateway indicator
+      const gwDot = $('#openclawGatewayDot');
+      if (gwDot) {
+        gwDot.style.background = (data.gateway && data.gateway.available) ? '#22c55e' : '#f59e0b';
+        gwDot.title = (data.gateway && data.gateway.available) ? 'OpenClaw Gateway Online' : 'Using Direct API (Fallback)';
       }
       const badge = $('#openclawInsightBadge');
       if (badge && data.unread_insights > 0) {

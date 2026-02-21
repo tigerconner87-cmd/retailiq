@@ -1134,17 +1134,21 @@ async def run_agent_chain(
 # ── OpenClaw Engine Status ────────────────────────────────────────────────
 
 @router.get("/engine-status")
-def get_engine_status(
+async def get_engine_status(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get the OpenClaw engine status."""
+    """Get the OpenClaw engine status (real gateway + Forge orchestration)."""
     shop = _get_shop(db, user)
     if not shop:
         return {"error": "No shop found"}
 
     from app.services.openclaw_engine import OpenClawEngine
+    from app.services.openclaw_bridge import OpenClawBridge
     engine = OpenClawEngine.get_instance()
+
+    # Check real OpenClaw gateway status
+    gateway_status = await OpenClawBridge.get_status()
 
     schedule_count = (
         db.query(func.count(ScheduledTask.id))
@@ -1180,6 +1184,7 @@ def get_engine_status(
 
     return {
         "engine_running": engine._running,
+        "gateway": gateway_status,
         "active_schedules": schedule_count,
         "total_memories": memory_count,
         "unread_insights": insight_count,
@@ -1187,6 +1192,7 @@ def get_engine_status(
         "next_scheduled_run": next_task.next_run_at.isoformat() if next_task else None,
         "next_scheduled_task": next_task.task_name if next_task else None,
         "features": {
+            "openclaw_gateway": gateway_status.get("available", False),
             "autonomous_scheduling": True,
             "web_browsing": True,
             "memory_learning": True,

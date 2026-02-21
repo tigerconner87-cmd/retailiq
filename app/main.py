@@ -108,12 +108,24 @@ def on_startup():
 
 @app.on_event("startup")
 async def start_openclaw_engine():
-    """Start the OpenClaw autonomous engine."""
+    """Start the OpenClaw orchestration engine and check gateway connectivity."""
+    # 1. Check real OpenClaw gateway
+    try:
+        from app.services.openclaw_bridge import OpenClawBridge
+        available = await OpenClawBridge.is_available()
+        if available:
+            log.info("[OpenClaw] Gateway is ONLINE at %s", OpenClawBridge.OPENCLAW_GATEWAY_URL if hasattr(OpenClawBridge, 'OPENCLAW_GATEWAY_URL') else "openclaw:18789")
+        else:
+            log.warning("[OpenClaw] Gateway is offline — falling back to direct Anthropic API")
+    except Exception as e:
+        log.warning("[OpenClaw] Gateway check failed: %s", e)
+
+    # 2. Start Forge-side scheduling/insights engine
     try:
         from app.services.openclaw_engine import OpenClawEngine
         engine_instance = OpenClawEngine.get_instance()
         await engine_instance.start()
-        log.info("[OpenClaw] Autonomous engine started")
+        log.info("[OpenClaw] Forge orchestration engine started")
     except Exception as e:
         log.warning("[OpenClaw] Engine start failed (non-fatal): %s", e)
 

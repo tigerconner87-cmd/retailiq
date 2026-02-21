@@ -22,6 +22,8 @@ from app.services.agent_prompts import get_agent_prompt
 
 log = logging.getLogger(__name__)
 
+from app.services.openclaw_bridge import OpenClawBridge
+
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
 
@@ -403,29 +405,18 @@ class ClawBot:
         return result
 
     async def _plan(self, command: str) -> dict:
-        """Call Claude to decompose a command into an execution plan."""
+        """Call OpenClaw to decompose a command into an execution plan."""
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(
-                    CLAUDE_API_URL,
-                    headers={
-                        "x-api-key": self.api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": CLAUDE_MODEL,
-                        "max_tokens": 1024,
-                        "system": PLAN_PROMPT,
-                        "messages": [{"role": "user", "content": command}],
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                text = data["content"][0]["text"]
-                parsed = _extract_json(text)
-                if parsed and parsed.get("tasks"):
-                    return parsed
+            text, _ = await OpenClawBridge.send_message(
+                message=command,
+                system_prompt=PLAN_PROMPT,
+                agent_id="main",
+                max_tokens=1024,
+                api_key=self.api_key,
+            )
+            parsed = _extract_json(text)
+            if parsed and parsed.get("tasks"):
+                return parsed
         except Exception as e:
             log.warning("Claw Bot plan failed, falling back: %s", e)
 
@@ -641,41 +632,28 @@ class ClawBot:
             }
 
     async def _call_agent(self, system_prompt: str, instructions: str) -> tuple[str, int]:
-        """Call Claude for an agent task, return (text, tokens_used)."""
-        log.info("[ClawBot] Calling agent — model=%s, instructions=%s...", CLAUDE_MODEL, instructions[:80])
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(
-                CLAUDE_API_URL,
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": CLAUDE_MODEL,
-                    "max_tokens": 8000,
-                    "system": system_prompt,
-                    "messages": [{"role": "user", "content": instructions}],
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            text = data["content"][0]["text"]
-            tokens = data.get("usage", {}).get("input_tokens", 0) + data.get("usage", {}).get("output_tokens", 0)
-            log.info("[ClawBot] Agent response received — %d chars, %d tokens", len(text), tokens)
-            log.debug("[ClawBot] Raw response: %s", text[:500])
+        """Call agent via OpenClaw gateway (falls back to direct Anthropic API)."""
+        log.info("[ClawBot] Calling agent via OpenClaw — instructions=%s...", instructions[:80])
+        text, tokens = await OpenClawBridge.send_message(
+            message=instructions,
+            system_prompt=system_prompt,
+            agent_id="main",
+            max_tokens=8000,
+            api_key=self.api_key,
+        )
+        log.info("[ClawBot] Agent response received — %d chars, %d tokens", len(text), tokens)
 
-            # Try to parse JSON
-            parsed = _extract_json(text)
-            if parsed:
-                log.info("[ClawBot] JSON parsed successfully — keys: %s", list(parsed.keys()))
-            else:
-                log.warning("[ClawBot] JSON parsing failed — raw text will be used as-is")
+        # Try to parse JSON
+        parsed = _extract_json(text)
+        if parsed:
+            log.info("[ClawBot] JSON parsed successfully — keys: %s", list(parsed.keys()))
+        else:
+            log.warning("[ClawBot] JSON parsing failed — raw text will be used as-is")
 
-            return text, tokens
+        return text, tokens
 
     async def _verify_output(self, instructions: str, outputs: list) -> dict:
-        """Score agent output quality. Returns scores dict with pass/fail."""
+        """Score agent output quality via OpenClaw. Returns scores dict with pass/fail."""
         try:
             output_text = "\n\n".join(
                 f"[{o.get('type', 'general')}] {o.get('title', 'Untitled')}\n{o.get('content', '')[:500]}"
@@ -683,27 +661,16 @@ class ClawBot:
             )
             verify_input = f"INSTRUCTIONS: {instructions}\n\nAGENT OUTPUT:\n{output_text}"
 
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(
-                    CLAUDE_API_URL,
-                    headers={
-                        "x-api-key": self.api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": CLAUDE_MODEL,
-                        "max_tokens": 512,
-                        "system": VERIFY_PROMPT,
-                        "messages": [{"role": "user", "content": verify_input}],
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                text = data["content"][0]["text"]
-                parsed = _extract_json(text)
-                if parsed and "overall" in parsed:
-                    return parsed
+            text, _ = await OpenClawBridge.send_message(
+                message=verify_input,
+                system_prompt=VERIFY_PROMPT,
+                agent_id="main",
+                max_tokens=512,
+                api_key=self.api_key,
+            )
+            parsed = _extract_json(text)
+            if parsed and "overall" in parsed:
+                return parsed
         except Exception as e:
             log.warning("Quality verification failed, assuming pass: %s", e)
 

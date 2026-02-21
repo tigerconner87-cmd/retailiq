@@ -7,17 +7,46 @@ services:
       - .env
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENCLAW_GATEWAY_URL=http://openclaw:18789
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      openclaw:
+        condition: service_started
     volumes:
       - ./app:/app/app
       - ./alembic:/app/alembic
       - ./scripts:/app/scripts
       - ./alembic.ini:/app/alembic.ini
     restart: unless-stopped
+
+  openclaw:
+    build:
+      context: ./openclaw
+      dockerfile: Dockerfile
+    user: root
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+    volumes:
+      - ./openclaw-config:/home/node/.openclaw
+      - openclaw-workspace:/home/node/.openclaw/workspace
+      - ./openclaw-skills:/app/skills-custom
+    ports:
+      - "18789:18789"
+      - "18790:18790"
+    init: true
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        chown -R node:node /home/node/.openclaw
+        exec su -s /bin/sh node -c 'node openclaw.mjs gateway --allow-unconfigured --bind lan --port 18789'
 
   db:
     image: postgres:16-alpine
@@ -47,3 +76,4 @@ services:
 
 volumes:
   pgdata:
+  openclaw-workspace:

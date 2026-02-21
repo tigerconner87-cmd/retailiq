@@ -1,12 +1,15 @@
-"""OpenClaw Engine — Autonomous AI operations engine for Forge.
+"""OpenClaw Engine — Forge-side orchestration layer for the real OpenClaw gateway.
 
-Inspired by OpenClaw's architecture:
+The real OpenClaw runs as a Docker service (gateway on port 18789).
+All AI calls are routed through the OpenClaw bridge (openclaw_bridge.py).
+
+This module provides Forge-specific automation features:
 - Heartbeat daemon: periodic autonomous agent runs
 - Memory system: agents learn from past interactions
 - Task chaining: one agent's output feeds another
 - Proactive insights: detect opportunities/threats automatically
 - Scheduling: tasks run on configured schedules
-- Web browsing: real competitor research via web scraping
+- Web research: real competitor research via web scraping
 """
 
 import asyncio

@@ -46,3 +46,6 @@ desktop.ini
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+
+# OpenClaw (cloned repo — built as Docker service)
+openclaw/
