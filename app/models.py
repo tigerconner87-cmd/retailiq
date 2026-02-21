@@ -753,11 +753,16 @@ class AgentDeliverable(Base):
     deliverable_type = Column(String(50), nullable=False)  # email_draft, social_post, analysis, strategy, bundle, etc.
     title = Column(String(500), nullable=False)
     content = Column(Text, nullable=False)
+    summary = Column(Text)
+    confidence = Column(Float)  # 0.0-1.0
     quality_scores = Column(JSON, default=dict)  # 8 quality dimensions
     overall_quality = Column(Float)  # 0-100
-    status = Column(String(20), default="draft")  # draft, approved, shipped, rejected
+    status = Column(String(20), default="draft")  # draft, pending_approval, approved, shipped, rejected, published, sent
+    rejection_reason = Column(Text)
+    source = Column(String(20), default="internal")  # openclaw, internal, manual
     shipped_via = Column(String(50))  # email, social, dashboard
     shipped_at = Column(DateTime)
+    approved_at = Column(DateTime)
     metadata_json = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 

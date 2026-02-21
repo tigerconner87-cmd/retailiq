@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     GOOGLE_PLACES_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    OPENCLAW_BRIDGE_TOKEN: str = "forge-openclaw-bridge-2026"
 
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

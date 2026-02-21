@@ -8,7 +8,7 @@ from starlette.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.database import Base, engine
-from app.routers import agents, ai, auth, dashboard_api, data_hub, email, pages
+from app.routers import agents, ai, auth, dashboard_api, data_hub, email, openclaw_bridge_api, pages
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +58,12 @@ _ALTER_STMTS = [
     "ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS anthropic_api_key VARCHAR(255) DEFAULT ''",
     "ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS ai_enabled BOOLEAN DEFAULT true",
     "ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS ai_personality VARCHAR(50) DEFAULT 'professional'",
+    # OpenClaw Bridge columns on agent_deliverables
+    "ALTER TABLE agent_deliverables ADD COLUMN IF NOT EXISTS summary TEXT",
+    "ALTER TABLE agent_deliverables ADD COLUMN IF NOT EXISTS confidence FLOAT",
+    "ALTER TABLE agent_deliverables ADD COLUMN IF NOT EXISTS rejection_reason TEXT",
+    "ALTER TABLE agent_deliverables ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'internal'",
+    "ALTER TABLE agent_deliverables ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP",
 ]
 
 
@@ -139,6 +145,7 @@ app.include_router(auth.router)
 app.include_router(dashboard_api.router)
 app.include_router(data_hub.router)
 app.include_router(email.router)
+app.include_router(openclaw_bridge_api.router)
 app.include_router(pages.router)
 
 

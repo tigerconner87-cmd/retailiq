@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=33">
+  <link rel="stylesheet" href="/static/dashboard.css?v=34">
 </head>
 <body>
   <!-- Sidebar -->
@@ -34,6 +34,7 @@
       <a href="/dashboard/agents" class="nav-item {{ 'active' if sec == 'agents' }}" data-section="agents">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         AI Agents
+        <span class="aq-sidebar-badge" id="aqSidebarBadge" style="display:none">0</span>
         <span class="nav-scale-badge">SCALE</span>
       </a>
       <a href="/dashboard/data-hub" class="nav-item {{ 'active' if sec == 'datahub' }}" data-section="datahub">
@@ -390,6 +391,7 @@
           <button class="agents-tab active" data-tab="team">Team</button>
           <button class="agents-tab" data-tab="outputs">Outputs</button>
           <button class="agents-tab" data-tab="deliverables">Deliverables</button>
+          <button class="agents-tab" data-tab="queue">Approval Queue <span class="aq-badge" id="aqTabBadge" style="display:none">0</span></button>
           <button class="agents-tab" data-tab="tasks">Task Board</button>
           <button class="agents-tab" data-tab="activity">Activity Feed</button>
           <button class="agents-tab" data-tab="audit">Audit Log</button>
@@ -515,6 +517,25 @@
             </div>
           </div>
           <div class="agent-outputs-grid" id="deliverablesGrid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Tab: Approval Queue -->
+        <div class="agents-tab-panel" id="agentsPanel-queue">
+          <div class="aq-header">
+            <div class="aq-header-left">
+              <h3 class="aq-title">Approval Queue</h3>
+              <span class="aq-count" id="aqCount">0 pending</span>
+            </div>
+            <div class="aq-header-right">
+              <span class="aq-openclaw-status" id="aqOpenClawStatus">
+                <span class="aq-status-dot" id="aqStatusDot"></span>
+                <span id="aqStatusLabel">Checking...</span>
+              </span>
+            </div>
+          </div>
+          <div class="aq-grid" id="aqGrid">
             <!-- Rendered by JS -->
           </div>
         </div>

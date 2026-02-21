@@ -4189,6 +4189,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tab.dataset.tab === 'tasks' && !_agentTasksData) loadAgentTasks();
       if (tab.dataset.tab === 'performance') loadAgentPerformance();
       if (tab.dataset.tab === 'deliverables') loadDeliverables();
+      if (tab.dataset.tab === 'queue') loadApprovalQueue();
       if (tab.dataset.tab === 'audit') loadAuditLog();
     };
   });
@@ -6429,6 +6430,220 @@ document.addEventListener('DOMContentLoaded', () => {
     const outputsTab = document.querySelector('.agents-tab[data-tab="outputs"]');
     if (outputsTab) outputsTab.click();
   };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // APPROVAL QUEUE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const _agentColors = {maya:'#ec4899',scout:'#3b82f6',emma:'#10b981',alex:'#f59e0b',max:'#8b5cf6'};
+  const _agentIcons = {maya:'M',scout:'S',emma:'E',alex:'A',max:'$'};
+  const _agentNames = {maya:'Maya',scout:'Scout',emma:'Emma',alex:'Alex',max:'Max'};
+
+  async function loadApprovalQueue() {
+    const grid = $('#aqGrid');
+    if (!grid) return;
+    grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Loading approval queue...</div>';
+
+    try {
+      const res = await fetch('/api/v1/openclaw/queue/pending', { credentials: 'same-origin' });
+      const data = await res.json();
+      const items = data.queue || [];
+      const total = data.total || 0;
+
+      // Update count label
+      const countEl = $('#aqCount');
+      if (countEl) countEl.textContent = total + ' pending';
+
+      if (items.length === 0) {
+        grid.innerHTML = `
+          <div class="aq-empty">
+            <div class="aq-empty-icon">&#9989;</div>
+            <div class="aq-empty-text">No pending approvals.<br>When OpenClaw agents submit deliverables, they'll appear here for your review.</div>
+          </div>`;
+        return;
+      }
+
+      window._aqData = items;
+
+      grid.innerHTML = items.map(d => {
+        const agentColor = _agentColors[d.agent_type] || '#6366f1';
+        const agentIcon = _agentIcons[d.agent_type] || '?';
+        const agentName = _agentNames[d.agent_type] || d.agent_type;
+        const conf = Math.round((d.confidence || 0.5) * 100);
+        const confColor = conf >= 80 ? '#10b981' : conf >= 60 ? '#f59e0b' : '#ef4444';
+        const tAgo = agentTimeAgo(d.created_at);
+        const typeBadge = (d.output_type || 'general').replace(/_/g, ' ');
+        const sourceClass = (d.source || 'internal');
+
+        return `
+        <div class="aq-card" data-id="${d.id}">
+          <div class="aq-card-header">
+            <div class="aq-card-agent">
+              <div class="aq-card-agent-icon" style="background:${agentColor}">${agentIcon}</div>
+              <div>
+                <div class="aq-card-agent-name">${agentName}</div>
+                <div class="aq-card-agent-time">${tAgo}</div>
+              </div>
+            </div>
+            <span class="aq-card-source ${sourceClass}">${sourceClass}</span>
+          </div>
+          <span class="aq-card-type" style="background:${agentColor}18;color:${agentColor}">${typeBadge}</span>
+          <div class="aq-card-title">${esc(d.title)}</div>
+          ${d.summary ? '<div class="aq-card-summary">' + esc(d.summary) + '</div>' : ''}
+          <div class="aq-card-content">${esc((d.content || '').substring(0, 500))}${(d.content || '').length > 500 ? '...' : ''}</div>
+          <div class="aq-confidence">
+            <div class="aq-confidence-label"><span>Confidence</span><span style="color:${confColor}">${conf}%</span></div>
+            <div class="aq-confidence-bar"><div class="aq-confidence-fill" style="width:${conf}%;background:${confColor}"></div></div>
+          </div>
+          <div class="aq-card-actions">
+            <button class="aq-btn aq-btn-approve" onclick="aqApprove('${d.id}')">Approve</button>
+            <button class="aq-btn aq-btn-reject" onclick="aqRejectPrompt('${d.id}')">Reject</button>
+            <button class="aq-btn aq-btn-expand" onclick="aqExpand('${d.id}')">View Full</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger)">Failed to load approval queue</div>';
+    }
+
+    // Also update heartbeat status
+    loadAqHeartbeatStatus();
+  }
+
+  window.aqApprove = async function(id) {
+    try {
+      const res = await fetch('/api/v1/openclaw/queue/' + id + '/approve-dashboard', {
+        method: 'POST', credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const msg = data.action && data.action.email_sent ? 'Approved & email sent!' : 'Approved!';
+        showToast(msg, 'success');
+        loadApprovalQueue();
+        updateAqBadges();
+      } else {
+        showToast(data.detail || 'Approval failed', 'error');
+      }
+    } catch (err) {
+      showToast('Approval failed: ' + err.message, 'error');
+    }
+  };
+
+  window.aqRejectPrompt = function(id) {
+    const overlay = document.createElement('div');
+    overlay.className = 'aq-reject-modal';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+      <div class="aq-reject-modal-content">
+        <h4>Reject Deliverable</h4>
+        <textarea id="aqRejectReason" placeholder="Reason for rejection (optional)..."></textarea>
+        <div class="aq-reject-modal-actions">
+          <button class="aq-btn aq-btn-expand" onclick="this.closest('.aq-reject-modal').remove()">Cancel</button>
+          <button class="aq-btn aq-btn-reject" onclick="aqRejectConfirm('${id}')">Reject</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => { const ta = document.getElementById('aqRejectReason'); if (ta) ta.focus(); }, 100);
+  };
+
+  window.aqRejectConfirm = async function(id) {
+    const reasonEl = document.getElementById('aqRejectReason');
+    const reason = reasonEl ? reasonEl.value.trim() : '';
+    const modal = document.querySelector('.aq-reject-modal');
+    if (modal) modal.remove();
+
+    try {
+      const res = await fetch('/api/v1/openclaw/queue/' + id + '/reject-dashboard', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('Deliverable rejected', 'info');
+        loadApprovalQueue();
+        updateAqBadges();
+      } else {
+        showToast(data.detail || 'Rejection failed', 'error');
+      }
+    } catch (err) {
+      showToast('Rejection failed: ' + err.message, 'error');
+    }
+  };
+
+  window.aqExpand = function(id) {
+    const items = window._aqData || [];
+    const d = items.find(x => x.id === id);
+    if (!d) return;
+    const modal = $('#agentOutputModal');
+    const title = $('#ahModalTitle');
+    const body = $('#ahModalBody');
+    if (!modal || !title || !body) return;
+    const agentName = _agentNames[d.agent_type] || d.agent_type;
+    const conf = Math.round((d.confidence || 0.5) * 100);
+    title.textContent = d.title;
+    body.innerHTML = `
+      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:12px;padding:2px 10px;border-radius:6px;background:${_agentColors[d.agent_type] || '#6366f1'}22;color:${_agentColors[d.agent_type] || '#6366f1'};font-weight:600">${agentName}</span>
+        <span style="font-size:12px;color:var(--text3)">${(d.output_type || '').replace(/_/g, ' ')}</span>
+        <span style="font-size:12px;color:var(--text3)">Confidence: ${conf}%</span>
+        <span style="font-size:12px;color:var(--text3)">Source: ${d.source || 'internal'}</span>
+      </div>
+      ${d.summary ? '<div style="font-size:13px;color:var(--text2);margin-bottom:12px;padding:10px;background:var(--bg-3);border-radius:8px"><strong>Summary:</strong> ' + esc(d.summary) + '</div>' : ''}
+      <div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">${esc(d.content)}</div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="aq-btn aq-btn-approve" onclick="aqApprove('${d.id}');document.getElementById('agentOutputModal').hidden=true;document.getElementById('agentOutputModal').style.display='none'">Approve</button>
+        <button class="aq-btn aq-btn-reject" onclick="aqRejectPrompt('${d.id}');document.getElementById('agentOutputModal').hidden=true;document.getElementById('agentOutputModal').style.display='none'">Reject</button>
+      </div>`;
+    modal.hidden = false;
+    modal.style.display = 'flex';
+  };
+
+  // ── Pending Count Badge ──
+  async function updateAqBadges() {
+    try {
+      const res = await fetch('/api/v1/openclaw/queue/count', { credentials: 'same-origin' });
+      const data = await res.json();
+      const count = data.count || 0;
+      const tabBadge = $('#aqTabBadge');
+      const sidebarBadge = $('#aqSidebarBadge');
+      if (tabBadge) {
+        tabBadge.textContent = count;
+        tabBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+      }
+      if (sidebarBadge) {
+        sidebarBadge.textContent = count;
+        sidebarBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+      }
+    } catch (e) { /* silent */ }
+  }
+
+  // ── Heartbeat Status ──
+  async function loadAqHeartbeatStatus() {
+    try {
+      const res = await fetch('/api/v1/openclaw/heartbeat/status', { credentials: 'same-origin' });
+      const data = await res.json();
+      const dot = $('#aqStatusDot');
+      const label = $('#aqStatusLabel');
+      if (dot && label) {
+        if (data.connected) {
+          dot.className = 'aq-status-dot online';
+          label.textContent = 'OpenClaw Connected';
+        } else {
+          dot.className = 'aq-status-dot offline';
+          label.textContent = 'OpenClaw Disconnected';
+        }
+      }
+    } catch (e) {
+      const label = $('#aqStatusLabel');
+      if (label) label.textContent = 'Status Unknown';
+    }
+  }
+
+  // Load badges on page load (agents section)
+  if ($('#agentsTabs')) {
+    updateAqBadges();
+  }
 
   // ── Claw Bot Error Handling Enhancement ──
   const origSendAiMessage = sendAiMessage;
