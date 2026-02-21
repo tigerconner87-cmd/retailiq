@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=35">
+  <link rel="stylesheet" href="/static/dashboard.css?v=36">
 </head>
 <body>
   <!-- Sidebar -->
@@ -341,7 +341,7 @@
               <span class="aq-hero-badge" id="aqHeroBadge">0 pending</span>
             </div>
             <div class="aq-hero-actions">
-              <button class="mke-btn" onclick="loadApprovalQueueHero()" style="font-size:12px;padding:6px 12px">Refresh</button>
+              <button onclick="loadApprovalQueueHero()" style="font-size:12px;padding:6px 12px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">&#8635; Refresh</button>
             </div>
           </div>
           <div class="aq-hero-grid" id="aqHeroGrid">
@@ -2306,7 +2306,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=36"></script>
+  <script src="/static/dashboard.js?v=37"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

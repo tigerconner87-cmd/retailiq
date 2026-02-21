@@ -4289,6 +4289,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Load activity feed
       loadAgentActivityFeed('');
 
+      // Load approval queue hero section
+      loadApprovalQueueHero();
+
       // Wire filter buttons
       $$('.agent-filter-btn').forEach(btn => {
         btn.onclick = () => {
@@ -6448,6 +6451,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const res = await fetch('/api/agents/approval-queue', { credentials: 'same-origin' });
+      if (!res.ok) { grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger)">Failed to load approval queue (HTTP ' + res.status + ')</div>'; return; }
       const data = await res.json();
       const items = data.queue || [];
       const total = data.total || 0;
@@ -6505,6 +6509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
       }).join('');
     } catch (err) {
+      console.error('[Forge] Failed to load approval queue (tab):', err);
       grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger)">Failed to load approval queue</div>';
     }
 
@@ -6689,6 +6694,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
       }).join('');
     } catch (err) {
+      console.error('[Forge] Failed to load approval queue (hero):', err);
       grid.innerHTML = '<div style="text-align:center;padding:24px;color:var(--danger)">Failed to load approval queue</div>';
     }
   };
