@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/dashboard.css?v=34">
+  <link rel="stylesheet" href="/static/dashboard.css?v=35">
 </head>
 <body>
   <!-- Sidebar -->
@@ -307,12 +307,12 @@
         <!-- Claw Bot Command Center Header -->
         <div class="agents-header">
           <div>
-            <h2 class="agents-title"><span class="claw-bot-icon">&#129302;</span> Claw Bot Command Center</h2>
+            <h2 class="agents-title"><span class="claw-bot-icon">&#9889;</span> Claw Bot Command Center</h2>
             <p class="agents-subtitle">Autonomous AI operations engine. Deploy agents, verify quality, ship deliverables.</p>
           </div>
           <div class="agents-header-actions">
             <button class="mke-btn primary" id="runAllAgentsBtn" onclick="runAllAgents()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;font-weight:600">Run All Agents</button>
-            <button class="mke-btn" id="agentNewTaskBtn" onclick="document.getElementById('agentQuickTaskBar').hidden=false;document.getElementById('agentQuickTaskBar').style.display='flex';document.getElementById('aqtTitle').focus()">+ Assign Task</button>
+            <button class="mke-btn primary" id="agentNewTaskBtn" onclick="document.getElementById('agentQuickTaskBar').hidden=false;document.getElementById('agentQuickTaskBar').style.display='flex';document.getElementById('aqtTitle').focus()" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);border:none;font-weight:600">+ Assign Task</button>
           </div>
         </div>
 

@@ -6445,7 +6445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Loading approval queue...</div>';
 
     try {
-      const res = await fetch('/api/v1/openclaw/queue/pending', { credentials: 'same-origin' });
+      const res = await fetch('/api/agents/approval-queue', { credentials: 'same-origin' });
       const data = await res.json();
       const items = data.queue || [];
       const total = data.total || 0;
@@ -6512,7 +6512,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.aqApprove = async function(id) {
     try {
-      const res = await fetch('/api/v1/openclaw/queue/' + id + '/approve-dashboard', {
+      const res = await fetch('/api/agents/approval-queue/' + id + '/approve', {
         method: 'POST', credentials: 'same-origin',
       });
       const data = await res.json();
@@ -6553,7 +6553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modal) modal.remove();
 
     try {
-      const res = await fetch('/api/v1/openclaw/queue/' + id + '/reject-dashboard', {
+      const res = await fetch('/api/agents/approval-queue/' + id + '/reject', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reason }),
@@ -6576,8 +6576,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const d = items.find(x => x.id === id);
     if (!d) return;
     const modal = $('#agentOutputModal');
-    const title = $('#ahModalTitle');
-    const body = $('#ahModalBody');
+    const title = $('#aoModalTitle');
+    const body = $('#aoModalBody');
     if (!modal || !title || !body) return;
     const agentName = _agentNames[d.agent_type] || d.agent_type;
     const conf = Math.round((d.confidence || 0.5) * 100);
@@ -6602,7 +6602,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Pending Count Badge ──
   async function updateAqBadges() {
     try {
-      const res = await fetch('/api/v1/openclaw/queue/count', { credentials: 'same-origin' });
+      const res = await fetch('/api/agents/approval-queue/count', { credentials: 'same-origin' });
       const data = await res.json();
       const count = data.count || 0;
       const tabBadge = $('#aqTabBadge');
@@ -6621,17 +6621,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Heartbeat Status ──
   async function loadAqHeartbeatStatus() {
     try {
-      const res = await fetch('/api/v1/openclaw/heartbeat/status', { credentials: 'same-origin' });
+      const res = await fetch('/api/agents/engine-status', { credentials: 'same-origin' });
       const data = await res.json();
       const dot = $('#aqStatusDot');
       const label = $('#aqStatusLabel');
       if (dot && label) {
-        if (data.connected) {
+        if (data.gateway && data.gateway.available) {
           dot.className = 'aq-status-dot online';
           label.textContent = 'OpenClaw Connected';
         } else {
           dot.className = 'aq-status-dot offline';
-          label.textContent = 'OpenClaw Disconnected';
+          label.textContent = 'OpenClaw Fallback Mode';
         }
       }
     } catch (e) {

@@ -5,7 +5,7 @@ import random
 import uuid
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Body, Query
+from fastapi import APIRouter, Depends, Body, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
@@ -13,7 +13,7 @@ from app.dependencies import get_current_user, get_db
 from app.models import (
     User, Shop, ShopSettings, Agent, AgentActivity,
     TaskGroup, OrchestratedTask, AgentConfig, AgentOutput, AgentRun,
-    ExecutionGoal, ExecutionTask, AgentDeliverable, AuditLog,
+    ExecutionGoal, ExecutionTask, AgentDeliverable, AuditLog, SentEmail,
     AgentMemory, ScheduledTask, ProactiveInsight, WebResearchResult,
 )
 from app.services.orchestrator import TaskOrchestrator
@@ -794,6 +794,137 @@ def approve_deliverable(
     d.status = "approved"
     db.commit()
     return {"ok": True, "status": "approved"}
+
+
+# ── Approval Queue (internal dashboard endpoints) ────────────────────────
+
+@router.get("/approval-queue")
+def get_approval_queue(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get pending approval queue for the dashboard."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"queue": [], "total": 0}
+
+    deliverables = (
+        db.query(AgentDeliverable)
+        .filter(
+            AgentDeliverable.shop_id == shop.id,
+            AgentDeliverable.status == "pending_approval",
+        )
+        .order_by(desc(AgentDeliverable.created_at))
+        .all()
+    )
+    return {
+        "queue": [
+            {
+                "id": d.id,
+                "agent_type": d.agent_type,
+                "output_type": d.deliverable_type,
+                "title": d.title,
+                "content": d.content,
+                "summary": d.summary or "",
+                "confidence": d.confidence or 0.5,
+                "source": d.source or "internal",
+                "created_at": d.created_at.isoformat(),
+            }
+            for d in deliverables
+        ],
+        "total": len(deliverables),
+    }
+
+
+@router.get("/approval-queue/count")
+def get_approval_queue_count(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get pending approval count (for sidebar badge)."""
+    shop = _get_shop(db, user)
+    if not shop:
+        return {"count": 0}
+    count = (
+        db.query(func.count(AgentDeliverable.id))
+        .filter(
+            AgentDeliverable.shop_id == shop.id,
+            AgentDeliverable.status == "pending_approval",
+        )
+        .scalar()
+    ) or 0
+    return {"count": count}
+
+
+@router.post("/approval-queue/{deliverable_id}/approve")
+def approve_queued_deliverable(
+    deliverable_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Approve a queued deliverable. Auto-sends email if email type."""
+    shop = _get_shop(db, user)
+    if not shop:
+        raise HTTPException(status_code=404, detail="No shop found")
+    d = db.query(AgentDeliverable).filter(
+        AgentDeliverable.id == deliverable_id,
+        AgentDeliverable.shop_id == shop.id,
+    ).first()
+    if not d:
+        raise HTTPException(status_code=404, detail="Deliverable not found")
+    if d.status != "pending_approval":
+        return {"ok": False, "detail": f"Status is {d.status}"}
+
+    d.status = "approved"
+    d.approved_at = datetime.utcnow()
+
+    action_result = None
+    email_types = ("email_campaign", "winback_email", "email_draft", "email")
+    if d.deliverable_type in email_types:
+        try:
+            from app.services.email_service import email_service
+            to_email = user.email or ""
+            if to_email:
+                result = email_service.send_marketing_email(to_email, d.title, d.content, shop.name)
+                if result.get("success"):
+                    d.status = "sent"
+                    d.shipped_via = "email"
+                    d.shipped_at = datetime.utcnow()
+                    db.add(SentEmail(
+                        id=str(uuid.uuid4()), shop_id=shop.id, to_email=to_email,
+                        subject=d.title, body_preview=d.content[:500],
+                        template="approval_queue", status="sent", sent_by=d.agent_type,
+                    ))
+                    action_result = {"email_sent": True, "to": to_email}
+        except Exception as e:
+            log.warning("[agents] Approval email send failed: %s", e)
+
+    db.commit()
+    return {"ok": True, "status": d.status, "action": action_result}
+
+
+@router.post("/approval-queue/{deliverable_id}/reject")
+def reject_queued_deliverable(
+    deliverable_id: str,
+    reason: str = Body("", embed=True),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Reject a queued deliverable with optional reason."""
+    shop = _get_shop(db, user)
+    if not shop:
+        raise HTTPException(status_code=404, detail="No shop found")
+    d = db.query(AgentDeliverable).filter(
+        AgentDeliverable.id == deliverable_id,
+        AgentDeliverable.shop_id == shop.id,
+    ).first()
+    if not d:
+        raise HTTPException(status_code=404, detail="Deliverable not found")
+
+    d.status = "rejected"
+    d.rejection_reason = reason or "No reason provided"
+    db.commit()
+    return {"ok": True, "status": "rejected"}
 
 
 # ── Claw Bot: Audit Log ─────────────────────────────────────────────────────

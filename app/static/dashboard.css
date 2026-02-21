@@ -1419,7 +1419,7 @@ svg.spin{animation:spin .8s linear infinite}
 .ask-claw-inline:hover{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);transform:translateY(-1px)}
 
 /* Claw Bot icon in header */
-.claw-bot-icon{font-size:24px;vertical-align:middle;margin-right:4px}
+.claw-bot-icon{font-size:24px;vertical-align:middle;margin-right:4px;-webkit-text-fill-color:initial}
 
 /* ══════════════════════════════════════════════════════════════════════════
    Price Comparison Intelligence
