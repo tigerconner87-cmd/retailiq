@@ -511,8 +511,11 @@
               <select class="aqt-select" id="delStatusFilter">
                 <option value="">All Statuses</option>
                 <option value="draft">Draft</option>
+                <option value="pending_approval">Pending Approval</option>
                 <option value="approved">Approved</option>
                 <option value="shipped">Shipped</option>
+                <option value="sent">Sent</option>
+                <option value="rejected">Rejected</option>
               </select>
             </div>
           </div>
@@ -2109,7 +2112,7 @@
     window.__SUB_SECTION = "{{ sub_section|default('') }}";
     window.__WELCOME = "{{ welcome|default('') }}";
   </script>
-  <script src="/static/dashboard.js?v=33"></script>
+  <script src="/static/dashboard.js?v=36"></script>
 
   <!-- Notification Bell — Inline JS (simplest possible approach) -->
   <script>

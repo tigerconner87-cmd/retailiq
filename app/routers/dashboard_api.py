@@ -513,57 +513,57 @@ def weekly_digest_preview(user: User = Depends(get_current_user), db: Session = 
     period = report.get("period", {})
 
     products_html = "".join(
-        f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee">{p.get("name","")}</td>'
-        f'<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">${p.get("revenue",0):,.2f}</td>'
-        f'<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right">{p.get("units",0)}</td></tr>'
+        f'<tr><td style="padding:8px 12px;border-bottom:1px solid #2a2a3e;color:#e2e8f0">{p.get("name","")}</td>'
+        f'<td style="padding:8px 12px;border-bottom:1px solid #2a2a3e;text-align:right;color:#e2e8f0">${p.get("revenue",0):,.2f}</td>'
+        f'<td style="padding:8px 12px;border-bottom:1px solid #2a2a3e;text-align:right;color:#e2e8f0">{p.get("units",0)}</td></tr>'
         for p in top
     )
     recs_html = "".join(
-        f'<li style="padding:6px 0;border-bottom:1px solid #f3f4f6">{r}</li>' for r in recs
+        f'<li style="padding:6px 0;border-bottom:1px solid #2a2a3e;color:#cbd5e1">{r}</li>' for r in recs
     )
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Weekly Digest — {shop.name}</title></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif">
-<div style="max-width:600px;margin:20px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+<body style="margin:0;padding:0;background:#0f0f1a;font-family:Arial,sans-serif">
+<div style="max-width:600px;margin:20px auto;background:#1e1e2e;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.3)">
   <div style="background:linear-gradient(135deg,#6366f1,#06b6d4);padding:32px 24px;color:#fff;text-align:center">
     <h1 style="margin:0;font-size:24px">Forge Weekly Digest</h1>
     <p style="margin:8px 0 0;opacity:.85;font-size:14px">{shop.name} — {period.get('start','')} to {period.get('end','')}</p>
   </div>
   <div style="padding:24px">
-    <h2 style="font-size:16px;color:#111;margin:0 0 16px">Revenue Snapshot</h2>
+    <h2 style="font-size:16px;color:#e2e8f0;margin:0 0 16px">Revenue Snapshot</h2>
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
       <tr>
-        <td style="padding:16px;background:#f9fafb;border-radius:8px;text-align:center;width:50%">
-          <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em">This Week</div>
-          <div style="font-size:24px;font-weight:700;color:#111;margin-top:4px">${rev.get('this_week',0):,.2f}</div>
+        <td style="padding:16px;background:#16162a;border-radius:8px;text-align:center;width:50%">
+          <div style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">This Week</div>
+          <div style="font-size:24px;font-weight:700;color:#e2e8f0;margin-top:4px">${rev.get('this_week',0):,.2f}</div>
         </td>
         <td style="width:12px"></td>
-        <td style="padding:16px;background:#f9fafb;border-radius:8px;text-align:center;width:50%">
-          <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em">Change</div>
+        <td style="padding:16px;background:#16162a;border-radius:8px;text-align:center;width:50%">
+          <div style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">Change</div>
           <div style="font-size:24px;font-weight:700;color:{'#10b981' if rev.get('change_pct',0)>=0 else '#ef4444'};margin-top:4px">{rev.get('change_pct',0):+.1f}%</div>
         </td>
       </tr>
     </table>
 
-    <h2 style="font-size:16px;color:#111;margin:0 0 12px">Top Products</h2>
+    <h2 style="font-size:16px;color:#e2e8f0;margin:0 0 12px">Top Products</h2>
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px">
-      <thead><tr style="background:#f9fafb">
-        <th style="padding:8px 12px;text-align:left;font-weight:600;color:#6b7280">Product</th>
-        <th style="padding:8px 12px;text-align:right;font-weight:600;color:#6b7280">Revenue</th>
-        <th style="padding:8px 12px;text-align:right;font-weight:600;color:#6b7280">Units</th>
+      <thead><tr style="background:#16162a">
+        <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8">Product</th>
+        <th style="padding:8px 12px;text-align:right;font-weight:600;color:#94a3b8">Revenue</th>
+        <th style="padding:8px 12px;text-align:right;font-weight:600;color:#94a3b8">Units</th>
       </tr></thead>
       <tbody>{products_html}</tbody>
     </table>
 
-    <h2 style="font-size:16px;color:#111;margin:0 0 12px">AI Recommendations</h2>
-    <ul style="list-style:none;padding:0;margin:0 0 24px;font-size:13px;color:#374151">{recs_html}</ul>
+    <h2 style="font-size:16px;color:#e2e8f0;margin:0 0 12px">AI Recommendations</h2>
+    <ul style="list-style:none;padding:0;margin:0 0 24px;font-size:13px;color:#cbd5e1">{recs_html}</ul>
 
     <div style="text-align:center;padding:16px 0">
       <a href="/dashboard" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#6366f1,#06b6d4);color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">View Full Dashboard</a>
     </div>
   </div>
-  <div style="padding:16px 24px;background:#f9fafb;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb">
+  <div style="padding:16px 24px;background:#16162a;text-align:center;font-size:11px;color:#64748b;border-top:1px solid #2a2a3e">
     Sent by Forge — Your AI-Powered Retail Intelligence Platform
   </div>
 </div>

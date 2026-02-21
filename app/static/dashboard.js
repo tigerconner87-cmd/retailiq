@@ -4516,6 +4516,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (agentFilter) url += '&agent_type=' + agentFilter;
       if (statusFilter) url += '&status=' + statusFilter;
       const res = await fetch(url, {credentials: 'same-origin'});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const items = data.deliverables || [];
       if (items.length === 0) {
@@ -4525,11 +4526,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const agentEmojis = {maya:'&#128227;',scout:'&#128269;',emma:'&#128154;',alex:'&#128202;',max:'&#128176;'};
       const agentCredit = {maya:'Created by Maya',scout:'Identified by Scout',emma:'Drafted by Emma',alex:'Analysis by Alex',max:'Recommended by Max'};
       grid.innerHTML = items.map(d => {
-        const statusColors = {draft:'#f59e0b',approved:'#10b981',shipped:'#6366f1',rejected:'#ef4444'};
+        const statusColors = {draft:'#f59e0b',pending_approval:'#a78bfa',approved:'#10b981',shipped:'#6366f1',sent:'#3b82f6',rejected:'#ef4444',published:'#06b6d4'};
         const statusColor = statusColors[d.status] || '#71717a';
         const quality = d.overall_quality ? Math.round(d.overall_quality) : '—';
         const qualityColor = d.overall_quality >= 80 ? '#10b981' : d.overall_quality >= 60 ? '#f59e0b' : '#ef4444';
-        const tAgo = agentTimeAgo(d.created_at);
+        const tAgo = timeAgo(d.created_at);
         const credit = (agentCredit[d.agent_type] || d.agent_type) + ' ' + (agentEmojis[d.agent_type] || '');
         const typeBadge = (d.deliverable_type || 'general').replace(/_/g, ' ');
         const aColor = d.agent_color || '#6366f1';
@@ -4590,6 +4591,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Loading audit log...</div>';
     try {
       const res = await fetch('/api/agents/audit-log?limit=100', {credentials: 'same-origin'});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const entries = data.entries || [];
       if (entries.length === 0) {
@@ -4599,7 +4601,7 @@ document.addEventListener('DOMContentLoaded', () => {
       container.innerHTML = entries.map(e => {
         const actionColors = {goal_started:'#6366f1',task_completed:'#10b981',deliverable_created:'#f59e0b',deliverable_approved:'#10b981',email_sent:'#3b82f6',agent_executed:'#8b5cf6',policy_blocked:'#ef4444'};
         const color = actionColors[e.action] || '#71717a';
-        const timeAgo = agentTimeAgo(e.created_at);
+        const tAgo = timeAgo(e.created_at);
         const details = e.details || {};
         let detailStr = '';
         if (details.quality_score) detailStr += ' &middot; Quality: ' + Math.round(details.quality_score) + '/100';
@@ -4611,7 +4613,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="font-size:13px;color:var(--text1)"><strong>${esc(e.actor)}</strong> <span style="color:var(--text3)">${esc(e.action.replace(/_/g, ' '))}</span> ${e.resource_type ? '<span style="color:var(--text2)">' + esc(e.resource_type) + (e.resource_id ? ' #' + e.resource_id : '') + '</span>' : ''}</div>
             ${detailStr ? '<div style="font-size:12px;color:var(--text3);margin-top:2px">' + detailStr + '</div>' : ''}
           </div>
-          <div style="font-size:11px;color:var(--text3);white-space:nowrap">${timeAgo}</div>
+          <div style="font-size:11px;color:var(--text3);white-space:nowrap">${tAgo}</div>
         </div>`;
       }).join('');
     } catch (err) {
@@ -6471,7 +6473,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const agentName = _agentNames[d.agent_type] || d.agent_type;
         const conf = Math.round((d.confidence || 0.5) * 100);
         const confColor = conf >= 80 ? '#10b981' : conf >= 60 ? '#f59e0b' : '#ef4444';
-        const tAgo = agentTimeAgo(d.created_at);
+        const tAgo = timeAgo(d.created_at);
         const typeBadge = (d.output_type || 'general').replace(/_/g, ' ');
         const sourceClass = (d.source || 'internal');
 
